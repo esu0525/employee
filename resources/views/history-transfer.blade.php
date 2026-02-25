@@ -1,27 +1,8 @@
-<?php
-require_once 'includes/db.php';
-$conn = getDBConnection();
+@extends('layouts.app')
 
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$query = "SELECT * FROM employees WHERE status = 'transfer'";
+@section('title', 'History - Transfer')
 
-if (!empty($search)) {
-    $search_escaped = escapeString($conn, $search);
-    $query .= " AND (name LIKE '%$search_escaped%' OR position LIKE '%$search_escaped%' OR department LIKE '%$search_escaped%' OR id LIKE '%$search_escaped%' OR transfer_location LIKE '%$search_escaped%')";
-}
-
-$query .= " ORDER BY status_date DESC";
-$result = $conn->query($query);
-$employees = [];
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $employees[] = $row;
-    }
-}
-
-include 'includes/header.php';
-?>
-
+@section('content')
 <div class="page-content">
     <div class="page-header">
         <h1 class="page-title">History</h1>
@@ -30,19 +11,19 @@ include 'includes/header.php';
 
     <div class="history-tabs">
         <div class="tabs-nav">
-            <a href="history-inactive.php" class="tab-link tab-inactive">
+            <a href="{{ route('employees.history-inactive') }}" class="tab-link tab-inactive {{ Route::is('employees.history-inactive') ? 'active' : '' }}">
                 <i data-lucide="file-x"></i>
                 Inactive
             </a>
-            <a href="history-resign.php" class="tab-link tab-resign">
+            <a href="{{ route('employees.history-resign') }}" class="tab-link tab-resign {{ Route::is('employees.history-resign') ? 'active' : '' }}">
                 <i data-lucide="user-minus"></i>
                 Resign
             </a>
-            <a href="history-retired.php" class="tab-link tab-retired">
+            <a href="{{ route('employees.history-retired') }}" class="tab-link tab-retired {{ Route::is('employees.history-retired') ? 'active' : '' }}">
                 <i data-lucide="user-x"></i>
                 Retired
             </a>
-            <a href="history-transfer.php" class="tab-link tab-transfer active">
+            <a href="{{ route('employees.history-transfer') }}" class="tab-link tab-transfer {{ Route::is('employees.history-transfer') ? 'active' : '' }}">
                 <i data-lucide="arrow-right-left"></i>
                 Transfer
             </a>
@@ -52,8 +33,8 @@ include 'includes/header.php';
     <div style="margin-bottom: 1.5rem;">
         <div class="search-container" style="max-width: 28rem;">
             <i data-lucide="search" class="search-icon"></i>
-            <form method="GET" action="">
-                <input type="text" name="search" class="search-input" placeholder="Search transferred employees..." value="<?php echo htmlspecialchars($search); ?>">
+            <form method="GET" action="{{ route('employees.history-transfer') }}" id="searchForm">
+                <input type="text" name="search" class="search-input" placeholder="Search transferred employees..." value="{{ $search }}" onchange="document.getElementById('searchForm').submit()">
             </form>
         </div>
     </div>
@@ -66,7 +47,7 @@ include 'includes/header.php';
                 </div>
                 <div class="stat-card-info" style="margin-left: 1rem;">
                     <p class="stat-label">Total Transferred Employees</p>
-                    <p class="stat-value"><?php echo count($employees); ?></p>
+                    <p class="stat-value">{{ count($employees) }}</p>
                 </div>
             </div>
         </div>
@@ -88,31 +69,31 @@ include 'includes/header.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (count($employees) > 0): ?>
-                        <?php foreach ($employees as $employee): ?>
+                    @if ($employees->count() > 0)
+                        @foreach ($employees as $employee)
                         <tr style="transition: background 0.2s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
-                            <td class="employee-id" style="color: #2563eb;"><?php echo htmlspecialchars($employee['id']); ?></td>
-                            <td style="font-weight: 500; color: #1f2937;"><?php echo htmlspecialchars($employee['name']); ?></td>
-                            <td><?php echo htmlspecialchars($employee['position']); ?></td>
+                            <td class="employee-id" style="color: #2563eb;">{{ $employee->id }}</td>
+                            <td style="font-weight: 500; color: #1f2937;">{{ $employee->name }}</td>
+                            <td>{{ $employee->position }}</td>
                             <td>
                                 <span class="badge badge-outline badge-outline-blue">
-                                    <?php echo htmlspecialchars($employee['department']); ?>
+                                    {{ $employee->department }}
                                 </span>
                             </td>
-                            <td><?php echo date('m/d/Y', strtotime($employee['date_joined'])); ?></td>
-                            <td><?php echo $employee['status_date'] ? date('m/d/Y', strtotime($employee['status_date'])) : '-'; ?></td>
+                            <td>{{ $employee->date_joined ? $employee->date_joined->format('m/d/Y') : '-' }}</td>
+                            <td>{{ $employee->status_date ? $employee->status_date->format('m/d/Y') : '-' }}</td>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                                     <i data-lucide="map-pin" style="width: 16px; height: 16px; color: #3b82f6;"></i>
                                     <span style="color: #374151; font-weight: 500;">
-                                        <?php echo $employee['transfer_location'] ? htmlspecialchars($employee['transfer_location']) : '-'; ?>
+                                        {{ $employee->transfer_location ?: '-' }}
                                     </span>
                                 </div>
                             </td>
                             <td><span class="badge badge-transfer">Transferred</span></td>
                         </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
+                        @endforeach
+                    @else
                         <tr>
                             <td colspan="8">
                                 <div class="empty-state">
@@ -121,16 +102,10 @@ include 'includes/header.php';
                                 </div>
                             </td>
                         </tr>
-                    <?php endif; ?>
+                    @endif
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-
-<script>lucide.createIcons();</script>
-
-<?php
-closeDBConnection($conn);
-include 'includes/footer.php';
-?>
+@endsection

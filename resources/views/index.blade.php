@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Master List - Employee Management System')
+@section('title', 'Master List')
 
 @section('content')
 <div class="page-content">
@@ -10,10 +10,10 @@
         <p class="page-subtitle">View and manage all active employees</p>
     </div>
 
-    @if(session('success'))
+    @if(session('success_message'))
     <div class="alert alert-success">
         <i data-lucide="check-circle" class="alert-icon"></i>
-        <span class="alert-text">{{ session('success') }}</span>
+        <span class="alert-text">{{ session('success_message') }}</span>
     </div>
     @endif
 
@@ -112,38 +112,40 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($employees as $employee)
-                    <tr>
-                        <td class="employee-id">{{ $employee->id }}</td>
-                        <td>
-                            <a href="#" class="employee-name-link">
-                                {{ $employee->name }}
-                            </a>
-                        </td>
-                        <td>{{ $employee->position }}</td>
-                        <td>
-                            <span class="badge badge-outline badge-outline-indigo">
-                                {{ $employee->department }}
-                            </span>
-                        </td>
-                        <td>{{ $employee->email }}</td>
-                        <td>{{ $employee->phone }}</td>
-                        <td>{{ $employee->date_joined->format('m/d/Y') }}</td>
-                        <td>
-                            <span class="badge badge-active">Active</span>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="8">
-                            <div class="empty-state">
-                                <i data-lucide="search" class="empty-icon" style="width: 48px; height: 48px;"></i>
-                                <p class="empty-title">No employees found matching your search criteria</p>
-                                <p class="empty-subtitle">Try adjusting your search terms</p>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
+                    @if ($employees->count() > 0)
+                        @foreach ($employees as $employee)
+                        <tr>
+                            <td class="employee-id">{{ $employee->id }}</td>
+                            <td>
+                                <a href="{{ route('employees.show', ['id' => $employee->id]) }}" class="employee-name-link">
+                                    {{ $employee->name }}
+                                </a>
+                            </td>
+                            <td>{{ $employee->position }}</td>
+                            <td>
+                                <span class="badge badge-outline badge-outline-indigo">
+                                    {{ $employee->department }}
+                                </span>
+                            </td>
+                            <td>{{ $employee->email }}</td>
+                            <td>{{ $employee->phone }}</td>
+                            <td>{{ $employee->date_joined ? $employee->date_joined->format('m/d/Y') : '-' }}</td>
+                            <td>
+                                <span class="badge badge-active">Active</span>
+                            </td>
+                        </tr>
+                        @endforeach
+                    @else
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <i data-lucide="search" class="empty-icon" style="width: 48px; height: 48px;"></i>
+                                    <p class="empty-title">No employees found matching your search criteria</p>
+                                    <p class="empty-subtitle">Try adjusting your search terms</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -156,7 +158,7 @@
         <div class="modal-header">
             <h2 class="modal-title">Add New Employee</h2>
         </div>
-        <form method="POST" action="#">
+        <form method="POST" action="{{ route('employees.store') }}">
             @csrf
             <div class="modal-body">
                 <!-- Basic Information -->
@@ -245,8 +247,5 @@ document.getElementById('addEmployeeModal').addEventListener('click', function(e
         closeAddEmployeeModal();
     }
 });
-
-// Reinitialize icons after content load
-lucide.createIcons();
 </script>
 @endpush

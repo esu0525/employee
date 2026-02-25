@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Employee Management System')</title>
+    <title>Employee Management System - @yield('title')</title>
     <link rel="stylesheet" href="{{ asset('assets/styles.css') }}">
+    <!-- Lucide Icons via CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    @stack('styles')
 </head>
 <body>
     <div class="app-container">
@@ -34,19 +36,47 @@
                 <nav class="sidebar-nav">
                     <ul>
                         <li>
-                            <a href="{{ route('employees.index') }}" class="nav-link {{ request()->routeIs('employees.index') ? 'active' : '' }}">
+                            <a href="{{ route('employees.index') }}" class="nav-link {{ Route::is('employees.index') ? 'active' : '' }}">
                                 <i data-lucide="users"></i>
                                 <span>Master List</span>
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="nav-link {{ request()->is('history*') ? 'active' : '' }}">
+                            <a href="{{ route('employees.history') }}" class="nav-link {{ str_contains(Route::currentRouteName(), 'history') ? 'active' : '' }}">
                                 <i data-lucide="history"></i>
                                 <span>History</span>
                             </a>
+                            @if(str_contains(Route::currentRouteName(), 'history'))
+                            <ul class="subnav">
+                                <li>
+                                    <a href="{{ route('employees.history-inactive') }}" class="subnav-link {{ Route::is('employees.history-inactive') ? 'active' : '' }}">
+                                        <i data-lucide="chevron-right"></i>
+                                        Inactive
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('employees.history-resign') }}" class="subnav-link {{ Route::is('employees.history-resign') ? 'active' : '' }}">
+                                        <i data-lucide="chevron-right"></i>
+                                        Resign
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('employees.history-retired') }}" class="subnav-link {{ Route::is('employees.history-retired') ? 'active' : '' }}">
+                                        <i data-lucide="chevron-right"></i>
+                                        Retired
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('employees.history-transfer') }}" class="subnav-link {{ Route::is('employees.history-transfer') ? 'active' : '' }}">
+                                        <i data-lucide="chevron-right"></i>
+                                        Transfer
+                                    </a>
+                                </li>
+                            </ul>
+                            @endif
                         </li>
                         <li>
-                            <a href="#" class="nav-link {{ request()->is('requests*') ? 'active' : '' }}">
+                            <a href="{{ route('employees.requests') }}" class="nav-link {{ Route::is('employees.requests') ? 'active' : '' }}">
                                 <i data-lucide="file-text"></i>
                                 <span>Request List</span>
                             </a>

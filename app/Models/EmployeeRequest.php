@@ -3,11 +3,43 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string $employee_id
+ * @property string $employee_name
+ * @property string $request_type
+ * @property Carbon $request_date
+ * @property string $status
+ * @property string $description
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployeeRequest query()
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployeeRequest findOrFail($id)
+ * @method static \Illuminate\Database\Eloquent\Builder|EmployeeRequest where($column, $operator = null, $value = null, $boolean = 'and')
+ * @property \Carbon\CarbonImmutable $created_at
+ * @property \Carbon\CarbonImmutable $updated_at
+ * @property-read \App\Models\Employee $employee
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereEmployeeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereEmployeeName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereRequestDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereRequestType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|EmployeeRequest whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class EmployeeRequest extends Model
 {
+    protected $table = 'requests';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     protected $fillable = [
-        'employee_id', 'employee_name', 'request_type', 
+        'id', 'employee_id', 'employee_name', 'request_type',
         'request_date', 'status', 'description'
     ];
 
