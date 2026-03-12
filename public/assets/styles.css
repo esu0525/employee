@@ -64,7 +64,7 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Outfit', sans-serif;
     background-color: var(--bg-main);
     color: var(--text-main);
     line-height: 1.5;
@@ -373,6 +373,13 @@ h4,
 }
 
 .page-content {
+    padding: 2.5rem 40px;
+    max-width: 100%;
+    margin: 0;
+    transition: padding 0.3s ease;
+}
+
+.account-mgmt-page .page-content {
     padding: 1.5rem 2rem;
     max-width: 1600px;
     margin: 0 auto;
@@ -1132,4 +1139,170 @@ td {
         flex: 1;
         justify-content: center;
     }
+}
+
+/* Modern Masterlist Card UI */
+.master-list-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.master-item-card {
+    background: white;
+    border-radius: 16px;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #f1f5f9;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    animation: slideInUp 0.5s ease-out both;
+}
+
+.master-item-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: linear-gradient(to bottom, #4f46e5, #9333ea);
+    opacity: 0;
+    transition: 0.3s;
+}
+
+.master-item-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.2);
+    border-color: #c7d2fe;
+    background: #ffffff;
+    z-index: 10;
+}
+
+.master-item-card:hover::before {
+    opacity: 1;
+}
+
+.master-card-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.master-avatar-wrapper {
+    position: relative;
+    width: 50px;
+    height: 50px;
+}
+
+.master-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    font-family: 'Outfit', sans-serif;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    overflow: hidden;
+}
+
+.master-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.master-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.master-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    font-family: 'Cambria', serif;
+}
+
+.master-sub {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.master-card-right {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.master-box-badge {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.4rem 0.8rem;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.master-action-arrow {
+    color: #cbd5e1;
+    transition: 0.3s;
+}
+
+.master-item-card:hover .master-action-arrow {
+    color: #4f46e5;
+    transform: translateX(4px);
+}
+
+/* Box Header Styling */
+.box-header-card {
+    margin: 1.5rem 0 0.5rem;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.box-number-circle {
+    width: 32px;
+    height: 32px;
+    background: #1e1b4b;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.box-title-text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #1e1b4b;
+    letter-spacing: -0.02em;
+}
+
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pagination-container {
+    padding: 2rem 0;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 2rem;
 }

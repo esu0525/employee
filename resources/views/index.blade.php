@@ -15,13 +15,13 @@
     <!-- Action Bar -->
     <div class="action-bar">
         <div class="search-container">
-            <i data-lucide="search" class="search-icon"></i>
-            <form method="GET" action="{{ route('employees.index') }}" id="searchForm">
+            <form method="GET" action="{{ route('employees.index') }}" id="searchForm" style="width: 100%; position: relative;">
+                <i data-lucide="search" class="search-icon"></i>
                 <input 
                     type="text" 
                     name="search" 
                     class="search-input" 
-                    placeholder="Search by name, position, or department..."
+                    placeholder="Search by name, position, or office..."
                     value="{{ $search }}"
                     onchange="document.getElementById('searchForm').submit()"
                 >
@@ -46,67 +46,56 @@
 
 
 
-    <!-- Table -->
-    <div class="table-container">
-        <div class="table-wrapper">
-            <table class="compact-table">
-                <thead>
-                    <tr>
-                        <th>Employee</th>
-                        <th>Department</th>
-                        <th>Date Joined</th>
-                        <th>Status</th>
-                        <th style="text-align: center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if ($employees->count() > 0)
-                        @foreach ($employees as $employee)
-                        <tr onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'" style="cursor: pointer;" class="employee-row-clickable">
-                            <td>
-                                <div class="employee-cell">
-                                    <div class="employee-avatar">
-                                        {{ strtoupper(substr($employee->name, 0, 1)) . strtoupper(substr(strrchr($employee->name, " "), 1, 1)) }}
-                                    </div>
-                                    <div class="employee-info-main">
-                                        <a href="{{ route('employees.show', ['id' => $employee->id]) }}" class="employee-name-link" style="text-decoration: none; color: inherit;">
-                                            {{ $employee->name }}
-                                        </a>
-                                        <span class="employee-position-sub">{{ $employee->position }}</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge badge-outline badge-outline-indigo">
-                                    {{ $employee->department }}
-                                </span>
-                            </td>
-                            <td>{{ $employee->date_joined ? $employee->date_joined->format('M d, Y') : '-' }}</td>
-                            <td>
-                                <span class="badge badge-active">Active</span>
-                            </td>
-                            <td style="text-align: center;">
-                                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openUpdateStatusModal('{{ $employee->id }}', '{{ $employee->name }}')" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;">
-                                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px; margin-right: 4px;"></i>
-                                    Update Status
-                                </button>
-                            </td>
-                        </tr>
-                        @endforeach
-                    @else
-                        <tr>
-                            <td colspan="5">
-                                <div class="empty-state">
-                                    <i data-lucide="search" class="empty-icon" style="width: 48px; height: 48px;"></i>
-                                    <p class="empty-title">No employees found matching your search criteria</p>
-                                    <p class="empty-subtitle">Try adjusting your search terms</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endif
-                </tbody>
-            </table>
-        </div>
+    <!-- Modern Card List -->
+    <div class="master-list-grid">
+        @if ($employees->count() > 0)
+            @foreach ($employees as $employee)
+            <div class="master-item-card" onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'">
+                <div class="master-card-left">
+                    <div class="master-avatar-wrapper">
+                        <div class="master-avatar">
+                            @if($employee->profile_picture)
+                                <img src="{{ asset($employee->profile_picture) }}" alt="{{ $employee->name }}">
+                            @else
+                                {{ strtoupper(substr($employee->name, 0, 1)) }}{{ strtoupper(substr(strrchr($employee->name, " "), 1, 1)) }}
+                            @endif
+                        </div>
+                    </div>
+                    <div class="master-info">
+                        @php
+                            $displayName = $employee->name;
+                            if ($employee->last_name && $employee->first_name) {
+                                $displayName = $employee->last_name . ', ' . $employee->first_name;
+                                if ($employee->middle_name) {
+                                    $displayName .= ' ' . substr($employee->middle_name, 0, 1) . '.';
+                                }
+                            }
+                        @endphp
+                        <span class="master-name">{{ $displayName }}</span>
+                        <span class="master-sub" style="font-size: 0.85rem; opacity: 0.8;">{{ $employee->position }} • {{ $employee->department }}</span>
+                    </div>
+                </div>
+                
+                <div class="master-card-right">
+                    <div class="master-card-meta" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
+                        <span class="badge badge-active">Active</span>
+                        <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Joined {{ $employee->date_joined ? $employee->date_joined->format('M d, Y') : '-' }}</span>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openUpdateStatusModal('{{ $employee->id }}', '{{ $employee->name }}')" style="padding: 0.5rem 1rem; font-size: 0.75rem; border-radius: 10px;">
+                        <i data-lucide="refresh-cw" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                        Status
+                    </button>
+                    <i data-lucide="chevron-right" class="master-action-arrow"></i>
+                </div>
+            </div>
+            @endforeach
+        @else
+            <div class="empty-state">
+                <i data-lucide="search" class="empty-icon" style="width: 48px; height: 48px;"></i>
+                <p class="empty-title">No employees found matching your search criteria</p>
+                <p class="empty-subtitle">Try adjusting your search terms</p>
+            </div>
+        @endif
     </div>
 </div>
 

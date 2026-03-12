@@ -18,7 +18,7 @@
                 type="text" 
                 id="searchInput"
                 class="search-input" 
-                placeholder="Search by name or box..."
+                placeholder="Search by name, position, or office..."
                 value="{{ $search }}"
                 autocomplete="off"
             >
@@ -28,9 +28,9 @@
                 <i data-lucide="upload"></i>
                 Import
             </button>
-            <button id="sortBtn" class="btn {{ $sort === 'box' ? 'btn-primary' : 'btn-outline' }}" onclick="toggleSort()">
-                <i data-lucide="{{ $sort === 'box' ? 'layout-grid' : 'sort-asc' }}"></i>
-                Sort by {{ $sort === 'box' ? 'Box' : 'Name' }}
+            <button id="sortBtn" class="btn {{ $sort === 'position' ? 'btn-primary' : 'btn-outline' }}" onclick="toggleSort()">
+                <i data-lucide="{{ $sort === 'position' ? 'briefcase' : 'sort-asc' }}"></i>
+                Sort by {{ $sort === 'position' ? 'Position' : 'Name' }}
             </button>
         </div>
     </div>
@@ -51,7 +51,7 @@
                         <p style="font-weight: 600; margin-bottom: 0.5rem;">CSV Format Instructions:</p>
                         <ul style="margin-left: 1.25rem;">
                             <li>File must be in <strong>.csv</strong> format</li>
-                            <li>Columns: <strong>last_name, first_name, middle_name, box_number, position, department</strong></li>
+                            <li>Columns: <strong>last_name, first_name, middle_name, position, office</strong></li>
                         </ul>
                     </div>
                     <div class="form-group">
@@ -79,7 +79,7 @@
     @endif
 
     <!-- Table Container -->
-    <div class="table-container" id="tableContainer">
+    <div id="tableContainer">
         @include('partials.masterlist-table')
     </div>
 </div>
@@ -87,52 +87,41 @@
 
 @push('styles')
 <style>
-    .pagination-container {
-        padding: 1rem 0;
-    }
-    .pagination-links nav {
-        display: flex;
-        gap: 0.5rem;
-    }
+    /* Modal Styles */
+    .modal { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1.5rem; }
+    .modal.active { display: flex; animation: fadeIn 0.3s ease-out; }
+    .modal-content { background: white; border-radius: 20px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; }
+    .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+    .modal-title { font-size: 1rem; font-weight: 800; color: #1e293b; margin: 0; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 0.75rem; background: #f8fafc; }
+    
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; }
+    .form-input { width: 100%; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none; transition: 0.2s; }
+    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
     .pagination-links a, .pagination-links span {
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-color);
-        background: white;
-        color: var(--text-main);
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        color: #64748b;
+        font-weight: 500;
         text-decoration: none;
+        transition: 0.2s;
         font-size: 0.875rem;
-        transition: var(--transition);
     }
     .pagination-links a:hover {
-        background: var(--bg-light);
-        border-color: var(--primary-color);
-        color: var(--primary-color);
+        background: #f1f5f9;
+        border-color: #3b82f6;
+        color: #3b82f6;
     }
     .pagination-links .active {
-        background: var(--primary-color);
-        border-color: var(--primary-color);
+        background: #3b82f6;
+        border-color: #3b82f6;
         color: white;
-    }
-    .pagination-links .disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    /* Clickable Row Styles */
-    .employee-row-clickable {
-        transition: all 0.2s ease;
-    }
-    .employee-row-clickable:hover {
-        background-color: #f8fafc !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    .employee-name-link {
-        transition: color 0.2s ease;
-    }
-    .employee-name-link:hover {
-        color: var(--primary-color) !important;
     }
 </style>
 @endpush
@@ -150,13 +139,12 @@
     });
 
     function toggleSort() {
-        currentSort = currentSort === 'name' ? 'box' : 'name';
+        currentSort = currentSort === 'name' ? 'position' : 'name';
         const sortBtn = document.getElementById('sortBtn');
-        const icon = sortBtn.querySelector('i');
         
-        if (currentSort === 'box') {
+        if (currentSort === 'position') {
             sortBtn.className = 'btn btn-primary';
-            sortBtn.innerHTML = '<i data-lucide="layout-grid"></i> Sort by Box';
+            sortBtn.innerHTML = '<i data-lucide="briefcase"></i> Sort by Position';
         } else {
             sortBtn.className = 'btn btn-outline';
             sortBtn.innerHTML = '<i data-lucide="sort-asc"></i> Sort by Name';

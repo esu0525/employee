@@ -64,7 +64,7 @@ class Employee extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'box_number',
+        'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'box_number', 'so_number',
         'position', 'department', 'email', 'phone',
         'date_joined', 'status', 'status_date', 'transfer_location',
         'address', 'date_of_birth', 'sex', 'marital_status', 'religion', 'blood_type', 'nationality', 'emergency_contact', 'emergency_phone'

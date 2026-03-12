@@ -48,24 +48,15 @@
                 </div>
             </div>
 
-            <div class="profile-stats">
-                <div class="profile-progress-circle">
-                    <svg viewBox="0 0 36 36" class="circular-chart">
-                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="circle" stroke-dasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <text x="18" y="20.35" class="percentage">85%</text>
-                    </svg>
-                    <span class="progress-label">Profile Strength</span>
-                </div>
-            </div>
+
         </div>
     </div>
 
     <!-- Tabbed Navigation -->
     <div class="profile-tabs-nav animate-slide-up" style="animation-delay: 0.1s;">
-        <button class="tab-btn active" onclick="switchTab('personal')">Personal & Contact</button>
-        <button class="tab-btn" onclick="switchTab('work')">Work Info</button>
-        <button class="tab-btn" onclick="switchTab('documents')">Documents & Viewer</button>
+        <button class="tab-btn active" onclick="switchTab(this, 'personal')">Personal & Contact</button>
+        <button class="tab-btn" onclick="switchTab(this, 'work')">Work Info</button>
+        <button class="tab-btn" onclick="switchTab(this, 'documents')">Documents & Viewer</button>
     </div>
 
     @if(session('success_message'))
@@ -94,13 +85,12 @@
                         </div>
                         <div class="info-grid-modern">
                             <div class="info-group"><label>Full Name</label><span>{{ $employee->name }}</span></div>
-                            <div class="info-group"><label>Date of Birth</label><span>{{ $employee->date_of_birth ? $employee->date_of_birth->format('M d, Y') : '--' }}</span></div>
+                            <div class="info-group"><label>Current Position</label><span>{{ $employee->position }}</span></div>
+                            <div class="info-group"><label>Birthday</label><span>{{ $employee->date_of_birth ? $employee->date_of_birth->format('M d, Y') : '--' }}</span></div>
                             <div class="info-group"><label>Age</label><span>{{ $employee->date_of_birth ? $employee->date_of_birth->age . ' years' : '--' }}</span></div>
-                            <div class="info-group"><label>Gender</label><span>{{ $employee->sex ?: '--' }}</span></div>
-                            <div class="info-group"><label>Marital Status</label><span>{{ $employee->marital_status ?: 'Single' }}</span></div>
-                            <div class="info-group"><label>Nationality</label><span>{{ $employee->nationality ?: 'Filipino' }}</span></div>
-                            <div class="info-group"><label>Religion</label><span>{{ $employee->religion ?: '--' }}</span></div>
-                            <div class="info-group"><label>Blood Type</label><span class="blood-badge">{{ $employee->blood_type ?: '--' }}</span></div>
+                            <div class="info-group"><label>Sex</label><span>{{ $employee->sex ?: '--' }}</span></div>
+                            <div class="info-group full-width"><label>Address</label><span>{{ $employee->address ?: '--' }}</span></div>
+                            <div class="info-group full-width"><label>School/Department</label><span>{{ $employee->department }}</span></div>
                         </div>
                     </div>
 
@@ -112,18 +102,14 @@
                         <div class="info-grid-modern">
                             <div class="info-group full-width"><label><i data-lucide="mail"></i> Email Address</label><span>{{ $employee->email ?: '--' }}</span></div>
                             <div class="info-group full-width"><label><i data-lucide="phone"></i> Phone Number</label><span>{{ $employee->phone ?: '--' }}</span></div>
-                            <div class="info-group full-width"><label><i data-lucide="home"></i> Home Address</label><span class="address-text">{{ $employee->address ?: '--' }}</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Emergency Card -->
-                    <div class="card-premium info-card" style="grid-column: span 2;">
-                        <div class="card-header-modern">
-                            <h3 style="color: #ef4444;"><i data-lucide="alert-circle"></i> Emergency Contact</h3>
-                        </div>
-                        <div class="info-grid-modern">
-                            <div class="info-group"><label>Contact Person</label><span>{{ $employee->emergency_contact ?: '--' }}</span></div>
-                            <div class="info-group"><label>Contact Number</label><span>{{ $employee->emergency_phone ?: '--' }}</span></div>
+                            
+                            <div style="grid-column: span 2; margin-top: 1rem; border-top: 1px dashed #e2e8f0; padding-top: 1rem;">
+                                <h4 style="font-size: 0.7rem; font-weight: 800; color: #ef4444; text-transform: uppercase; margin-bottom: 0.75rem;">Emergency Contact</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="info-group"><label>Contact Person</label><span>{{ $employee->emergency_contact ?: '--' }}</span></div>
+                                    <div class="info-group"><label>Contact Number</label><span>{{ $employee->emergency_phone ?: '--' }}</span></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -139,14 +125,16 @@
                         </button>
                     </div>
                     <div class="info-grid-modern">
-                        <div class="info-group"><label>Employee ID</label><span class="emp-id-badge">{{ $employee->id }}</span></div>
                         <div class="info-group"><label>Position</label><span>{{ $employee->position }}</span></div>
-                        <div class="info-group"><label>Department</label><span>{{ $employee->department }}</span></div>
-                        <div class="info-group"><label>Box Number</label><span>{{ $employee->box_number ?: '--' }}</span></div>
-                        <div class="info-group"><label>Date Joined</label><span>{{ $employee->date_joined ? $employee->date_joined->format('M d, Y') : '--' }}</span></div>
+                        <div class="info-group"><label>Office</label><span>{{ $employee->department }}</span></div>
+                        <div class="info-group"><label>S.O Number</label><span>{{ $employee->so_number ?: '--' }}</span></div>
                         <div class="info-group">
                             <label>Employment Status</label>
-                            <span class="text-{{ $employee->status == 'active' ? 'success' : 'danger' }}" style="font-weight: 800;">{{ strtoupper($employee->status) }}</span>
+                            @if($employee->status == 'active')
+                                <span class="badge-status-green">ACTIVE</span>
+                            @else
+                                <span class="text-danger" style="font-weight: 800;">{{ strtoupper($employee->status) }}</span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -176,28 +164,100 @@
                         </div>
 
                         <div id="documentListContainer" class="mini-docs-list">
-                            @forelse($documents as $index => $doc)
-                            <div class="mini-doc-item" id="doc-item-{{ $index }}" 
-                                 data-index="{{ $index }}" data-url="{{ asset($doc->file_path) }}" 
-                                 data-name="{{ $doc->document_name }}" onclick="previewFileByIndex({{ $index }})">
-                                <div class="mini-doc-icon"><i data-lucide="file-text"></i></div>
-                                <div class="mini-doc-info">
-                                    <span class="name">{{ $doc->document_name }}</span>
-                                    <span class="date">Modified {{ $doc->created_at->format('M d, Y') }}</span>
+                            @php
+                                $categories = [
+                                    'APPOINTMENT' => 'briefcase',
+                                    'EDUCATION' => 'graduation-cap',
+                                    'PERSONAL DATA SHEET' => 'file-user',
+                                    'EXPERIENCE' => 'award',
+                                    'CERTIFICATES FOR TRAINING' => 'scroll',
+                                    'PERFORMANCE RATING' => 'trending-up',
+                                ];
+                                
+                                $generalDocs = $documents->filter(function($doc) {
+                                    return empty($doc->category) || strtoupper($doc->category) === 'UNCATEGORIZED' || strtoupper($doc->category) === 'GENERAL';
+                                });
+                                
+                                $classifiedDocs = $documents->filter(function($doc) {
+                                    return !empty($doc->category) && strtoupper($doc->category) !== 'UNCATEGORIZED' && strtoupper($doc->category) !== 'GENERAL';
+                                })->groupBy(fn($doc) => strtoupper($doc->category));
+                            @endphp
+
+                            <!-- Uploaded Files / General Section -->
+                            <div class="general-docs-section">
+                                <h5 class="section-title">Uploaded Files</h5>
+                                @forelse($generalDocs as $doc)
+                                <div class="mini-doc-item" id="doc-item-{{ $doc->id }}" 
+                                     data-url="{{ asset($doc->file_path) }}" 
+                                     data-name="{{ $doc->document_name }}" 
+                                     onclick="previewDocById('{{ $doc->id }}', '{{ asset($doc->file_path) }}', '{{ $doc->document_name }}')">
+                                    <div class="mini-doc-icon"><i data-lucide="file-text"></i></div>
+                                    <div class="mini-doc-info">
+                                        <span class="name">{{ $doc->document_name }}</span>
+                                        <span class="date">Modified {{ $doc->created_at->format('M d, Y') }}</span>
+                                    </div>
+                                    @if($employee->status === 'active')
+                                    <form action="{{ route('employees.delete-doc', ['id' => $doc->id]) }}" method="POST" onclick="event.stopPropagation()">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="mini-btn-delete" title="Delete" onclick="return confirm('Delete this document?')">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </form>
+                                    @endif
                                 </div>
-                                @if($employee->status === 'active')
-                                <form action="{{ route('employees.delete-doc', ['id' => $doc->id]) }}" method="POST" onclick="event.stopPropagation()">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="mini-btn-delete" title="Delete" onclick="return confirm('Delete this document?')">
-                                        <i data-lucide="trash-2"></i>
-                                    </button>
-                                </form>
-                                @endif
-                                <i data-lucide="chevron-right" style="width: 14px; opacity: 0.3;"></i>
+                                @empty
+                                <div class="mini-empty" style="padding: 0.5rem; font-size: 0.75rem;">No general files yet.</div>
+                                @endforelse
                             </div>
-                            @empty
-                            <div class="mini-empty">No scanned documents yet.</div>
-                            @endforelse
+
+                            <div style="height: 1rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 1rem;"></div>
+                            <h5 class="section-title">Classifications</h5>
+
+                            @foreach($categories as $cat => $icon)
+                            <div class="doc-category-group" data-category="{{ $cat }}">
+                                <div class="category-header" onclick="toggleCategory(this)">
+                                    <div class="category-title">
+                                        <i data-lucide="{{ $icon }}"></i>
+                                        <span>{{ $cat }}</span>
+                                        <span class="cat-count">({{ $classifiedDocs->has($cat) ? $classifiedDocs->get($cat)->count() : 0 }})</span>
+                                    </div>
+                                    <div class="category-actions">
+                                        @if($employee->status === 'active')
+                                        <button class="btn-upload-small" onclick="event.stopPropagation(); triggerCategoryUpload('{{ $cat }}')" title="Upload to {{ $cat }}">
+                                            <i data-lucide="plus"></i>
+                                        </button>
+                                        @endif
+                                        <i data-lucide="chevron-down" class="chevron-icon"></i>
+                                    </div>
+                                </div>
+                                <div class="category-content">
+                                    @if($classifiedDocs->has($cat))
+                                        @foreach($classifiedDocs->get($cat) as $doc)
+                                        <div class="mini-doc-item" id="doc-item-{{ $doc->id }}" 
+                                             data-url="{{ asset($doc->file_path) }}" 
+                                             data-name="{{ $doc->document_name }}" 
+                                             onclick="previewDocById('{{ $doc->id }}', '{{ asset($doc->file_path) }}', '{{ $doc->document_name }}')">
+                                            <div class="mini-doc-icon"><i data-lucide="file-text"></i></div>
+                                            <div class="mini-doc-info">
+                                                <span class="name">{{ $doc->document_name }}</span>
+                                                <span class="date">Modified {{ $doc->created_at->format('M d, Y') }}</span>
+                                            </div>
+                                            @if($employee->status === 'active')
+                                            <form action="{{ route('employees.delete-doc', ['id' => $doc->id]) }}" method="POST" onclick="event.stopPropagation()">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="mini-btn-delete" title="Delete" onclick="return confirm('Delete this document?')">
+                                                    <i data-lucide="trash-2"></i>
+                                                </button>
+                                            </form>
+                                            @endif
+                                        </div>
+                                        @endforeach
+                                    @else
+                                        <div class="mini-empty" style="padding: 0.5rem; font-size: 0.75rem;">No files uploaded.</div>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
                         </div>
                     </div>
 
@@ -242,8 +302,8 @@
             <input type="hidden" name="middle_name" value="{{ $employee->middle_name }}">
             <div class="modal-body-modern">
                 <div class="modal-input"><label>Position</label><input type="text" name="position" value="{{ $employee->position }}" required></div>
-                <div class="modal-input"><label>Department</label><input type="text" name="department" value="{{ $employee->department }}" required></div>
-                <div class="modal-input"><label>Box Number</label><input type="text" name="box_number" value="{{ $employee->box_number }}"></div>
+                <div class="modal-input"><label>Office</label><input type="text" name="department" value="{{ $employee->department }}" required></div>
+                <div class="modal-input"><label>S.O Number</label><input type="text" name="so_number" value="{{ $employee->so_number }}"></div>
             </div>
             <div class="modal-footer-modern"><button type="button" class="btn-cancel" onclick="closeEditModal('work')">Cancel</button><button type="submit" class="btn-save">Save Changes</button></div>
         </form>
@@ -308,8 +368,8 @@
 
 <form id="importForm" method="POST" action="{{ route('employees.upload', ['id' => $employee->id]) }}" enctype="multipart/form-data" style="display: none;">
     @csrf
-    <input type="hidden" name="category" value="GENERAL">
-    <input type="file" name="documents[]" id="importFileInput" accept=".pdf" multiple onchange="this.form.submit()">
+    <input type="hidden" name="category" id="importCategory" value="GENERAL">
+    <input type="file" name="documents[]" id="importFileInput" accept=".pdf,image/*,.docx,.doc,.xlsx" multiple onchange="this.form.submit()">
 </form>
 
 @push('styles')
@@ -336,7 +396,12 @@
 
     /* Layout System */
     .info-content-area.full-width { width: 100%; }
-    .docs-tab-layout { display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; height: 850px; }
+    .docs-tab-layout { display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; height: calc(100vh - 250px); min-height: 600px; }
+    .docs-mini-card { display: flex; flex-direction: column; height: 100%; }
+    .mini-docs-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .mini-card-header { flex-shrink: 0; }
+    .mini-search { flex-shrink: 0; }
+
 
     /* Banner & Header */
     .profile-banner-container {
@@ -520,13 +585,14 @@
         display: flex; align-items: center; gap: 0.4rem; cursor: pointer; 
     }
 
-    .mini-search { padding: 0.75rem 1.25rem; position: relative; background: #fdfdff; }
-    .mini-search i { position: absolute; left: 1.8rem; top: 50%; transform: translateY(-50%); width: 14px; color: var(--erp-muted); }
+    .mini-search { padding: 0.75rem 1.25rem; position: relative; background: #fdfdff; display: flex; align-items: center; }
+    .mini-search i { position: absolute; left: 1.85rem; top: 50%; transform: translateY(-50%); width: 14px; color: var(--erp-muted); pointer-events: none; }
     .mini-search input { 
-        width: 100%; padding: 0.6rem 1rem 0.6rem 2.2rem; 
-        border: 1px solid #eef2f6; border-radius: 10px; 
-        font-size: 0.8rem; outline: none; 
+        width: 100%; padding: 0.7rem 1rem 0.7rem 2.5rem; 
+        border: 1px solid #eef2f6; border-radius: 12px; 
+        font-size: 0.85rem; outline: none; transition: 0.2s;
     }
+    .mini-search input:focus { border-color: var(--erp-primary); background: white; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
 
     .mini-docs-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
     .mini-doc-item { 
@@ -537,9 +603,13 @@
     }
     .mini-doc-item:hover { background: white; border-color: #eef2f6; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
     .mini-doc-item.active { background: #f0f7ff; border-color: var(--erp-primary); }
-    .mini-doc-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: var(--erp-primary); display: flex; align-items: center; justify-content: center; }
-    .mini-doc-info .name { font-size: 0.8rem; font-weight: 700; display: block; overflow: hidden; text-overflow: ellipsis; }
+    .mini-doc-item .mini-btn-delete { margin-left: auto; flex-shrink: 0; }
+    
+    .mini-doc-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: var(--erp-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .mini-doc-info { flex: 1; overflow: hidden; }
+    .mini-doc-info .name { font-size: 0.8rem; font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mini-doc-info .date { font-size: 0.65rem; color: var(--erp-muted); }
+
     .mini-btn-delete { color: #cbd5e1; background: none; border: none; padding: 0.4rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
     .mini-btn-delete:hover { color: #ef4444; background: #fee2e2; border-radius: 8px; }
 
@@ -572,6 +642,8 @@
     .modal-modern.active { display: flex; }
     .modal-content-modern { background: white; border-radius: 20px; width: 100%; max-width: 550px; box-shadow: 0 25px 60px rgba(0,0,0,0.2); overflow: hidden; }
     .modal-header-modern { padding: 1.25rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+    .modal-header-modern button { background: none; border: none; padding: 0.5rem; color: var(--erp-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+    .modal-header-modern button:hover { color: #ef4444; }
     .modal-body-modern { padding: 2rem; }
     .modal-body-modern.scrollable { max-height: 60vh; overflow-y: auto; }
     .modal-input { margin-bottom: 1.25rem; }
@@ -627,8 +699,41 @@
         border: 1px solid rgba(255,255,255,0.1);
     }
     .toast-content { display: flex; align-items: center; gap: 0.75rem; }
-    .toast-icon { color: #10b981; width: 20px; }
-    .toast-modern span { font-size: 0.9rem; font-weight: 600; }
+    /* Categorized Docs Styling */
+    .doc-category-group { margin-bottom: 0.75rem; border-radius: 12px; background: white; border: 1px solid #f1f5f9; overflow: hidden; transition: 0.3s; }
+    .doc-category-group:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .category-header { 
+        padding: 0.85rem 1rem; background: #f8fafc; display: flex; 
+        justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;
+    }
+    .category-header:hover { background: #f0f7ff; }
+    .category-title { display: flex; align-items: center; gap: 0.6rem; color: #1e293b; }
+    .category-title i { width: 16px; color: var(--erp-primary); }
+    .category-title span { font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
+    .cat-count { font-size: 0.65rem; color: var(--erp-muted); font-weight: 600; }
+    .category-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .btn-upload-small { 
+        width: 26px; height: 26px; border-radius: 8px; border: none; 
+        background: var(--erp-primary); color: white; display: flex; 
+        align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
+    }
+    .btn-upload-small:hover { transform: scale(1.1); background: #2563eb; }
+    .category-content { display: none; padding: 0.5rem; border-top: 1px solid #f1f5f9; background: white; }
+    .category-content.active { display: block; animation: slideDown 0.3s ease-out; }
+    .chevron-icon { transition: transform 0.3s; width: 14px; color: var(--erp-muted); }
+    .category-header.active .chevron-icon { transform: rotate(180deg); }
+    
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .mini-btn-delete { color: #f87171; background: none; border: none; padding: 0.4rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
+    .mini-btn-delete:hover { color: #991b1b; background: #fee2e2; border-radius: 8px; }
+
+    .badge-status-green { background: #ecfdf5; color: #10b981; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 800; font-size: 0.75rem; border: 1px solid #d1fae5; }
+
+    .section-title { font-size: 0.65rem; font-weight: 800; color: var(--erp-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 1rem 0 0.5rem; }
+    .general-docs-section { display: flex; flex-direction: column; gap: 0.5rem; }
+
+
 
 </style>
 @endpush
@@ -640,100 +745,156 @@
     let documentsList = [];
 
     document.addEventListener('DOMContentLoaded', () => {
-        const items = document.querySelectorAll('.mini-doc-item');
-        allDocuments = Array.from(items).map(item => ({
-            url: item.dataset.url,
-            name: item.dataset.name,
-            originalIndex: parseInt(item.dataset.index)
-        }));
-        documentsList = [...allDocuments];
-        updateControls();
+        // Handle tab persistence from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('tab');
+        if (activeTab) {
+            const tabBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
+                btn.getAttribute('onclick')?.includes(`'${activeTab}'`)
+            );
+            if (tabBtn) {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.info-tab-pane').forEach(p => p.classList.remove('active'));
+                
+                tabBtn.classList.add('active');
+                const pane = document.getElementById(activeTab + 'Tab');
+                if (pane) pane.classList.add('active');
+            }
+        }
+
         if(typeof lucide !== 'undefined') lucide.createIcons();
 
-        // Auto-hide toast
-        const toast = document.getElementById('successToast');
-        if(toast) {
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(20px)';
-                toast.style.transition = 'all 0.5s ease-out';
-                setTimeout(() => toast.remove(), 500);
-            }, 4000);
-        }
-
-        // Keyboard Navigation for PDF
+        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (document.getElementById('documentsTab').classList.contains('active')) {
-                if (e.key === 'ArrowRight') nextDoc();
-                if (e.key === 'ArrowLeft') prevDoc();
+            const docsTab = document.getElementById('documentsTab');
+            if (docsTab && docsTab.classList.contains('active')) {
+                if (e.key === 'ArrowRight') { e.preventDefault(); nextDoc(); }
+                if (e.key === 'ArrowLeft') { e.preventDefault(); prevDoc(); }
             }
         });
+
+        // Initialize documents list for keys
+        refreshDocList();
     });
 
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    function refreshDocList() {
+        const items = Array.from(document.querySelectorAll('.mini-doc-item:not([style*="display: none"])'));
+        documentsList = items.map(item => ({
+            id: item.id.replace('doc-item-', ''),
+            url: item.dataset.url,
+            name: item.dataset.name
+        }));
+    }
+
+    function switchTab(btn, tabId) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.info-tab-pane').forEach(pane => pane.classList.remove('active'));
         
-        event.currentTarget.classList.add('active');
-        document.getElementById(tabId + 'Tab').classList.add('active');
-        
-        // Auto-preview first document if switching to documents tab
-        if(tabId === 'documents' && documentsList.length > 0 && currentIndex === -1) {
-            previewFileByIndex(0);
-        }
+        btn.classList.add('active');
+        const pane = document.getElementById(tabId + 'Tab');
+        if (pane) pane.classList.add('active');
+
+        const url = new URL(window.location);
+        url.searchParams.set('tab', tabId);
+        window.history.replaceState({}, '', url);
     }
 
-    function triggerImport() { document.getElementById('importFileInput').click(); }
-
-    function filterDocuments() {
-        const query = document.getElementById('docSearch').value.toLowerCase();
-        allDocuments.forEach(doc => {
-            const item = document.getElementById('doc-item-' + doc.originalIndex);
-            item.style.display = doc.name.toLowerCase().includes(query) ? 'flex' : 'none';
-        });
-        documentsList = allDocuments.filter(doc => doc.name.toLowerCase().includes(query));
-        if (documentsList.length === 0) {
-            document.getElementById('noPreview').style.display = 'flex';
-            document.getElementById('pdfFrame').style.display = 'none';
-            document.getElementById('previewControls').style.display = 'none';
-        } else {
-            updateControls();
-        }
+        // For Overhauled Documents Tab
+    function toggleCategory(header) {
+        const group = header.parentElement;
+        const content = group.querySelector('.category-content');
+        header.classList.toggle('active');
+        content.classList.toggle('active');
     }
 
-    function previewFileByIndex(index) {
-        if (index < 0 || index >= documentsList.length) return;
-        currentIndex = index;
-        const doc = documentsList[index];
+    function triggerCategoryUpload(cat) {
+        document.getElementById('importCategory').value = cat;
+        document.getElementById('importFileInput').click();
+    }
+
+    function triggerImport() {
+        document.getElementById('importCategory').value = 'GENERAL';
+        document.getElementById('importFileInput').click();
+    }
+
+    function previewDocById(id, url, name) {
         const frame = document.getElementById('pdfFrame');
         const noPreview = document.getElementById('noPreview');
         const controls = document.getElementById('previewControls');
         
         document.querySelectorAll('.mini-doc-item').forEach(item => item.classList.remove('active'));
-        const activeItem = document.getElementById('doc-item-' + doc.originalIndex);
-        if (activeItem) {
-            activeItem.classList.add('active');
-            activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
+        const activeItem = document.getElementById('doc-item-' + id);
+        if (activeItem) activeItem.classList.add('active');
 
-        frame.src = doc.url;
-        frame.style.display = 'block';
-        noPreview.style.display = 'none';
+        // Viewer logic for images vs pdfs
+        const extension = url.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
+            // It's an image
+            frame.style.display = 'none';
+            noPreview.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+            noPreview.style.display = 'flex';
+        } else {
+            frame.src = url;
+            frame.style.display = 'block';
+            noPreview.style.display = 'none';
+        }
+        
         controls.style.display = 'flex';
+        
+        // Local list update for prev/next
+        const items = Array.from(document.querySelectorAll('.mini-doc-item:not([style*="display: none"])'));
+        documentsList = items.map(item => ({
+            id: item.id.replace('doc-item-', ''),
+            url: item.dataset.url,
+            name: item.dataset.name
+        }));
+        currentIndex = documentsList.findIndex(d => d.url === url);
         updateControls();
     }
 
-    function nextDoc() { if (currentIndex < documentsList.length - 1) previewFileByIndex(currentIndex + 1); }
-    function prevDoc() { if (currentIndex > 0) previewFileByIndex(currentIndex - 1); }
+    function filterDocuments() {
+        const query = document.getElementById('docSearch').value.toLowerCase();
+        document.querySelectorAll('.mini-doc-item').forEach(item => {
+            const matches = item.dataset.name.toLowerCase().includes(query);
+            item.style.display = matches ? 'flex' : 'none';
+        });
+        
+        document.querySelectorAll('.doc-category-group').forEach(group => {
+            const items = group.querySelectorAll('.mini-doc-item');
+            let hasVisible = false;
+            items.forEach(i => { if(i.style.display !== 'none') hasVisible = true; });
+            
+            const content = group.querySelector('.category-content');
+            const header = group.querySelector('.category-header');
+            const chevron = header.querySelector('.chevron-icon');
+
+            if (hasVisible && query !== '') {
+                group.style.display = 'block';
+                content.classList.add('active');
+                header.classList.add('active');
+            } else if (query === '') {
+                group.style.display = 'block';
+                // Reset categories to collapsed state on clear search if you want
+            } else {
+                group.style.display = 'none';
+            }
+        });
+        refreshDocList();
+        updateControls();
+    }
 
     function updateControls() {
         const btnPrev = document.getElementById('btnPrev');
         const btnNext = document.getElementById('btnNext');
         const counter = document.getElementById('docCounter');
+        if (!btnPrev || !btnNext || !counter) return;
         btnPrev.disabled = currentIndex <= 0;
         btnNext.disabled = currentIndex >= documentsList.length - 1 || currentIndex === -1;
         counter.textContent = documentsList.length === 0 ? '0/0' : `${currentIndex + 1}/${documentsList.length}`;
     }
+
+    function nextDoc() { if (currentIndex < documentsList.length - 1) { const d = documentsList[currentIndex+1]; previewDocById(d.id, d.url, d.name); } }
+    function prevDoc() { if (currentIndex > 0) { const d = documentsList[currentIndex-1]; previewDocById(d.id, d.url, d.name); } }
 
     function printPreview() {
         const frame = document.getElementById('pdfFrame');

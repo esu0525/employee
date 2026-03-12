@@ -13,7 +13,7 @@
     @stack('styles')
 </head>
 <body>
-    <div class="app-container">
+    <div class="app-container {{ Route::is('admin.users.index') ? 'account-mgmt-page' : '' }}">
         <!-- Mobile menu button -->
         <button id="mobile-menu-btn" class="mobile-menu-btn">
             <i data-lucide="menu"></i>

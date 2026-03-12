@@ -28,7 +28,7 @@ class EmployeeController extends Controller
             });
         }
 
-        $employees = $query->orderBy('name', 'asc')->get();
+        $employees = $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc')->get();
 
         $total_active = Employee::where('status', 'active')->count();
         $total_departments = Employee::where('status', 'active')->distinct('department')->count('department');
@@ -56,12 +56,14 @@ class EmployeeController extends Controller
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
+                    ->orWhere('position', 'like', "%{$search}%")
+                    ->orWhere('department', 'like', "%{$search}%")
                     ->orWhere('box_number', 'like', "%{$search}%");
             });
         }
 
-        if ($sort === 'box') {
-            $query->orderBy('box_number', 'asc')->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
+        if ($sort === 'position') {
+            $query->orderBy('position', 'asc')->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
         } else {
             $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
         }
@@ -84,78 +86,44 @@ class EmployeeController extends Controller
         $file = $request->file('csv_file');
         $handle = fopen($file->getRealPath(), 'r');
         
-        $data = [];
+        // Skip header
+        fgetcsv($handle);
+
+        $importCount = 0;
         while (($row = fgetcsv($handle)) !== false) {
-            $data[] = $row;
+            if (empty($row[0])) continue; // Skip empty rows
+
+            $lastName = trim($row[0] ?? '');
+            $firstName = trim($row[1] ?? '');
+            $middleName = trim($row[2] ?? '');
+            $position = trim($row[3] ?? 'Employee');
+            $office = trim($row[4] ?? 'Unknown');
+
+            $mi = !empty($middleName) ? ' ' . strtoupper(substr($middleName, 0, 1)) . '.' : '';
+            $fullName = "{$firstName}{$mi} {$lastName}";
+
+            // Generate ID
+            $lastEmployee = Employee::orderBy('id', 'desc')->first();
+            $lastIdNum = $lastEmployee ? intval(substr($lastEmployee->id, 3)) : 0;
+            $newId = 'EMP' . str_pad($lastIdNum + 1, 3, '0', STR_PAD_LEFT);
+
+            Employee::create([
+                'id' => $newId,
+                'name' => $fullName,
+                'last_name' => $lastName,
+                'first_name' => $firstName,
+                'middle_name' => $middleName,
+                'position' => $position,
+                'department' => $office,
+                'status' => 'active',
+                'date_joined' => now()
+            ]);
+
+            $importCount++;
         }
         fclose($handle);
 
-        if (empty($data)) {
-            return back()->with('error', "The CSV file is empty.");
-        }
-
-        $importCount = 0;
-        $numCols = count($data[0] ?? []);
-        
-        // Iterate through each column (each column is a box)
-        for ($c = 0; $c < $numCols; $c++) {
-            $boxRaw = trim($data[0][$c] ?? '');
-            if (empty($boxRaw)) continue;
-
-            // Box ID (e.g., BOX A1)
-            $boxId = str_replace('BOX ', '', strtoupper($boxRaw));
-            // Box Range/Description (e.g., ABA-AGLUBA) - Row 2
-            $boxDesc = trim($data[1][$c] ?? '');
-            
-            $boxValue = $boxId . ($boxDesc ? '|' . $boxDesc : '');
-
-            // Rows from index 2 onwards are names
-            for ($r = 2; $r < count($data); $r++) {
-                $cellValue = trim($data[$r][$c] ?? '');
-                
-                if (empty($cellValue)) continue;
-                
-                // Stop if we hit a TOTAL row
-                if (str_contains(strtoupper($cellValue), 'TOTAL')) {
-                    break;
-                }
-
-                // Format: "LAST, FIRST MIDDLE" or "LAST, FIRST M."
-                $parts = explode(',', $cellValue);
-                $lastName = trim($parts[0] ?? 'Unknown');
-                $firstPart = trim($parts[1] ?? '');
-                
-                // Handle middle name/initial if present
-                $nameParts = explode(' ', $firstPart);
-                $firstName = $nameParts[0] ?? '';
-                $middleName = implode(' ', array_slice($nameParts, 1));
-
-                $mi = !empty($middleName) ? ' ' . strtoupper(substr($middleName, 0, 1)) . '.' : '';
-                $fullName = "{$firstName}{$mi} {$lastName}";
-
-                // Generate ID
-                $lastEmployee = Employee::orderBy('id', 'desc')->first();
-                $lastIdNum = $lastEmployee ? intval(substr($lastEmployee->id, 3)) : 0;
-                $newId = 'EMP' . str_pad($lastIdNum + 1, 3, '0', STR_PAD_LEFT);
-
-                Employee::create([
-                    'id' => $newId,
-                    'name' => $fullName,
-                    'last_name' => $lastName,
-                    'first_name' => $firstName,
-                    'middle_name' => $middleName,
-                    'box_number' => $boxValue,
-                    'position' => 'Employee',
-                    'department' => 'General',
-                    'status' => 'active',
-                    'date_joined' => now()->toDateString(),
-                ]);
-
-                $importCount++;
-            }
-        }
-
-        return back()->with('success', "Successfully imported {$importCount} employees from the masterlist spreadsheet.");
+        return back()->with('success', "$importCount employees imported successfully!");
     }
 
     public function show(Request $request): View|RedirectResponse
@@ -348,7 +316,7 @@ class EmployeeController extends Controller
 
         $request->validate([
             'category' => 'nullable|string|max:50',
-            'documents.*' => 'required|file|mimes:pdf|max:10240',
+            'documents.*' => 'required|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:10240',
         ]);
 
         if ($request->hasFile('documents')) {
@@ -369,11 +337,13 @@ class EmployeeController extends Controller
             }
 
             if ($upload_count > 0) {
-                return back()->with('success_message', "$upload_count document(s) uploaded successfully to $category");
+                return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
+                    ->with('success_message', "$upload_count document(s) uploaded successfully to $category");
             }
         }
 
-        return back()->with('error_message', 'No valid PDF documents uploaded');
+        return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
+            ->with('error_message', 'No valid documents uploaded');
     }
 
     public function deleteDoc($id): RedirectResponse
@@ -393,7 +363,8 @@ class EmployeeController extends Controller
 
         $doc->delete();
 
-        return back()->with('success_message', 'Document deleted successfully');
+        return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
+            ->with('success_message', 'Document deleted successfully');
     }
 
     public function approveRequest($id): RedirectResponse
@@ -454,13 +425,14 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         $data = $request->validate([
-            'last_name' => 'required|string|max:100',
-            'first_name' => 'required|string|max:100',
+            'last_name' => 'nullable|string|max:100',
+            'first_name' => 'nullable|string|max:100',
             'middle_name' => 'nullable|string|max:100',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'position' => 'required|string|max:100',
             'department' => 'required|string|max:100',
+            'so_number' => 'nullable|string|max:100',
             'date_of_birth' => 'nullable|date',
             'sex' => 'nullable|string|in:Male,Female',
             'marital_status' => 'nullable|string|max:50',
@@ -472,12 +444,22 @@ class EmployeeController extends Controller
             'emergency_phone' => 'nullable|string|max:20',
         ]);
 
-        $mi = !empty($data['middle_name']) ? ' ' . strtoupper(substr($data['middle_name'], 0, 1)) . '.' : '';
-        $data['name'] = "{$data['first_name']}{$mi} {$data['last_name']}";
+        if ($request->filled('first_name') && $request->filled('last_name')) {
+            $mi = !empty($data['middle_name']) ? ' ' . strtoupper(substr($data['middle_name'], 0, 1)) . '.' : '';
+            $data['name'] = "{$data['first_name']}{$mi} {$data['last_name']}";
+        } else {
+            // Keep the current name if names aren't being updated
+            unset($data['name']);
+            unset($data['first_name']);
+            unset($data['last_name']);
+            unset($data['middle_name']);
+        }
 
         $employee->update($data);
 
-        return back()->with('success_message', 'Employee details updated successfully.');
+        $tab = $request->input('position') ? 'work' : 'personal';
+        return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => $tab])
+            ->with('success_message', 'Employee details updated successfully.');
     }
     public function updateAvatar(Request $request, $id): RedirectResponse
     {
@@ -502,6 +484,7 @@ class EmployeeController extends Controller
             ]);
         }
 
-        return back()->with('success_message', 'Profile picture updated successfully.');
+        return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'personal'])
+            ->with('success_message', 'Profile picture updated successfully.');
     }
 }
