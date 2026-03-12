@@ -34,13 +34,11 @@ use Illuminate\Support\Carbon;
  */
 class EmployeeRequest extends Model
 {
-    protected $table = 'requests';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $table = 'employee_requests';
 
     protected $fillable = [
-        'id', 'employee_id', 'employee_name', 'request_type',
-        'request_date', 'status', 'description'
+        'id', 'employee_id', 'employee_name', 'school', 'request_type',
+        'num_copies', 'purpose', 'request_date', 'status', 'description', 'requirements_file'
     ];
 
     protected $casts = [

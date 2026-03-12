@@ -25,14 +25,14 @@ use Illuminate\Support\Carbon;
  */
 class EmployeeDocument extends Model
 {
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
-        'employee_id', 'document_name', 'file_path'
+        'employee_id', 'document_name', 'file_path', 'category', 'created_at', 'updated_at'
     ];
 
     protected $casts = [
-        'upload_date' => 'datetime',
+        'created_at' => 'datetime',
     ];
 
     public function employee()

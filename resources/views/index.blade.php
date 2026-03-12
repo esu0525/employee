@@ -10,12 +10,7 @@
         <p class="page-subtitle">View and manage all active employees</p>
     </div>
 
-    @if(session('success_message'))
-    <div class="alert alert-success">
-        <i data-lucide="check-circle" class="alert-icon"></i>
-        <span class="alert-text">{{ session('success_message') }}</span>
-    </div>
-    @endif
+
 
     <!-- Action Bar -->
     <div class="action-bar">
@@ -26,118 +21,81 @@
                     type="text" 
                     name="search" 
                     class="search-input" 
-                    placeholder="Search by name, position, department, or ID..."
+                    placeholder="Search by name, position, or department..."
                     value="{{ $search }}"
                     onchange="document.getElementById('searchForm').submit()"
                 >
             </form>
         </div>
         <div class="button-group">
+            <div class="total-active-badge">
+                <div class="total-active-icon">
+                    <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div class="total-active-info">
+                    <span class="total-active-count">{{ $total_active }}</span>
+                    <span class="total-active-label">Total Active</span>
+                </div>
+            </div>
             <button class="btn btn-primary" onclick="openAddEmployeeModal()">
                 <i data-lucide="plus"></i>
                 Add Employee
             </button>
-            <a href="#" class="btn btn-outline">
-                <i data-lucide="download"></i>
-                Export
-            </a>
         </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-        <div class="stat-card stat-card-blue">
-            <div class="stat-card-content">
-                <div class="stat-card-info">
-                    <p class="stat-label">Total Active</p>
-                    <p class="stat-value">{{ $total_active }}</p>
-                    <div class="stat-meta">
-                        <i data-lucide="trending-up" style="width: 14px; height: 14px;"></i>
-                        <span>Employees</span>
-                    </div>
-                </div>
-                <div class="stat-icon">
-                    <i data-lucide="users" style="width: 32px; height: 32px;"></i>
-                </div>
-            </div>
-        </div>
 
-        <div class="stat-card stat-card-purple">
-            <div class="stat-card-content">
-                <div class="stat-card-info">
-                    <p class="stat-label">Departments</p>
-                    <p class="stat-value">{{ $total_departments }}</p>
-                    <div class="stat-meta">
-                        <i data-lucide="building-2" style="width: 14px; height: 14px;"></i>
-                        <span>Active Depts</span>
-                    </div>
-                </div>
-                <div class="stat-icon">
-                    <i data-lucide="building-2" style="width: 32px; height: 32px;"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="stat-card stat-card-pink">
-            <div class="stat-card-content">
-                <div class="stat-card-info">
-                    <p class="stat-label">Search Results</p>
-                    <p class="stat-value">{{ $filtered_count }}</p>
-                    <div class="stat-meta">
-                        <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-                        <span>Matching</span>
-                    </div>
-                </div>
-                <div class="stat-icon">
-                    <i data-lucide="search" style="width: 32px; height: 32px;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Table -->
     <div class="table-container">
         <div class="table-wrapper">
-            <table>
+            <table class="compact-table">
                 <thead>
                     <tr>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Position</th>
+                        <th>Employee</th>
                         <th>Department</th>
-                        <th>Email</th>
-                        <th>Phone</th>
                         <th>Date Joined</th>
                         <th>Status</th>
+                        <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if ($employees->count() > 0)
                         @foreach ($employees as $employee)
-                        <tr>
-                            <td class="employee-id">{{ $employee->id }}</td>
+                        <tr onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'" style="cursor: pointer;" class="employee-row-clickable">
                             <td>
-                                <a href="{{ route('employees.show', ['id' => $employee->id]) }}" class="employee-name-link">
-                                    {{ $employee->name }}
-                                </a>
+                                <div class="employee-cell">
+                                    <div class="employee-avatar">
+                                        {{ strtoupper(substr($employee->name, 0, 1)) . strtoupper(substr(strrchr($employee->name, " "), 1, 1)) }}
+                                    </div>
+                                    <div class="employee-info-main">
+                                        <a href="{{ route('employees.show', ['id' => $employee->id]) }}" class="employee-name-link" style="text-decoration: none; color: inherit;">
+                                            {{ $employee->name }}
+                                        </a>
+                                        <span class="employee-position-sub">{{ $employee->position }}</span>
+                                    </div>
+                                </div>
                             </td>
-                            <td>{{ $employee->position }}</td>
                             <td>
                                 <span class="badge badge-outline badge-outline-indigo">
                                     {{ $employee->department }}
                                 </span>
                             </td>
-                            <td>{{ $employee->email }}</td>
-                            <td>{{ $employee->phone }}</td>
-                            <td>{{ $employee->date_joined ? $employee->date_joined->format('m/d/Y') : '-' }}</td>
+                            <td>{{ $employee->date_joined ? $employee->date_joined->format('M d, Y') : '-' }}</td>
                             <td>
                                 <span class="badge badge-active">Active</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openUpdateStatusModal('{{ $employee->id }}', '{{ $employee->name }}')" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;">
+                                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                    Update Status
+                                </button>
                             </td>
                         </tr>
                         @endforeach
                     @else
                         <tr>
-                            <td colspan="8">
+                            <td colspan="5">
                                 <div class="empty-state">
                                     <i data-lucide="search" class="empty-icon" style="width: 48px; height: 48px;"></i>
                                     <p class="empty-title">No employees found matching your search criteria</p>
@@ -152,99 +110,382 @@
     </div>
 </div>
 
+<!-- Success Toast Notification -->
+@if(session('success_message'))
+<div id="successToast" class="toast-notification toast-success">
+    <div class="toast-icon">
+        <i data-lucide="check-circle" style="width: 22px; height: 22px;"></i>
+    </div>
+    <div class="toast-content">
+        <p class="toast-title">Success!</p>
+        <p class="toast-text">{{ session('success_message') }}</p>
+    </div>
+    <button class="toast-close" onclick="closeToast()">
+        <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+    </button>
+</div>
+@endif
+
 <!-- Add Employee Modal -->
 <div id="addEmployeeModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title">Add New Employee</h2>
-        </div>
-        <form method="POST" action="{{ route('employees.store') }}">
+    <div class="modal-content" style="max-width: 580px;">
+        <form method="POST" action="{{ route('employees.store') }}" style="display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;">
             @csrf
+            <div class="modal-header">
+                <h2 class="modal-title">Add New Employee</h2>
+                <button type="button" class="icon-btn" onclick="closeAddEmployeeModal()" style="color: var(--text-muted);">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="flex: 1; overflow-y: auto; min-height: 0;">
+                <div class="form-grid" style="gap: 0.875rem;">
+                    <!-- Name Components -->
+                    <div class="form-group">
+                        <label class="form-label" for="last_name">Surname *</label>
+                        <input type="text" id="last_name" name="last_name" class="form-input" placeholder="Dela Cruz" required oninput="syncFullName()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="first_name">First Name *</label>
+                        <input type="text" id="first_name" name="first_name" class="form-input" placeholder="Juan" required oninput="syncFullName()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="middle_name">Middle Name</label>
+                        <input type="text" id="middle_name" name="middle_name" class="form-input" placeholder="Abad" oninput="syncFullName()">
+                    </div>
+
+                    <!-- Hidden but kept for compatibility -->
+                    <input type="hidden" id="name" name="name">
+
+                    <!-- Box Number -->
+                    <div class="form-group">
+                        <label class="form-label" for="box_number">Box Number</label>
+                        <input type="text" id="box_number" name="box_number" class="form-input" placeholder="e.g. A1">
+                    </div>
+
+                    <!-- Current Position -->
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label class="form-label" for="position">Current Position *</label>
+                        <input type="text" id="position" name="position" class="form-input" placeholder="Teacher I" required>
+                    </div>
+
+                    <!-- Birthday & Age -->
+                    <div class="form-group">
+                        <label class="form-label" for="date_of_birth">Birthday *</label>
+                        <input type="date" id="date_of_birth" name="date_of_birth" class="form-input" required onchange="calculateAge()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="age">Age</label>
+                        <input type="text" id="age" class="form-input" placeholder="Auto" readonly style="background: #f1f5f9; color: var(--text-muted);">
+                    </div>
+
+                    <!-- Sex -->
+                    <div class="form-group">
+                        <label class="form-label" for="sex">Sex *</label>
+                        <select id="sex" name="sex" class="form-input" required>
+                            <option value="" disabled selected>Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+
+                    <!-- School/Department -->
+                    <div class="form-group">
+                        <label class="form-label" for="department">School/Department *</label>
+                        <input type="text" id="department" name="department" class="form-input" placeholder="SDO - Caloocan City" required>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label class="form-label" for="address">Address *</label>
+                        <input type="text" id="address" name="address" class="form-input" placeholder="123 Rizal Street, Brgy. Example, Caloocan City" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="flex-shrink: 0;">
+                <button type="button" class="btn btn-outline" onclick="closeAddEmployeeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save" style="width: 18px; height: 18px;"></i>
+                    Save Employee
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div id="updateStatusModal" class="modal">
+    <div class="modal-content" style="max-width: 420px;">
+        <form id="updateStatusForm" method="POST" action="">
+            @csrf
+            <div class="modal-header">
+                <h2 class="modal-title">Update Employee Status</h2>
+                <button type="button" class="icon-btn" onclick="closeUpdateStatusModal()" style="color: var(--text-muted);">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
             <div class="modal-body">
-                <!-- Basic Information -->
-                <div class="form-section">
-                    <h3 class="form-section-title">Basic Information</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label" for="name">Full Name *</label>
-                            <input type="text" id="name" name="name" class="form-input" placeholder="John Doe" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="position">Position *</label>
-                            <input type="text" id="position" name="position" class="form-input" placeholder="Senior Developer" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="department">Department *</label>
-                            <input type="text" id="department" name="department" class="form-input" placeholder="Engineering" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="date_joined">Date Joined *</label>
-                            <input type="date" id="date_joined" name="date_joined" class="form-input" required>
-                        </div>
+                <p id="statusEmployeeName" style="font-weight: 600; margin-bottom: 1rem; color: var(--text-main); font-size: 0.9375rem;"></p>
+                <div class="form-grid" style="grid-template-columns: 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="status">New Status *</label>
+                        <select id="statusSelect" name="status" class="form-input" required onchange="toggleTransferLocation()">
+                            <option value="" disabled selected>Select status</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="resign">Resign</option>
+                            <option value="retired">Retire / Retired</option>
+                            <option value="transfer">Transfer</option>
+                        </select>
                     </div>
-                </div>
 
-                <!-- Contact Information -->
-                <div class="form-section">
-                    <h3 class="form-section-title">Contact Information</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label" for="email">Email *</label>
-                            <input type="email" id="email" name="email" class="form-input" placeholder="john.doe@company.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="phone">Phone *</label>
-                            <input type="tel" id="phone" name="phone" class="form-input" placeholder="+1 (555) 123-4567" required>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label class="form-label" for="address">Address</label>
-                            <input type="text" id="address" name="address" class="form-input" placeholder="123 Main Street, City, State ZIP">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Personal Information -->
-                <div class="form-section">
-                    <h3 class="form-section-title">Personal Information</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label" for="date_of_birth">Date of Birth</label>
-                            <input type="date" id="date_of_birth" name="date_of_birth" class="form-input">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="emergency_contact">Emergency Contact</label>
-                            <input type="text" id="emergency_contact" name="emergency_contact" class="form-input" placeholder="Jane Doe">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="emergency_phone">Emergency Phone</label>
-                            <input type="tel" id="emergency_phone" name="emergency_phone" class="form-input" placeholder="+1 (555) 987-6543">
-                        </div>
+                    <div id="transferLocationGroup" class="form-group" style="display: none;">
+                        <label class="form-label" for="transfer_location">Transfer Location *</label>
+                        <input type="text" id="transfer_location" name="transfer_location" class="form-input" placeholder="Enter school or office name">
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeAddEmployeeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Add Employee</button>
+                <button type="button" class="btn btn-outline" onclick="closeUpdateStatusModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="check" style="width: 18px; height: 18px;"></i>
+                    Update Status
+                </button>
             </div>
         </form>
     </div>
 </div>
 @endsection
 
+@push('styles')
+<style>
+    /* Toast Notification */
+    .toast-notification {
+        position: fixed;
+        top: 2rem;
+        right: 2rem;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.25);
+        animation: toastSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        max-width: 420px;
+        backdrop-filter: blur(12px);
+    }
+
+    .toast-success {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid #6ee7b7;
+        color: #065f46;
+    }
+
+    .toast-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        background: #10b981;
+        color: white;
+        border-radius: var(--radius-md);
+        flex-shrink: 0;
+    }
+
+    .toast-content {
+        flex: 1;
+    }
+
+    .toast-title {
+        font-weight: 700;
+        font-size: 0.9375rem;
+        margin-bottom: 0.125rem;
+    }
+
+    .toast-text {
+        font-size: 0.8125rem;
+        color: #047857;
+        line-height: 1.4;
+    }
+
+    .toast-close {
+        background: none;
+        border: none;
+        color: #6ee7b7;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+        flex-shrink: 0;
+    }
+
+    .toast-close:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: #065f46;
+    }
+
+    @keyframes toastSlideIn {
+        from {
+            opacity: 0;
+            transform: translateX(100px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    @keyframes toastSlideOut {
+        from {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(100px) scale(0.95);
+        }
+    }
+
+    /* Form select styling */
+    .form-input select,
+    select.form-input {
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        padding-right: 2.5rem;
+        cursor: pointer;
+    }
+
+    /* Clickable Row Styles */
+    .employee-row-clickable {
+        transition: all 0.2s ease;
+    }
+    .employee-row-clickable:hover {
+        background-color: #f8fafc !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .employee-name-link {
+        transition: color 0.2s ease;
+    }
+    .employee-name-link:hover {
+        color: var(--primary-color) !important;
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script>
 function openAddEmployeeModal() {
     document.getElementById('addEmployeeModal').classList.add('active');
+    // Re-initialize lucide icons for the modal
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 function closeAddEmployeeModal() {
     document.getElementById('addEmployeeModal').classList.remove('active');
 }
 
-// Close modal on outside click
-document.getElementById('addEmployeeModal').addEventListener('click', function(e) {
-    if (e.target === this) {
+function syncFullName() {
+    const last = document.getElementById('last_name').value;
+    const first = document.getElementById('first_name').value;
+    const middle = document.getElementById('middle_name').value;
+    const mi = middle ? middle.charAt(0).toUpperCase() + '.' : '';
+    
+    // Format: First Last (traditional) or whatever is used currently.
+    // Based on Tinker results (EMP001: John Smith), it's "First Last".
+    document.getElementById('name').value = `${first}${mi ? ' ' + mi : ''} ${last}`.trim();
+}
+
+function calculateAge() {
+    const birthday = document.getElementById('date_of_birth').value;
+    const ageField = document.getElementById('age');
+    
+    if (birthday) {
+        const birthDate = new Date(birthday);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        
+        ageField.value = age + ' years old';
+    } else {
+        ageField.value = '';
+    }
+}
+
+function closeToast() {
+    const toast = document.getElementById('successToast');
+    if (toast) {
+        toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
+        setTimeout(() => toast.remove(), 300);
+    }
+}
+
+// Auto-dismiss toast after 4 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const toast = document.getElementById('successToast');
+    if (toast) {
+        setTimeout(() => {
+            closeToast();
+        }, 4000);
+    }
+});
+
+// Update Status Modal Functions
+function openUpdateStatusModal(id, name) {
+    const modal = document.getElementById('updateStatusModal');
+    const form = document.getElementById('updateStatusForm');
+    const nameDisplay = document.getElementById('statusEmployeeName');
+    
+    // Set form action dynamically
+    form.action = `/employee/update-status/${id}`;
+    nameDisplay.textContent = `Employee: ${name}`;
+    
+    modal.classList.add('active');
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+function closeUpdateStatusModal() {
+    document.getElementById('updateStatusModal').classList.remove('active');
+    document.getElementById('updateStatusForm').reset();
+    document.getElementById('transferLocationGroup').style.display = 'none';
+}
+
+function toggleTransferLocation() {
+    const status = document.getElementById('statusSelect').value;
+    const transferGroup = document.getElementById('transferLocationGroup');
+    const transferInput = document.getElementById('transfer_location');
+    
+    if (status === 'transfer') {
+        transferGroup.style.display = 'block';
+        transferInput.required = true;
+    } else {
+        transferGroup.style.display = 'none';
+        transferInput.required = false;
+        transferInput.value = '';
+    }
+}
+
+// Close modals on outside click
+window.addEventListener('click', function(e) {
+    const addModal = document.getElementById('addEmployeeModal');
+    const statusModal = document.getElementById('updateStatusModal');
+    
+    if (e.target === addModal) {
         closeAddEmployeeModal();
+    }
+    if (e.target === statusModal) {
+        closeUpdateStatusModal();
     }
 });
 </script>

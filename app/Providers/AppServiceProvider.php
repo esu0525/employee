@@ -24,6 +24,28 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->defineGates();
+    }
+
+    /**
+     * Define the security gates for the application
+     */
+    protected function defineGates(): void
+    {
+        $permissions = [
+            'view_employees',
+            'edit_employees',
+            'delete_employees',
+            'manage_documents',
+            'manage_requests',
+            'manage_accounts'
+        ];
+
+        foreach ($permissions as $permission) {
+            \Illuminate\Support\Facades\Gate::define($permission, function ($user) use ($permission) {
+                return $user->hasPermission($permission);
+            });
+        }
     }
 
     /**

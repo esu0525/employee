@@ -10,31 +10,9 @@
         <p class="page-subtitle">View employee history records by category</p>
     </div>
 
-    <!-- Tabs -->
-    <div class="history-tabs">
-        <div class="tabs-nav">
-            <a href="{{ route('employees.history-inactive') }}" class="tab-link tab-inactive {{ Route::is('employees.history-inactive') ? 'active' : '' }}">
-                <i data-lucide="file-x"></i>
-                Inactive
-            </a>
-            <a href="{{ route('employees.history-resign') }}" class="tab-link tab-resign {{ Route::is('employees.history-resign') ? 'active' : '' }}">
-                <i data-lucide="user-minus"></i>
-                Resign
-            </a>
-            <a href="{{ route('employees.history-retired') }}" class="tab-link tab-retired {{ Route::is('employees.history-retired') ? 'active' : '' }}">
-                <i data-lucide="user-x"></i>
-                Retired
-            </a>
-            <a href="{{ route('employees.history-transfer') }}" class="tab-link tab-transfer {{ Route::is('employees.history-transfer') ? 'active' : '' }}">
-                <i data-lucide="arrow-right-left"></i>
-                Transfer
-            </a>
-        </div>
-    </div>
-
-    <!-- Search -->
-    <div style="margin-bottom: 1.5rem;">
-        <div class="search-container" style="max-width: 28rem;">
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="search-container">
             <i data-lucide="search" class="search-icon"></i>
             <form method="GET" action="{{ route('employees.history-inactive') }}" id="searchForm">
                 <input 
@@ -47,20 +25,10 @@
                 >
             </form>
         </div>
-    </div>
-
-    <!-- Stats -->
-    <div style="margin-bottom: 1.5rem;">
-        <div class="stat-card stat-card-gray" style="display: inline-block; width: auto; min-width: 300px;">
-            <div class="stat-card-content">
-                <div class="stat-icon">
-                    <i data-lucide="user-x" style="width: 32px; height: 32px;"></i>
-                </div>
-                <div class="stat-card-info" style="margin-left: 1rem;">
-                    <p class="stat-label">Total Inactive Employees</p>
-                    <p class="stat-value">{{ $employees->count() }}</p>
-                </div>
-            </div>
+        <div class="stat-meta" style="background: white; border: 1px solid var(--border); padding: 0.75rem 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+            <i data-lucide="user-x" style="color: var(--text-muted);"></i>
+            <span style="font-weight: 700; color: var(--text-main);">{{ $employees->count() }}</span>
+            <span style="color: var(--text-muted); font-size: 0.875rem;">Total Inactive</span>
         </div>
     </div>
 
@@ -84,8 +52,10 @@
                         @foreach ($employees as $employee)
                         <tr>
                             <td class="employee-id" style="color: #6b7280;">{{ $employee->id }}</td>
-                            <td class="employee-name-link" style="font-weight: 500; color: #1f2937;">
-                                {{ $employee->name }}
+                            <td style="font-weight: 500;">
+                                <a href="{{ route('employees.show', ['id' => $employee->id]) }}" class="employee-name-link">
+                                    {{ $employee->name }}
+                                </a>
                             </td>
                             <td>{{ $employee->position }}</td>
                             <td>

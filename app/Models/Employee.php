@@ -8,6 +8,10 @@ use Illuminate\Support\Carbon;
 /**
  * @property string $id
  * @property string $name
+ * @property string|null $last_name
+ * @property string|null $first_name
+ * @property string|null $middle_name
+ * @property string|null $box_number
  * @property string $position
  * @property string $department
  * @property string $email
@@ -60,9 +64,10 @@ class Employee extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'name', 'position', 'department', 'email', 'phone',
+        'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'box_number',
+        'position', 'department', 'email', 'phone',
         'date_joined', 'status', 'status_date', 'transfer_location',
-        'address', 'date_of_birth', 'emergency_contact', 'emergency_phone'
+        'address', 'date_of_birth', 'sex', 'marital_status', 'religion', 'blood_type', 'nationality', 'emergency_contact', 'emergency_phone'
     ];
 
     protected $casts = [
