@@ -67,13 +67,15 @@ class Employee extends Model
         'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'box_number',
         'position', 'department', 'email', 'phone',
         'date_joined', 'status', 'status_date', 'transfer_location',
-        'address', 'date_of_birth', 'sex', 'marital_status', 'religion', 'blood_type', 'nationality', 'emergency_contact', 'emergency_phone'
+        'address', 'date_of_birth', 'sex', 'marital_status', 'religion', 'blood_type', 'nationality', 'emergency_contact', 'emergency_phone',
+        'effective_date', 'school', 'transfer_to', 'so_no'
     ];
 
     protected $casts = [
         'date_joined' => 'date',
         'status_date' => 'date',
         'date_of_birth' => 'date',
+        'effective_date' => 'date',
     ];
 
     public function documents()

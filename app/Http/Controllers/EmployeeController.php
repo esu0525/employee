@@ -176,82 +176,30 @@ class EmployeeController extends Controller
         return view('employee-details', compact('employee', 'documents', 'doc_count'));
     }
 
-    public function history(): RedirectResponse
-    {
-        return redirect()->route('employees.history-inactive');
-    }
-
-    public function historyInactive(Request $request): View
+    public function history(Request $request): View
     {
         $search = $request->query('search', '');
-        $query = Employee::where('status', 'inactive');
+        
+        // Base query for each status
+        $baseQuery = function($status) use ($search) {
+            $query = Employee::where('status', $status);
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('position', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('id', 'like', "%{$search}%")
+                        ->orWhere('transfer_location', 'like', "%{$search}%");
+                });
+            }
+            return $query->orderBy('status_date', 'desc')->get();
+        };
 
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('position', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
+        $resign = $baseQuery('resign');
+        $retired = $baseQuery('retired');
+        $transfer = $baseQuery('transfer');
 
-        $employees = $query->orderBy('status_date', 'desc')->get();
-        return view('history-inactive', compact('employees', 'search'));
-    }
-
-    public function historyResign(Request $request): View
-    {
-        $search = $request->query('search', '');
-        $query = Employee::where('status', 'resign');
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('position', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
-
-        $employees = $query->orderBy('status_date', 'desc')->get();
-        return view('history-resign', compact('employees', 'search'));
-    }
-
-    public function historyRetired(Request $request): View
-    {
-        $search = $request->query('search', '');
-        $query = Employee::where('status', 'retired');
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('position', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
-
-        $employees = $query->orderBy('status_date', 'desc')->get();
-        return view('history-retired', compact('employees', 'search'));
-    }
-
-    public function historyTransfer(Request $request): View
-    {
-        $search = $request->query('search', '');
-        $query = Employee::where('status', 'transfer');
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('position', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%")
-                    ->orWhere('transfer_location', 'like', "%{$search}%");
-            });
-        }
-
-        $employees = $query->orderBy('status_date', 'desc')->get();
-        return view('history-transfer', compact('employees', 'search'));
+        return view('history', compact('resign', 'retired', 'transfer', 'search'));
     }
 
     public function requests(Request $request): View

@@ -61,38 +61,10 @@
                             @endif
                         </li>
                         <li>
-                            <a href="{{ route('employees.history') }}" class="nav-link {{ str_contains(Route::currentRouteName(), 'history') ? 'active' : '' }}">
+                            <a href="{{ route('employees.history') }}" class="nav-link {{ Route::is('employees.history') ? 'active' : '' }}">
                                 <i data-lucide="history"></i>
                                 <span>History</span>
                             </a>
-                            @if(str_contains(Route::currentRouteName(), 'history'))
-                            <ul class="subnav">
-                                <li>
-                                    <a href="{{ route('employees.history-inactive') }}" class="subnav-link {{ Route::is('employees.history-inactive') ? 'active' : '' }}">
-                                        <i data-lucide="chevron-right"></i>
-                                        Inactive
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{{ route('employees.history-resign') }}" class="subnav-link {{ Route::is('employees.history-resign') ? 'active' : '' }}">
-                                        <i data-lucide="chevron-right"></i>
-                                        Resign
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{{ route('employees.history-retired') }}" class="subnav-link {{ Route::is('employees.history-retired') ? 'active' : '' }}">
-                                        <i data-lucide="chevron-right"></i>
-                                        Retired
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{{ route('employees.history-transfer') }}" class="subnav-link {{ Route::is('employees.history-transfer') ? 'active' : '' }}">
-                                        <i data-lucide="chevron-right"></i>
-                                        Transfer
-                                    </a>
-                                </li>
-                            </ul>
-                            @endif
                         </li>
                         <li>
                             <a href="{{ route('employees.requests') }}" class="nav-link {{ str_contains(Route::currentRouteName(), 'requests') || str_contains(Route::currentRouteName(), 'approved') ? 'active' : '' }}">
