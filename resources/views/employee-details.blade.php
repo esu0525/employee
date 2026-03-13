@@ -1,9 +1,15 @@
 @extends('layouts.app')
 
-@section('title', $employee->name . ' - Profile')
+@section('title', $employee->last_name . ', ' . $employee->first_name)
+
+@push('styles')
+<!-- docx-preview for local .docx viewing -->
+<script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
+<script src="https://unpkg.com/docx-preview/dist/docx-preview.js"></script>
+@endpush
 
 @section('content')
-<div class="page-content" style="padding: 1.5rem; max-width: 1600px; margin: 0 auto;">
+<div class="page-content" style="padding: 1rem 10px; width: 100%; margin: 0;">
     <!-- Modern Header & Banner -->
     <div class="profile-banner-container animate-fade-in">
         <div class="profile-banner">
@@ -54,9 +60,18 @@
 
     <!-- Tabbed Navigation -->
     <div class="profile-tabs-nav animate-slide-up" style="animation-delay: 0.1s;">
-        <button class="tab-btn active" onclick="switchTab(this, 'personal')">Personal & Contact</button>
-        <button class="tab-btn" onclick="switchTab(this, 'work')">Work Info</button>
-        <button class="tab-btn" onclick="switchTab(this, 'documents')">Documents & Viewer</button>
+        <button class="tab-btn active" onclick="switchTab(this, 'personal')">
+            <i data-lucide="user"></i>
+            Personal & Contact
+        </button>
+        <button class="tab-btn" onclick="switchTab(this, 'work')">
+            <i data-lucide="briefcase"></i>
+            Work Info
+        </button>
+        <button class="tab-btn" onclick="switchTab(this, 'documents')">
+            <i data-lucide="file-text"></i>
+            Documents & Viewer
+        </button>
     </div>
 
     @if(session('success_message'))
@@ -74,11 +89,11 @@
             
             <!-- Personal Info Tab (Now holds Contact & Emergency) -->
             <div id="personalTab" class="info-tab-pane active">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="personal-grid-modern">
                     <!-- Identity Card -->
                     <div class="card-premium info-card">
                         <div class="card-header-modern">
-                            <h3>Identity Details</h3>
+                            <h3><i data-lucide="user-check" style="color: #3b82f6;"></i> Identity Details</h3>
                             <button class="btn-edit-icon" onclick="openEditModal('personal')">
                                 <i data-lucide="pencil"></i>
                             </button>
@@ -95,9 +110,9 @@
                     </div>
 
                     <!-- Contact Card -->
-                    <div class="card-premium info-card">
+                    <div class="card-premium animate-slide-up" style="animation-delay: 0.2s;">
                         <div class="card-header-modern">
-                            <h3>Contact Information</h3>
+                            <h3><i data-lucide="contact" style="color: #10b981;"></i> Contact Information</h3>
                         </div>
                         <div class="info-grid-modern">
                             <div class="info-group full-width"><label><i data-lucide="mail"></i> Email Address</label><span>{{ $employee->email ?: '--' }}</span></div>
@@ -119,17 +134,26 @@
             <div id="workTab" class="info-tab-pane">
                 <div class="card-premium info-card" style="width: 100%; margin: 0 auto;">
                     <div class="card-header-modern">
-                        <h3>Employment Information</h3>
+                        <h3><i data-lucide="briefcase" style="color: #3b82f6; width: 20px; height: 20px;"></i> Employment Information</h3>
                         <button class="btn-edit-icon" onclick="openEditModal('work')">
                             <i data-lucide="pencil"></i>
                         </button>
                     </div>
                     <div class="info-grid-modern">
-                        <div class="info-group"><label>Position</label><span>{{ $employee->position }}</span></div>
-                        <div class="info-group"><label>Office</label><span>{{ $employee->department }}</span></div>
-                        <div class="info-group"><label>S.O Number</label><span>{{ $employee->so_number ?: '--' }}</span></div>
                         <div class="info-group">
-                            <label>Employment Status</label>
+                            <label><i data-lucide="award" style="color: #3b82f6;"></i> Position</label>
+                            <span>{{ $employee->position }}</span>
+                        </div>
+                        <div class="info-group">
+                            <label><i data-lucide="building-2" style="color: #10b981;"></i> Office</label>
+                            <span>{{ $employee->department }}</span>
+                        </div>
+                        <div class="info-group">
+                            <label><i data-lucide="hash" style="color: #8b5cf6;"></i> S.O Number</label>
+                            <span>{{ $employee->so_number ?: '--' }}</span>
+                        </div>
+                        <div class="info-group">
+                            <label><i data-lucide="info" style="color: #f59e0b;"></i> Employment Status</label>
                             @if($employee->status == 'active')
                                 <span class="badge-status-green">ACTIVE</span>
                             @else
@@ -185,7 +209,7 @@
 
                             <!-- Uploaded Files / General Section -->
                             <div class="general-docs-section">
-                                <h5 class="section-title">Uploaded Files</h5>
+                                <h5 class="section-title"><i data-lucide="upload-cloud" style="width: 14px; color: #3b82f6;"></i> Uploaded Files</h5>
                                 @forelse($generalDocs as $doc)
                                 <div class="mini-doc-item" id="doc-item-{{ $doc->id }}" 
                                      data-url="{{ asset($doc->file_path) }}" 
@@ -211,14 +235,27 @@
                             </div>
 
                             <div style="height: 1rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 1rem;"></div>
-                            <h5 class="section-title">Classifications</h5>
+                            <h5 class="section-title"><i data-lucide="layers" style="width: 14px; color: #8b5cf6;"></i> Classifications</h5>
 
                             @foreach($categories as $cat => $icon)
+                            @php
+                                $catColors = [
+                                    'APPOINTMENT' => ['#3b82f6', '#eff6ff'],
+                                    'EDUCATION' => ['#10b981', '#ecfdf5'],
+                                    'PERSONAL DATA SHEET' => ['#8b5cf6', '#f5f3ff'],
+                                    'EXPERIENCE' => ['#f59e0b', '#fffbeb'],
+                                    'CERTIFICATES FOR TRAINING' => ['#ec4899', '#fdf2f8'],
+                                    'PERFORMANCE RATING' => ['#06b6d4', '#ecfeff'],
+                                ];
+                                $colors = $catColors[$cat] ?? ['#64748b', '#f8fafc'];
+                            @endphp
                             <div class="doc-category-group" data-category="{{ $cat }}">
-                                <div class="category-header" onclick="toggleCategory(this)">
+                                <div class="category-header" onclick="toggleCategory(this)" style="border-left: 4px solid {{ $colors[0] }};">
                                     <div class="category-title">
-                                        <i data-lucide="{{ $icon }}"></i>
-                                        <span>{{ $cat }}</span>
+                                        <div class="cat-icon-box" style="background: {{ $colors[1] }}; color: {{ $colors[0] }};">
+                                            <i data-lucide="{{ $icon }}"></i>
+                                        </div>
+                                        <span style="font-weight: 700;">{{ $cat }}</span>
                                         <span class="cat-count">({{ $classifiedDocs->has($cat) ? $classifiedDocs->get($cat)->count() : 0 }})</span>
                                     </div>
                                     <div class="category-actions">
@@ -230,7 +267,7 @@
                                         <i data-lucide="chevron-down" class="chevron-icon"></i>
                                     </div>
                                 </div>
-                                <div class="category-content">
+                                <div class="category-content" id="cat-{{ Str::slug($cat) }}">
                                     @if($classifiedDocs->has($cat))
                                         @foreach($classifiedDocs->get($cat) as $doc)
                                         <div class="mini-doc-item" id="doc-item-{{ $doc->id }}" 
@@ -395,12 +432,44 @@
     @keyframes progress { from { stroke-dasharray: 0, 100; } }
 
     /* Layout System */
-    .info-content-area.full-width { width: 100%; }
-    .docs-tab-layout { display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; height: calc(100vh - 250px); min-height: 600px; }
-    .docs-mini-card { display: flex; flex-direction: column; height: 100%; }
-    .mini-docs-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
-    .mini-card-header { flex-shrink: 0; }
-    .mini-search { flex-shrink: 0; }
+    .personal-grid-modern { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 991px) {
+        .personal-grid-modern { grid-template-columns: 1fr; gap: 1.25rem; }
+    }
+    .info-content-area.full-width { width: 100%; position: relative; z-index: 10; }
+    .docs-tab-layout { 
+        display: grid; grid-template-columns: 350px 1fr; 
+        gap: 1.5rem; min-height: 600px;
+        transition: 0.3s; 
+    }
+    
+    @media (max-width: 1200px) {
+        .docs-tab-layout { grid-template-columns: 320px 1fr; gap: 1rem; }
+    }
+
+    @media (max-width: 991px) {
+        .docs-tab-layout { 
+            grid-template-columns: 1fr; 
+            height: auto;
+            gap: 1.5rem; 
+        }
+        .docs-mini-card { height: 500px; }
+        .preview-mini-card { min-height: 500px; }
+        .profile-header-content { flex-direction: column; text-align: center; padding: 1.5rem; margin-top: -60px; gap: 1rem; }
+        .profile-avatar-circle { width: 100px; height: 100px; font-size: 2.5rem; border-width: 4px; }
+        .employee-display-name { font-size: 1.5rem; }
+        .profile-main-meta { padding-top: 0; }
+        .employee-sub-meta { justify-content: center; gap: 0.75rem; }
+        .profile-stats { padding-top: 20px; border-top: 1px solid #f1f5f9; width: 100%; margin-top: 1rem; }
+        .profile-banner { height: 100px; }
+        .info-grid-modern { grid-template-columns: 1fr; gap: 1rem; }
+        .tab-btn { padding: 0.75rem 1rem; font-size: 0.8rem; }
+    }
+
+    .docs-mini-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: white; border-radius: 16px; box-shadow: var(--erp-shadow); }
+    .mini-docs-list { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.8rem; scrollbar-width: thin; }
+    .mini-card-header { flex-shrink: 0; padding: 1.25rem; border-bottom: 1px solid #f8fafc; }
+    .mini-search { flex-shrink: 0; padding: 0.75rem 1.25rem; }
 
 
     /* Banner & Header */
@@ -462,8 +531,9 @@
         align-items: center; 
         padding: 0 2.5rem 1.5rem; 
         margin-top: -50px; 
-        gap: 2rem; 
+        gap: 2.5rem; 
         position: relative;
+        flex-wrap: wrap;
     }
 
     .profile-avatar-wrapper { position: relative; z-index: 5; }
@@ -518,7 +588,14 @@
         margin-bottom: 1.5rem; 
         border-bottom: 2px solid #f1f5f9; 
         padding: 0 0.5rem;
+        position: relative;
+        z-index: 20;
+        overflow-x: auto;
+        scrollbar-width: none; /* Hide scrollbar for Firefox */
+        -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
     }
+    .profile-tabs-nav::-webkit-scrollbar { display: none; } /* Hide scrollbar for Chrome/Safari */
+
     .tab-btn { 
         background: none; border: none; 
         padding: 0.85rem 1.5rem; 
@@ -526,7 +603,11 @@
         color: var(--erp-muted); cursor: pointer; 
         position: relative; transition: 0.3s; 
         border-radius: 10px 10px 0 0;
+        display: flex; align-items: center; gap: 0.6rem;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
+    .tab-btn i { width: 16px; height: 16px; }
     .tab-btn:hover { color: var(--erp-primary); background: #f8fafc; }
     .tab-btn.active { color: var(--erp-primary); }
     .tab-btn.active::after { 
@@ -562,12 +643,13 @@
 
     .info-grid-modern { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem; }
     .info-group label { 
-        font-size: 0.7rem; font-weight: 800; 
+        font-size: 0.75rem; font-weight: 800; 
         color: var(--erp-muted); text-transform: uppercase; 
-        letter-spacing: 0.05em; margin-bottom: 0.4rem; 
-        display: flex; align-items: center; gap: 0.4rem;
+        letter-spacing: 0.05em; margin-bottom: 0.5rem; 
+        display: flex; align-items: center; gap: 0.5rem;
     }
-    .info-group span { font-size: 0.95rem; font-weight: 700; color: var(--erp-text); }
+    .info-group label i { width: 16px; height: 16px; opacity: 0.8; }
+    .info-group span { font-size: 1rem; font-weight: 700; color: var(--erp-text); }
     .blood-badge { background: #fee2e2; color: #dc2626; padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 800; font-size: 0.75rem; }
     .emp-id-badge { color: var(--erp-primary); font-weight: 800; font-family: monospace; }
 
@@ -604,14 +686,52 @@
     .mini-doc-item:hover { background: white; border-color: #eef2f6; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
     .mini-doc-item.active { background: #f0f7ff; border-color: var(--erp-primary); }
     .mini-doc-item .mini-btn-delete { margin-left: auto; flex-shrink: 0; }
+
+    /* docx-preview styling */
+    #docx-container {
+        display: flex; justify-content: center;
+        background: #f1f5f9;
+        min-height: 100%;
+    }
+    #docx-container .docx-wrapper {
+        background: transparent;
+        padding: 2rem 0;
+        width: 100%;
+        max-width: 900px;
+    }
+    #docx-container .docx {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin: 0 auto;
+        background: white;
+    }
+
     
     .mini-doc-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: var(--erp-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .mini-doc-info { flex: 1; overflow: hidden; }
     .mini-doc-info .name { font-size: 0.8rem; font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mini-doc-info .date { font-size: 0.65rem; color: var(--erp-muted); }
 
+    .cat-icon-box { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; }
+    .category-header { 
+        display: flex; justify-content: space-between; align-items: center; 
+        padding: 0.75rem 1rem; background: #fff; border: 1px solid #f1f5f9; 
+        border-radius: 12px; cursor: pointer; transition: 0.2s; 
+        margin-bottom: 0.5rem;
+    }
+    .category-header:hover { background: #f8fafc; }
+    .category-header.active { background: #fdfdff; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+    .category-title { display: flex; align-items: center; }
+    .category-content { 
+        display: none; padding: 1rem; background: #fafbff; 
+        border: 1px solid #f1f5f9; border-top: none; 
+        border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+        margin-bottom: 0.75rem;
+    }
+    .category-content.active { display: flex; flex-direction: column; gap: 0.5rem; }
+
     .mini-btn-delete { color: #cbd5e1; background: none; border: none; padding: 0.4rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
     .mini-btn-delete:hover { color: #ef4444; background: #fee2e2; border-radius: 8px; }
+
 
     .preview-header-modern { 
         padding: 1.25rem 1.5rem; border-bottom: 1px solid #f8fafc; 
@@ -730,7 +850,14 @@
 
     .badge-status-green { background: #ecfdf5; color: #10b981; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 800; font-size: 0.75rem; border: 1px solid #d1fae5; }
 
-    .section-title { font-size: 0.65rem; font-weight: 800; color: var(--erp-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 1rem 0 0.5rem; }
+    .section-title { font-size: 0.7rem; font-weight: 800; color: var(--erp-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 1.25rem 0 0.75rem; }
+    
+    /* Ensure nothing blocks clicks */
+    .sidebar-overlay { pointer-events: none; }
+    .modal-modern { pointer-events: none; }
+    .modal-modern.active { pointer-events: auto; }
+    .modal-content-modern { pointer-events: auto; }
+
     .general-docs-section { display: flex; flex-direction: column; gap: 0.5rem; }
 
 
@@ -826,17 +953,67 @@
         const activeItem = document.getElementById('doc-item-' + id);
         if (activeItem) activeItem.classList.add('active');
 
-        // Viewer logic for images vs pdfs
+        // Viewer logic for images vs pdfs vs docs
         const extension = url.split('.').pop().toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
-            // It's an image
-            frame.style.display = 'none';
-            noPreview.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+        
+        // Reset
+        noPreview.innerHTML = '';
+        noPreview.style.display = 'none';
+        frame.style.display = 'none';
+        frame.src = '';
+
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+            noPreview.innerHTML = `<img src="${url}" style="max-width: 90%; max-height: 90%; object-fit: contain; box-shadow: 0 20px 50px rgba(0,0,0,0.15); border-radius: 12px; border: 4px solid white;">`;
             noPreview.style.display = 'flex';
-        } else {
+        } else if (['docx'].includes(extension)) {
+            // Local viewing for .docx
+            noPreview.style.display = 'flex';
+            noPreview.innerHTML = '<div id="docx-container" style="width: 100%; height: 100%; overflow: auto; padding: 2rem; background: #f1f5f9;"></div>';
+            fetch(url)
+                .then(res => res.blob())
+                .then(blob => {
+                    docx.renderAsync(blob, document.getElementById("docx-container"))
+                        .then(x => console.log("docx: finished"));
+                });
+        } else if (['pdf'].includes(extension)) {
             frame.src = url;
             frame.style.display = 'block';
-            noPreview.style.display = 'none';
+        } else if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
+            // Attempt to use Google Docs Viewer
+            noPreview.style.display = 'flex';
+            noPreview.innerHTML = `
+                <div style="text-align: center; width: 100%; height: 100%; display: flex; flex-direction: column;">
+                    <div style="padding: 1rem; background: #f8fafc; border-bottom: 1px solid #eef2f6; display: flex; justify-content: center; gap: 1rem;">
+                         <button onclick="window.open('https://docs.google.com/viewer?url=${encodeURIComponent(url)}', '_blank')" class="btn-save" style="font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                            <i data-lucide="external-link"></i> Open in Google Viewer
+                         </button>
+                         <a href="${url}" download class="btn-outline" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; text-decoration: none; display: flex; align-items: center; gap: 0.3rem;">
+                            <i data-lucide="download"></i> Download
+                         </a>
+                    </div>
+                    <iframe src="https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true" style="flex: 1; width: 100%; border: none;"></iframe>
+                </div>
+            `;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        } else {
+            // Fallback for other formats
+            let icon = 'file-text';
+            if(['xlsx', 'xls'].includes(extension)) icon = 'file-spreadsheet';
+            
+            noPreview.style.display = 'flex';
+            noPreview.innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #3b82f6;">
+                        <i data-lucide="${icon}" style="width: 40px; height: 40px;"></i>
+                    </div>
+                    <h3 style="margin-bottom: 0.5rem; font-family: 'Outfit';">Preview not available for .${extension}</h3>
+                    <p style="color: #64748b; margin-bottom: 2rem;">Please download the file to view it on your device.</p>
+                    <a href="${url}" download class="btn-save" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                        <i data-lucide="download"></i> Download & Open File
+                    </a>
+                </div>
+            `;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
         }
         
         controls.style.display = 'flex';

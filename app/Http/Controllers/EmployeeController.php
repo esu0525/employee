@@ -241,17 +241,26 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         $request->validate([
-            'status' => 'required|string|in:inactive,resign,retired,transfer',
-            'transfer_location' => 'required_if:status,transfer|nullable|string|max:255',
+            'status' => 'required|string|in:active,inactive,resign,retired,transfer',
+            'so_no' => 'required_if:status,transfer|nullable|string|max:255',
+            'transfer_to' => 'required_if:status,transfer|nullable|string|max:255',
+            'effective_date' => 'required|date',
+            'retirement_under' => 'required_if:status,retired|nullable|string|max:255',
         ]);
 
         $employee->update([
             'status' => $request->status,
             'status_date' => now()->toDateString(),
-            'transfer_location' => $request->status === 'transfer' ? $request->transfer_location : null,
+            'so_no' => $request->so_no,
+            'transfer_to' => $request->transfer_to,
+            'effective_date' => $request->effective_date,
+            'retirement_under' => $request->retirement_under,
         ]);
 
-        return redirect()->route('employees.index')->with('success_message', "Employee status updated to " . ucfirst($request->status));
+        return redirect()->route('employees.index')->with('success_modal', [
+            'title' => 'Status Updated!',
+            'message' => "Employee has been successfully moved to " . ucfirst($request->status) . " list."
+        ]);
     }
 
     public function upload(Request $request, $id): RedirectResponse

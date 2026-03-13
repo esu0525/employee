@@ -12,19 +12,9 @@
         <table>
             <thead>
                 <tr>
-                    <th>Employee ID</th>
                     <th>Name</th>
-                    @if($type === 'transfer')
-                        <th>Effective Date</th>
-                        <th>School</th>
-                        <th>Transfer To</th>
-                        <th>SO No.</th>
-                    @else
-                        <th>Position</th>
-                        <th>Department</th>
-                        <th>Date Joined</th>
-                        <th>Date</th>
-                    @endif
+                    <th>Date of Separation</th>
+                    <th>School</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -32,36 +22,20 @@
                 @if ($employees->count() > 0)
                     @foreach ($employees as $employee)
                     <tr>
-                        <td class="employee-id" style="color: #6b7280;">{{ $employee->id }}</td>
                         <td style="font-weight: 500;">
                             <a href="{{ route('employees.show', ['id' => $employee->id]) }}" class="employee-name-link">
                                 {{ $employee->name }}
                             </a>
                         </td>
-                        @if($type === 'transfer')
-                            <td>{{ $employee->effective_date ? $employee->effective_date->format('M d, Y') : '-' }}</td>
-                            <td>{{ $employee->school ?: '-' }}</td>
-                            <td>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <i data-lucide="map-pin" style="width: 14px; height: 14px; color: var(--info);"></i>
-                                    <span style="font-weight: 500;">
-                                        {{ $employee->transfer_to ?: '-' }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td>{{ $employee->so_no ?: '-' }}</td>
-                        @else
-                            <td>{{ $employee->position }}</td>
-                            <td>
-                                <span class="badge badge-outline badge-outline-gray">
-                                    {{ $employee->department }}
-                                </span>
-                            </td>
-                            <td>{{ $employee->date_joined ? $employee->date_joined->format('M d, Y') : '-' }}</td>
-                            <td>
-                                {{ $employee->status_date ? $employee->status_date->format('M d, Y') : '-' }}
-                            </td>
-                        @endif
+                        <td>
+                            @php
+                                $sepDate = $employee->effective_date ?: $employee->status_date;
+                            @endphp
+                            {{ $sepDate ? $sepDate->format('M d, Y') : '-' }}
+                        </td>
+                        <td>
+                            {{ $employee->school ?: $employee->department ?: '-' }}
+                        </td>
                         <td>
                             <span class="badge {{ $badge }}">{{ $label }}</span>
                         </td>
@@ -69,7 +43,7 @@
                     @endforeach
                 @else
                     <tr>
-                        <td colspan="{{ $type === 'transfer' ? '8' : '7' }}">
+                        <td colspan="4">
                             <div class="empty-state">
                                 <i data-lucide="{{ $icon }}" class="empty-icon" style="width: 48px; height: 48px;"></i>
                                 <p class="empty-title">No {{ strtolower($label) }} employees found</p>

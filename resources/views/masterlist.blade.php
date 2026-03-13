@@ -67,6 +67,88 @@
         </div>
     </div>
 
+    <!-- Status Update Modal -->
+    <div id="statusModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <form id="statusForm" method="POST" action="">
+                @csrf
+                <div class="modal-header">
+                    <div style="display: flex; flex-direction: column;">
+                        <h2 class="modal-title">Update Status</h2>
+                        <p id="statusEmployeeName" style="font-size: 0.8rem; color: #64748b; font-weight: 600; margin-top: 2px;"></p>
+                    </div>
+                    <button type="button" class="icon-btn" onclick="closeStatusModal()">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">New Status</label>
+                        <select name="status" id="statusSelect" class="form-input" required onchange="handleStatusFields()">
+                            <option value="active">Active</option>
+                            <option value="transfer">Transfer</option>
+                            <option value="retired">Retirement</option>
+                            <option value="resign">Resignation</option>
+                        </select>
+                    </div>
+
+                    <!-- Dynamic Fields -->
+                    <div id="transferFields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">S.O Number</label>
+                            <input type="text" name="so_no" class="form-input" placeholder="e.g. S.O. 1-13 S. 2025">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Transfer To</label>
+                            <input type="text" name="transfer_to" class="form-input" placeholder="e.g. DepEd Central Office">
+                        </div>
+                    </div>
+
+                    <div id="retirementFields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Retirement Under (e.g. 8291/8292)</label>
+                            <input type="text" name="retirement_under" class="form-input" placeholder="RA 8291 / RA 1616">
+                        </div>
+                    </div>
+
+                    <div id="commonHistoryFields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Effective Date</label>
+                            <input type="date" name="effective_date" class="form-input" value="{{ date('Y-m-d') }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeStatusModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    @if(session('success_modal'))
+    <div id="successModal" class="modal active">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 2.5rem 2rem;">
+            <div class="success-anim-box">
+                <div class="success-circle">
+                    <i data-lucide="check" class="success-check"></i>
+                </div>
+            </div>
+            <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin: 1.5rem 0 0.5rem; font-family: 'Outfit', sans-serif;">
+                {{ session('success_modal.title') }}
+            </h2>
+            <p style="color: #64748b; font-size: 0.95rem; font-weight: 500; margin-bottom: 2rem; line-height: 1.5;">
+                {{ session('success_modal.message') }}
+            </p>
+            <button type="button" class="btn btn-primary" style="width: 100%; padding: 0.85rem;" onclick="closeSuccessModal()">
+                Wonderful!
+            </button>
+        </div>
+    </div>
+    @endif
+
+
     <!-- Success Toast (reused or local) -->
     @if(session('success'))
     <div class="toast-notification toast-success" id="successToast">
@@ -122,6 +204,38 @@
         background: #3b82f6;
         border-color: #3b82f6;
         color: white;
+    }
+
+    /* Status Button */
+    .btn-update-status {
+        display: flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 0.8rem; border-radius: 8px;
+        background: #f1f5f9; border: 1px solid #e2e8f0;
+        color: #64748b; font-size: 0.75rem; font-weight: 700;
+        cursor: pointer; transition: 0.2s; margin-right: 0.5rem;
+    }
+    .btn-update-status:hover {
+        background: #eef2f6; color: #3b82f6; border-color: #3b82f6;
+    }
+    .btn-update-status i { width: 14px; height: 14px; }
+
+    /* Success Animation */
+    .success-anim-box { display: flex; justify-content: center; }
+    .success-circle {
+        width: 80px; height: 80px; border-radius: 50%;
+        background: #ecfdf5; border: 4px solid #10b981;
+        display: flex; align-items: center; justify-content: center;
+        animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+    .success-check { color: #10b981; width: 40px; height: 40px; stroke-width: 3; animation: checkAnim 0.6s 0.2s both; }
+
+    @keyframes popIn {
+        0% { transform: scale(0); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes checkAnim {
+        0% { transform: scale(0.5); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
     }
 </style>
 @endpush
@@ -198,11 +312,45 @@
         document.getElementById('importModal').classList.remove('active');
     }
 
+    function openStatusModal(id, name, currentStatus) {
+        const modal = document.getElementById('statusModal');
+        const form = document.getElementById('statusForm');
+        const nameLabel = document.getElementById('statusEmployeeName');
+        
+        nameLabel.textContent = name;
+        form.action = `/employee/update-status/${id}`;
+        document.getElementById('statusSelect').value = currentStatus;
+        
+        handleStatusFields();
+        modal.classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeStatusModal() {
+        document.getElementById('statusModal').classList.remove('active');
+    }
+
+    function handleStatusFields() {
+        const status = document.getElementById('statusSelect').value;
+        const transferFields = document.getElementById('transferFields');
+        const retirementFields = document.getElementById('retirementFields');
+        const commonFields = document.getElementById('commonHistoryFields');
+
+        transferFields.style.display = status === 'transfer' ? 'block' : 'none';
+        retirementFields.style.display = status === 'retired' ? 'block' : 'none';
+        commonFields.style.display = (['transfer', 'retired', 'resign'].includes(status)) ? 'block' : 'none';
+    }
+
+    function closeSuccessModal() {
+        const modal = document.getElementById('successModal');
+        if (modal) modal.classList.remove('active');
+    }
+
     // Initial attachment
     document.addEventListener('DOMContentLoaded', () => {
         attachPaginationLinks();
         
-        // Auto-dismiss toast
+        // Auto-dismiss success toast if it exists (for legacy)
         const toast = document.getElementById('successToast');
         if (toast) {
             setTimeout(() => {

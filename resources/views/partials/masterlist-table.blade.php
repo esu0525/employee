@@ -38,6 +38,12 @@
             </div>
             
             <div class="master-card-right">
+                <button type="button" class="btn-update-status" 
+                        onclick="event.stopPropagation(); openStatusModal('{{ $employee->id }}', '{{ $displayName }}', '{{ $employee->status }}')" 
+                        title="Update Status">
+                    <i data-lucide="refresh-cw"></i>
+                    <span>Status</span>
+                </button>
                 <i data-lucide="chevron-right" class="master-action-arrow"></i>
             </div>
         </div>
