@@ -80,7 +80,6 @@
                 linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
             background-size: 50px 50px;
         }
-
         /* ─── OTP Card ─── */
         .otp-card {
             position: relative;
@@ -465,6 +464,16 @@
 
         .back-link:hover { color: rgba(255,255,255,0.7); }
         .back-link svg { width: 14px; height: 14px; }
+
+        @media (max-width: 480px) {
+            .otp-card { padding: 1.5rem; border-radius: 20px; }
+            .shield-icon { width: 60px; height: 60px; margin-bottom: 1rem; }
+            .shield-icon svg { width: 28px; height: 28px; }
+            .otp-title { font-size: 1.5rem; }
+            .otp-boxes { gap: 6px; }
+            .otp-field { width: 45px; height: 55px; font-size: 1.5rem; border-radius: 10px; }
+            .btn-verify { height: 3rem; font-size: 0.9375rem; }
+        }
     </style>
 </head>
 <body>

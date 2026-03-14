@@ -24,15 +24,16 @@
             font-family: 'Inter', sans-serif;
             background: #f8fafc;
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         .auth-wrapper {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            min-height: 100vh;
             display: flex;
             background: white;
+            overflow-x: hidden;
         }
 
         /* ─── Faded Blue Background Glow (Centered behind form) ─── */
@@ -68,6 +69,7 @@
             justify-content: center;
             padding: 4rem;
             z-index: 1;
+            overflow-y: auto;
         }
 
         .login-container { left: 0; z-index: 2; }
@@ -334,8 +336,15 @@
 
         @media (max-width: 1024px) {
             .branding-panel { display: none; }
-            .form-container { width: 100%; padding: 2rem; }
+            .form-container { width: 100%; padding: 2rem; justify-content: flex-start; padding-top: 5rem; }
             .auth-wrapper.show-register .register-container { left: 0; }
+        }
+
+        @media (max-width: 480px) {
+            .form-container { padding: 1.5rem; padding-top: 3rem; }
+            .form-title { font-size: 2rem; margin-bottom: 0.5rem; }
+            .form-subtitle { font-size: 1rem; margin-bottom: 2rem; }
+            .form-inner { width: 100%; max-width: 100%; }
         }
     </style>
 </head>

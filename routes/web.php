@@ -5,6 +5,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\AuthMiddleware;
 
 // ─── Auth Routes (public) ──────────────────────────────────────────────────
@@ -47,4 +48,11 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::post('/accounts', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::post('/accounts/{id}/update', [AdminUserController::class, 'update'])->name('admin.users.update');
     Route::delete('/accounts/{id}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
+
+    // Profile Management
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
+    Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/profile/check-password', [ProfileController::class, 'checkPassword'])->name('profile.check-password');
 });

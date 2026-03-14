@@ -3,7 +3,23 @@
 @section('title', 'Account Management')
 
 @section('content')
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+<style>
+    @media (max-width: 768px) {
+        .am-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+        .am-header button {
+            width: 100%;
+            justify-content: center;
+        }
+        .am-table-wrapper {
+            overflow-x: auto;
+        }
+    }
+</style>
+<div class="page-header am-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
     <div>
         <h1 class="page-title">Account Management</h1>
         <p class="page-subtitle">Manage user accounts and access permissions</p>
@@ -28,35 +44,36 @@
 </div>
 @endif
 
-<div class="card" style="background: white; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm);">
-    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+<div class="card am-table-wrapper" style="background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm);">
+    <div style="overflow-x: auto;">
+    <table style="width: 100%; min-width: 800px; border-collapse: collapse; text-align: left;">
         <thead>
-            <tr style="background: #f8fafc; border-bottom: 1px solid var(--border);">
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">User</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Role</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Permissions</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Created</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Actions</th>
+            <tr style="background: var(--bg-main); border-bottom: 1px solid var(--border);">
+                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">User</th>
+                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Role</th>
+                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Permissions</th>
+                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Created</th>
+                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Actions</th>
             </tr>
         </thead>
         <tbody>
             @foreach($users as $user)
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#fbfbff'" onmouseout="this.style.background='white'">
+            <tr style="border-bottom: 1px solid var(--border-light); transition: background 0.2s;" onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='transparent'">
                 <td style="padding: 1rem 1.5rem;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <div style="width: 40px; height: 40px; background: {{ $user->role === 'admin' ? 'var(--primary-gradient)' : '#e2e8f0' }}; color: {{ $user->role === 'admin' ? 'white' : '#64748b' }}; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem;">
                             {{ $user->initials() }}
                         </div>
                         <div>
-                            <p style="font-weight: 700; color: #1e293b; margin: 0; font-size: 0.9375rem;">{{ $user->name }}</p>
-                            <p style="color: #64748b; margin: 0; font-size: 0.8125rem;">{{ $user->email }}</p>
+                            <p style="font-weight: 700; color: var(--text-main); margin: 0; font-size: 0.9375rem;">{{ $user->name }}</p>
+                            <p style="color: var(--text-muted); margin: 0; font-size: 0.8125rem;">{{ $user->email }}</p>
                         </div>
                     </div>
                 </td>
                 <td style="padding: 1rem 1.5rem;">
                     <span style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; 
-                        background: {{ $user->role === 'admin' ? '#eef2ff' : '#f1f5f9' }}; 
-                        color: {{ $user->role === 'admin' ? '#4f46e5' : '#475569' }};">
+                        background: {{ $user->role === 'admin' ? 'var(--info-soft)' : 'var(--bg-main)' }}; 
+                        color: {{ $user->role === 'admin' ? 'var(--primary-light)' : 'var(--text-muted)' }};">
                         <i data-lucide="{{ $user->role === 'admin' ? 'shield-check' : 'user' }}" style="width: 14px; height: 14px;"></i>
                         {{ $user->role }}
                     </span>
@@ -70,7 +87,7 @@
                                 <span style="color: #94a3b8; font-size: 0.8125rem;">No permissions set</span>
                             @else
                                 @foreach($user->permissions as $perm)
-                                    <span style="background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; padding: 0.125rem 0.5rem; border-radius: 6px; font-size: 0.6875rem; font-weight: 600;">
+                                    <span style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted); padding: 0.125rem 0.5rem; border-radius: 6px; font-size: 0.6875rem; font-weight: 600;">
                                         {{ $available_permissions[$perm] ?? $perm }}
                                     </span>
                                 @endforeach
@@ -78,7 +95,7 @@
                         </div>
                     @endif
                 </td>
-                <td style="padding: 1rem 1.5rem; color: #64748b; font-size: 0.8125rem;">
+                <td style="padding: 1rem 1.5rem; color: var(--text-muted); font-size: 0.8125rem;">
                     {{ $user->created_at->format('M d, Y') }}
                 </td>
                 <td style="padding: 1rem 1.5rem; text-align: right;">
@@ -99,6 +116,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- Create User Modal -->

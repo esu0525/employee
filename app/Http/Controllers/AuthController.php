@@ -192,6 +192,13 @@ class AuthController extends Controller
         ]);
         session()->flash('show_welcome_modal', true);
 
+        // Record the login log
+        \App\Models\LoginLog::create([
+            'user_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+
         return response()->json([
             'success'  => true,
             'redirect' => route('employees.index'),

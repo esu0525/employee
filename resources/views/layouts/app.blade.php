@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="{{ asset('assets/styles.css') }}">
     <!-- Lucide Icons via CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Welcome Modal Styles */
         .welcome-modal-overlay {
@@ -211,6 +213,250 @@
             filter: blur(12px) grayscale(0.2);
             transition: filter 0.5s ease;
         }
+
+        /* Theme Overrides */
+        body[data-theme="dark"] {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #ffffff; /* Solid white borders in dark mode per user request */
+            --border-light: rgba(255, 255, 255, 0.4);
+            --primary-soft: #334155; /* Lighter hover row in dark mode */
+            --success-soft: #064e3b;
+            --info-soft: #1e3a8a;
+            --warning-soft: #78350f;
+            --danger-soft: #7f1d1d;
+            --glass: rgba(30, 41, 59, 0.85);
+            --title-gradient: linear-gradient(to right, #818cf8, #a78bfa, #c084fc);
+            background: var(--bg-main);
+        }
+        body[data-theme="dark"] .app-container {
+            background: radial-gradient(circle at top left, #1e293b, #0f172a);
+        }
+
+        body[data-theme="night"] {
+            /* Sepia / Eye Protection Mode - Warm Cream/Yellowish White */
+            --bg-main: #fdfbf7;
+            --bg-card: #ffffff;
+            --text-main: #000000;
+            --text-muted: #92400e;
+            --border: #8c7662;
+            --border-light: #a99480;
+            --primary: #d97706;
+            --primary-gradient: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+            --primary-soft: #ebd6be;
+            --success-soft: #ebf2eb;
+            --info-soft: #e3f0f5;
+            --warning-soft: #fdf5e6;
+            --danger-soft: #fdebef;
+            --title-gradient: linear-gradient(to right, #000000, #000000);
+            --glass: rgba(255, 255, 255, 0.9);
+            background: var(--bg-main);
+            /* Add an overlay filter for true eye protection feel */
+            filter: sepia(0.35) brightness(0.95) contrast(0.95);
+        }
+        body[data-theme="night"] .app-container {
+            background: radial-gradient(circle at top left, #ffffff, #fdfbf7);
+        }
+
+        /* Top Header Styles */
+        .top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2.5rem;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            transition: var(--transition);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-left: auto;
+        }
+
+        .theme-switcher {
+            display: flex;
+            align-items: center;
+            background: var(--bg-main);
+            padding: 0.25rem;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            gap: 0;
+            height: 2.75rem; /* ensure fixed height so width transition is smooth */
+        }
+
+        .theme-switcher.open {
+            gap: 0.25rem;
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            width: 0; /* hidden state */
+            height: 2.25rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .theme-btn i {
+            width: 1.125rem;
+            height: 1.125rem;
+        }
+
+        .theme-btn.active {
+            width: 2.25rem;
+            opacity: 1;
+            background: var(--primary-soft);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .theme-switcher.open .theme-btn {
+            width: 2.25rem;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @media (hover: hover) {
+            .theme-switcher:hover {
+                gap: 0.25rem;
+            }
+            .theme-btn:hover {
+                color: var(--text-main);
+            }
+            .theme-switcher:hover .theme-btn {
+                width: 2.25rem;
+                opacity: 1;
+                pointer-events: auto;
+            }
+            .theme-switcher.open .theme-btn:not(.active):hover, .theme-switcher:hover .theme-btn:not(.active):hover {
+                color: var(--primary);
+                background: var(--bg-card);
+            }
+        }
+
+        .header-user-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding-left: 2rem;
+            border-left: 1px solid var(--border);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .header-user-profile:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }
+        
+        .header-user-profile:hover .header-user-avatar {
+            box-shadow: 0 4px 12px var(--primary-soft);
+        }
+
+        .header-user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* text left aligned since it is now on right */
+            line-height: 1.2;
+        }
+
+        .header-user-name {
+            font-size: 0.9375rem;
+            font-weight: 700;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .header-user-position {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .header-user-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .header-user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @media (max-width: 768px) {
+            .top-header {
+                padding: 1rem;
+            }
+            .header-user-info {
+                display: none;
+            }
+            
+            /* Responsive Welcome Modal */
+            .welcome-card {
+                flex-direction: column;
+                width: 90vw;
+            }
+            .welcome-left {
+                width: 100%;
+                height: 100px;
+            }
+            .waving-hand {
+                font-size: 4rem;
+            }
+            .welcome-right {
+                padding: 2rem 1.5rem;
+                text-align: center;
+                align-items: center;
+            }
+            .welcome-user-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .welcome-avatar-circle {
+                width: 100px;
+                height: 100px;
+                font-size: 2.5rem;
+                margin-top: -60px; /* Pull into banner */
+            }
+            .welcome-user {
+                font-size: 1.5rem;
+                max-width: 100%;
+                white-space: normal; /* allow wrap on small screen */
+            }
+            .welcome-loader-box {
+                justify-content: center;
+            }
+        }
     </style>
     @stack('styles')
 </head>
@@ -302,13 +548,19 @@
                 <!-- Sidebar Footer -->
                 <div class="sidebar-footer">
                     <div class="sidebar-user">
-                        <div class="user-info">
-                            <div class="user-avatar-premium">AD</div>
-                            <div class="user-details">
-                                <span class="user-name">Administrator</span>
-                                <span class="user-role">Super Admin</span>
+                        <a href="{{ route('profile.edit') }}" class="user-info" style="text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                            <div class="user-avatar-premium" style="overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                @if(session('welcome_avatar'))
+                                    <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                                @else
+                                    {{ strtoupper(substr(session('auth_user_name', 'A'), 0, 1)) }}
+                                @endif
                             </div>
-                        </div>
+                            <div class="user-details">
+                                <span class="user-name">{{ session('auth_user_name', 'Administrator') }}</span>
+                                <span class="user-role">{{ session('auth_user_role', 'Super Admin') }}</span>
+                            </div>
+                        </a>
                         <a href="{{ route('logout') }}" class="btn-logout" title="Logout">
                             <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
                         </a>
@@ -326,6 +578,41 @@
 
         <!-- Main content -->
         <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <!-- Left side empty to push items to right -->
+                </div>
+                <div class="header-right">
+                    <div class="theme-switcher" id="theme-switcher-container">
+                        <button class="theme-btn active" data-theme-btn="light" onclick="setTheme('light', event)" title="Light Mode">
+                            <i data-lucide="sun"></i>
+                        </button>
+                        <button class="theme-btn" data-theme-btn="dark" onclick="setTheme('dark', event)" title="Dark Mode">
+                            <i data-lucide="moon"></i>
+                        </button>
+                        <button class="theme-btn" data-theme-btn="night" onclick="setTheme('night', event)" title="Night Mode (Eye Protection)">
+                            <i data-lucide="eye"></i>
+                        </button>
+                    </div>
+
+                    <!-- User Profile -->
+                    <a href="{{ route('profile.edit') }}" class="header-user-profile">
+                        <div class="header-user-avatar">
+                            @if(session('welcome_avatar'))
+                                <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile">
+                            @else
+                                {{ strtoupper(substr(session('auth_user_name', 'A'), 0, 1)) }}
+                            @endif
+                        </div>
+                        <div class="header-user-info">
+                            <span class="header-user-name">{{ session('auth_user_name', 'Administrator') }}</span>
+                            <span class="header-user-position">{{ session('auth_user_role', 'Super Admin') }}</span>
+                        </div>
+                    </a>
+                </div>
+            </header>
+
             @yield('content')
         </main>
     </div>
@@ -349,11 +636,11 @@
                             {{ strtoupper(substr(session('welcome_name', 'U'), 0, 1)) }}
                         @endif
                     </div>
-                    <div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
                         <h2 class="welcome-title">Welcome back,</h2>
                         <h1 class="welcome-user" title="{{ session('welcome_name') }}">{{ session('welcome_name') }}</h1>
                         
-                        <div style="margin-top: 1rem; display: flex; align-items: center; gap: 10px; color: #4f46e5; font-size: 14px; font-weight: 600;">
+                        <div class="welcome-loader-box" style="margin-top: 1rem; display: flex; align-items: center; gap: 10px; color: #4f46e5; font-size: 14px; font-weight: 600;">
                             <i data-lucide="loader" class="animate-spin" style="width: 18px; height: 18px;"></i>
                             <span>Accessing Secure Records...</span>
                         </div>
@@ -414,6 +701,59 @@
             });
         });
 
+        // Theme Management
+        function setTheme(theme, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const switcher = document.getElementById('theme-switcher-container');
+            
+            // For touch devices, it requires two taps: one to open, one to select.
+            // On touch devices, 'hover' doesn't exist natively, we just rely on click adding the 'open' class
+            if (event && event.type === 'click') {
+                if (window.innerWidth <= 1024 || window.matchMedia('(hover: none)').matches) {
+                    if (switcher && !switcher.classList.contains('open')) {
+                        switcher.classList.add('open');
+                        return; // Stop here, just open it
+                    }
+                }
+            }
+
+            // Update body attribute
+            document.body.setAttribute('data-theme', theme);
+            
+            // Save to local storage
+            localStorage.setItem('app-theme', theme);
+            
+            // Update buttons
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if(btn.getAttribute('data-theme-btn') === theme) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Auto close the switcher
+            if (switcher) {
+                document.activeElement?.blur(); 
+                switcher.classList.remove('open');
+            }
+        }
+
+        // Close theme switcher when clicking outside
+        document.addEventListener('click', function(event) {
+            const switcher = document.getElementById('theme-switcher-container');
+            if (switcher && switcher.classList.contains('open') && !switcher.contains(event.target)) {
+                switcher.classList.remove('open');
+            }
+        });
+
+        // Initialize Theme from Storage or Default to Light
+        const savedTheme = localStorage.getItem('app-theme') || 'light';
+        // Pass false or null for event so it sets immediately on load without requiring click
+        setTheme(savedTheme, null);
+
         // Welcome Modal Functions
         function closeWelcomeModal() {
             const modal = document.getElementById('welcome-modal-overlay');
@@ -433,10 +773,15 @@
             if (document.getElementById('welcome-modal-overlay')) {
                 document.body.classList.add('modal-open');
                 
-                // Auto close after 3.8 seconds
+                // Auto close after 2 seconds
                 setTimeout(() => {
                     closeWelcomeModal();
-                }, 3800);
+                }, 2000);
+            }
+            
+            // Re-initialize icons just in case
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
             }
         });
     </script>

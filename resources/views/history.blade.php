@@ -61,7 +61,7 @@
     .profile-tabs-nav { 
         display: flex; gap: 0.5rem; 
         margin-bottom: 1.5rem; 
-        border-bottom: 2px solid #f1f5f9; 
+        border-bottom: 2px solid var(--border-light); 
         padding: 0 0.5rem;
     }
     .tab-btn { 
@@ -72,7 +72,7 @@
         position: relative; transition: 0.3s; 
         border-radius: 10px 10px 0 0;
     }
-    .tab-btn:hover { color: var(--primary); background: #f8fafc; }
+    .tab-btn:hover { color: var(--text-main); background: var(--border-light); }
     .tab-btn.active { color: var(--primary); }
     .tab-btn.active::after { 
         content: ''; position: absolute; bottom: -2px; left: 0; right: 0; 

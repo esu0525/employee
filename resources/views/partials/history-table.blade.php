@@ -1,6 +1,6 @@
 <div class="action-bar" style="margin-bottom: 1rem; border-bottom: none;">
     <div style="flex: 1;"></div>
-    <div class="stat-meta" style="background: white; border: 1px solid var(--border); padding: 0.75rem 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+    <div class="stat-meta" style="background: var(--bg-card); border: 1px solid var(--border); padding: 0.75rem 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
         <i data-lucide="{{ $icon }}" style="color: var(--text-muted);"></i>
         <span style="font-weight: 700; color: var(--text-main);">{{ $employees->count() }}</span>
         <span style="color: var(--text-muted); font-size: 0.875rem;">Total {{ $label }}</span>
