@@ -6,6 +6,7 @@
 <!-- docx-preview for local .docx viewing -->
 <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
 <script src="https://unpkg.com/docx-preview/dist/docx-preview.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 @endpush
 
 @section('content')
@@ -29,19 +30,28 @@
         
         <div class="profile-header-content">
             <div class="profile-avatar-wrapper">
-                <div class="profile-avatar-circle" id="avatarDisplay" onclick="document.getElementById('avatarInput').click()" style="cursor: pointer; overflow: hidden;">
-                    @if($employee->profile_picture)
-                        <img src="{{ asset($employee->profile_picture) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
-                    @else
-                        {{ strtoupper(substr($employee->first_name ?? $employee->name, 0, 1)) }}{{ strtoupper(substr($employee->last_name ?? '', 0, 1)) }}
-                    @endif
+                <div class="profile-avatar-3layer" id="avatarDisplay" onclick="viewPhoto()" style="cursor: pointer;">
+                    <div class="avatar-ring-outer">
+                        <div class="avatar-ring-inner">
+                            <div class="avatar-photo-box">
+                                @if($employee->profile_picture)
+                                    <img src="{{ asset($employee->profile_picture) }}" alt="Profile" id="mainAvatarImage">
+                                @else
+                                    <div class="avatar-initials">
+                                        {{ strtoupper(substr($employee->first_name ?? $employee->name, 0, 1)) }}{{ strtoupper(substr($employee->last_name ?? '', 0, 1)) }}
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <button class="avatar-camera-btn" onclick="document.getElementById('avatarInput').click()">
+                <button class="avatar-camera-btn" onclick="document.getElementById('avatarInput').click()" title="Change Photo">
                     <i data-lucide="camera" style="width: 18px;"></i>
                 </button>
                 <form id="avatarForm" action="{{ route('employees.update-avatar', ['id' => $employee->id]) }}" method="POST" enctype="multipart/form-data" style="display: none;">
                     @csrf
-                    <input type="file" name="profile_picture" id="avatarInput" accept="image/*" onchange="this.form.submit()">
+                    <input type="hidden" name="cropped_image" id="croppedImageData">
+                    <input type="file" name="profile_picture" id="avatarInput" accept="image/*" onchange="initCropper(this)">
                 </form>
             </div>
             
@@ -409,16 +419,64 @@
     <input type="file" name="documents[]" id="importFileInput" accept=".pdf,image/*,.docx,.doc,.xlsx" multiple onchange="this.form.submit()">
 </form>
 
+<!-- Cropper Modal -->
+<div id="cropperModal" class="modal-modern" style="z-index: 10001; background: rgba(0,0,0,0.8);">
+    <div class="modal-content-modern animate-scale-up" style="max-width: 500px;">
+        <div class="modal-header-modern">
+            <h3>Crop Profile Photo</h3>
+            <button type="button" onclick="closeCropper()"><i data-lucide="x"></i></button>
+        </div>
+        <div style="padding: 20px; max-height: 400px; overflow: hidden; display: flex; justify-content: center; background: #000;">
+            <img id="cropperImage" src="" style="max-width: 100%; display: block;">
+        </div>
+        <div class="modal-footer-modern">
+            <button type="button" class="btn-cancel" onclick="closeCropper()">Cancel</button>
+            <button type="button" class="btn-save" onclick="applyCrop()">Apply & Upload</button>
+        </div>
+    </div>
+</div>
+
+<!-- View Photo Modal -->
+<div id="viewPhotoModal" class="modal-modern" style="z-index: 10002; background: rgba(0,0,0,0.9);" onclick="closePhotoView()">
+    <div style="position: relative; max-width: 90vw; max-height: 90vh;">
+        <img id="viewingImage" src="" style="max-width: 100%; max-height: 90vh; border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        <button style="position: absolute; top: -40px; right: 0; background: none; border: none; color: white; cursor: pointer;">
+            <i data-lucide="x" style="width: 32px; height: 32px;"></i>
+        </button>
+    </div>
+</div>
+
 @push('styles')
 <style>
+    :root {
+        --erp-bg: #f8fafc;
+        --erp-primary: #3b82f6;
+        --erp-card: #ffffff;
+        --erp-text: #0f172a;
+        --erp-muted: #64748b;
+        --erp-border: #e2e8f0;
+        --erp-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    }
+
+    body[data-theme="dark"] {
+        --erp-bg: #0f172a;
+        --erp-card: #1e293b;
+        --erp-text: #f8fafc;
+        --erp-muted: #94a3b8;
+        --erp-border: #334155;
+    }
+
+    body[data-theme="night"] {
+        --erp-bg: #f2ead3;
+        --erp-card: #fffcf0;
+        --erp-text: #5c4137;
+        --erp-muted: #92400e;
+        --erp-border: #ead6bb;
+        --erp-primary: #d97706;
+    }
+
     .page-content {
-        --erp-bg: var(--bg-main, #f8fafc);
-        --erp-primary: var(--primary, #3b82f6);
-        --erp-card: var(--bg-card, #ffffff);
-        --erp-text: var(--text-main, #0f172a);
-        --erp-muted: var(--text-muted, #64748b);
-        --erp-border: var(--border, #e2e8f0);
-        --erp-shadow: var(--shadow-sm, 0 10px 30px -10px rgba(0, 0, 0, 0.1));
+        width: 100%;
     }
 
     /* Animations */
@@ -759,19 +817,115 @@
     .mini-iframe { flex: 1; border: none; width: 100%; }
 
     /* Modals */
-    .modal-modern { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(15,23,42,0.4); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
+    .modal-modern { 
+        display: none; 
+        position: fixed; 
+        inset: 0; 
+        z-index: 2000; 
+        background: rgba(0, 0, 0, 0.7); /* Deep overlay with blur */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        align-items: center; 
+        justify-content: center; 
+        padding: 1rem; 
+    }
     .modal-modern.active { display: flex; }
-    .modal-content-modern { background: var(--erp-card); border-radius: 20px; width: 100%; max-width: 550px; box-shadow: 0 25px 60px rgba(0,0,0,0.2); overflow: hidden; }
-    .modal-header-modern { padding: 1.25rem 2rem; border-bottom: 1px solid var(--erp-border); display: flex; justify-content: space-between; align-items: center; background: var(--erp-bg); color: var(--erp-text); }
+    
+    .modal-content-modern { 
+        background: #ffffff; /* Default solid white */
+        border-radius: 20px; 
+        width: 100%; 
+        max-width: 550px; 
+        box-shadow: 0 30px 70px rgba(0,0,0,0.5); 
+        overflow: hidden; 
+        border: 1px solid #e2e8f0; 
+        position: relative;
+    }
+
+    body[data-theme="dark"] .modal-content-modern {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    body[data-theme="night"] .modal-content-modern {
+        background: #fffcf0; /* Solid warm white for Night Mode */
+        border-color: #8c7662;
+    }
+
+    .modal-header-modern { 
+        padding: 1.25rem 2rem; 
+        border-bottom: 2px solid var(--erp-border); 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        background: #f8fafc; 
+        color: #0f172a; 
+    }
+
+    body[data-theme="dark"] .modal-header-modern { background: #0f172a; color: #f8fafc; border-bottom-color: #334155; }
+    body[data-theme="night"] .modal-header-modern { background: #fdf6e3; color: #5c4137; border-bottom-color: #ead6bb; }
+
     .modal-header-modern h3 { font-family: 'Outfit', sans-serif; font-weight: 800; margin: 0; }
-    .modal-header-modern button { background: none; border: none; padding: 0.5rem; color: var(--erp-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+    .modal-header-modern button { background: none; border: none; padding: 0.5rem; color: #64748b; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
     .modal-header-modern button:hover { color: #ef4444; }
-    .modal-body-modern { padding: 2rem; color: var(--erp-text); }
+
+    .modal-body-modern { padding: 2rem; background: #ffffff; }
+    body[data-theme="dark"] .modal-body-modern { background: #1e293b; }
+    body[data-theme="night"] .modal-body-modern { background: #fffcf0; }
+
+    .modal-footer-modern { 
+        padding: 1.5rem 2rem; 
+        background: #f8fafc; 
+        display: flex; 
+        justify-content: flex-end; 
+        gap: 1rem; 
+        border-top: 1px solid var(--erp-border);
+    }
+    body[data-theme="dark"] .modal-footer-modern { background: #0f172a; border-top-color: #334155; }
+    body[data-theme="night"] .modal-footer-modern { background: #fdf6e3; border-top-color: #ead6bb; }
     .modal-body-modern.scrollable { max-height: 60vh; overflow-y: auto; }
-    .modal-input { margin-bottom: 1.25rem; }
-    .modal-input label { display: block; font-size: 0.7rem; font-weight: 800; color: var(--erp-muted); text-transform: uppercase; margin-bottom: 0.4rem; }
-    .modal-input input, .modal-input select, .modal-input textarea { width: 100%; padding: 0.75rem 1rem; border-radius: 12px; border: 2px solid var(--erp-border); background: var(--erp-bg); color: var(--erp-text); font-size: 0.9rem; font-weight: 600; outline: none; transition: 0.2s; }
-    .modal-input input:focus, .modal-input select:focus, .modal-input textarea:focus { border-color: var(--erp-primary); background: var(--erp-card); }
+    .modal-input { margin-bottom: 1.5rem; }
+    .modal-input label { 
+        display: block; 
+        font-size: 0.8rem; 
+        font-weight: 800; 
+        color: var(--erp-muted); 
+        text-transform: uppercase; 
+        margin-bottom: 0.6rem; 
+        letter-spacing: 0.05em;
+    }
+    body[data-theme="dark"] .modal-input label { color: #94a3b8; }
+    body[data-theme="night"] .modal-input label { color: #92400e; }
+
+    .modal-input input, .modal-input select, .modal-input textarea { 
+        width: 100%; 
+        padding: 0.85rem 1.15rem; 
+        border-radius: 12px; 
+        border: 2px solid var(--erp-border); 
+        background: #f8fafc; 
+        color: #0f172a; 
+        font-size: 0.95rem; 
+        font-weight: 600; 
+        outline: none; 
+        transition: 0.2s; 
+    }
+    body[data-theme="dark"] .modal-input input,
+    body[data-theme="dark"] .modal-input select,
+    body[data-theme="dark"] .modal-input textarea {
+        background: #0f172a;
+        color: #f8fafc;
+        border-color: #334155;
+    }
+    body[data-theme="night"] .modal-input input,
+    body[data-theme="night"] .modal-input select,
+    body[data-theme="night"] .modal-input textarea {
+        background: #fdf6e3;
+        color: #5c4137;
+        border-color: #ead6bb;
+    }
+
+    .modal-input input:focus, .modal-input select:focus, .modal-input textarea:focus { border-color: var(--erp-primary); background: #ffffff; }
+    body[data-theme="dark"] .modal-input input:focus { background: #000000; }
     .modal-footer-modern { 
         padding: 1.5rem 2rem; 
         background: var(--erp-bg); 
@@ -864,10 +1018,53 @@
 
 
 
+    /* 3-Layer Avatar Styles */
+    .profile-avatar-3layer {
+        width: 150px; height: 150px;
+        position: relative;
+    }
+    .avatar-ring-outer {
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        padding: 5px;
+        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 50%, #ec4899 100%);
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+    }
+    body[data-theme="night"] .avatar-ring-outer {
+        background: linear-gradient(135deg, #f59e0b 0%, #fb923c 50%, #facc15 100%);
+        box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+    }
+    .avatar-ring-inner {
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        padding: 4px;
+        background: #fff;
+    }
+    body[data-theme="dark"] .avatar-ring-inner { background: #1e293b; }
+    body[data-theme="night"] .avatar-ring-inner { background: #3d2b1f; }
+    
+    .avatar-photo-box {
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        background: #f1f5f9;
+        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .avatar-photo-box img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-initials { font-size: 3.5rem; font-weight: 800; color: #3b82f6; font-family: 'Outfit', sans-serif; }
+    body[data-theme="night"] .avatar-initials { color: #fb923c; }
+
+    #cropperModal, #viewPhotoModal {
+        display: none;
+    }
+    #cropperModal.active, #viewPhotoModal.active {
+        display: flex !important;
+    }
 </style>
 @endpush
 
 @push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 <script>
     let currentIndex = -1;
     let allDocuments = [];
@@ -905,6 +1102,68 @@
         // Initialize documents list for keys
         refreshDocList();
     });
+
+    let cropper;
+    function initCropper(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const modal = document.getElementById('cropperModal');
+                const image = document.getElementById('cropperImage');
+                image.src = e.target.result;
+                modal.classList.add('active');
+                
+                if (cropper) cropper.destroy();
+                
+                cropper = new Cropper(image, {
+                    aspectRatio: 1,
+                    viewMode: 1,
+                    movable: true,
+                    zoomable: true,
+                    autoCropArea: 1,
+                    background: false
+                });
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function closeCropper() {
+        document.getElementById('cropperModal').classList.remove('active');
+        if (cropper) cropper.destroy();
+        document.getElementById('avatarInput').value = "";
+    }
+
+    function applyCrop() {
+        if (cropper) {
+            const canvas = cropper.getCroppedCanvas({ width: 400, height: 400 });
+            const croppedData = canvas.toDataURL('image/jpeg', 0.9);
+            document.getElementById('croppedImageData').value = croppedData;
+            
+            // Clear the file input so it's not sent as a regular file upload
+            document.getElementById('avatarInput').value = "";
+            
+            // Show loading state
+            const saveBtn = document.querySelector('#cropperModal .btn-save');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i data-lucide="loader" class="animate-spin" style="width:16px;height:16px;"></i> Uploading...';
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            
+            document.getElementById('avatarForm').submit();
+        }
+    }
+
+    function viewPhoto() {
+        const img = document.getElementById('mainAvatarImage');
+        if (img) {
+            document.getElementById('viewingImage').src = img.src;
+            document.getElementById('viewPhotoModal').classList.add('active');
+        }
+    }
+
+    function closePhotoView() {
+        document.getElementById('viewPhotoModal').classList.remove('active');
+    }
 
     function refreshDocList() {
         const items = Array.from(document.querySelectorAll('.mini-doc-item:not([style*="display: none"])'));

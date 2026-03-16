@@ -22,13 +22,17 @@
 
         <div class="master-item-card" onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'">
             <div class="master-card-left">
-                <div class="master-avatar-wrapper">
-                    <div class="master-avatar">
-                        @if($employee->profile_picture)
-                            <img src="{{ asset($employee->profile_picture) }}" alt="{{ $employee->name }}">
-                        @else
-                            {{ strtoupper(substr($employee->name, 0, 1)) }}
-                        @endif
+                <div class="master-avatar-3layer">
+                    <div class="master-avatar-ring">
+                        <div class="master-avatar-inner">
+                            @if($employee->profile_picture)
+                                <img src="{{ asset($employee->profile_picture) }}" alt="{{ $employee->name }}">
+                            @else
+                                <div class="master-avatar-initials">
+                                    {{ strtoupper(substr($employee->last_name ?? $employee->name, 0, 1)) }}{{ strtoupper(substr($employee->first_name ?? '', 0, 1)) }}
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
                 <div class="master-info">

@@ -12,6 +12,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Chart.js via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Flatpickr for advanced date selection -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
         /* Welcome Modal Styles */
         .welcome-modal-overlay {
@@ -237,7 +240,7 @@
 
         body[data-theme="night"] {
             /* Sepia / Eye Protection Mode - Warm Cream/Yellowish White */
-            --bg-main: #fdfbf7;
+            --bg-main: #f2ead3;
             --bg-card: #ffffff;
             --text-main: #000000;
             --text-muted: #92400e;
@@ -254,10 +257,10 @@
             --glass: rgba(255, 255, 255, 0.9);
             background: var(--bg-main);
             /* Add an overlay filter for true eye protection feel */
-            filter: sepia(0.35) brightness(0.95) contrast(0.95);
+            filter: sepia(0.35) brightness(1) contrast(0.95);
         }
         body[data-theme="night"] .app-container {
-            background: radial-gradient(circle at top left, #ffffff, #fdfbf7);
+            background: radial-gradient(circle at top left, #fdfbf7, #f2ead3);
         }
 
         /* Top Header Styles */
@@ -487,26 +490,25 @@
                 <nav class="sidebar-nav">
                     <ul>
                         <li>
-                            <a href="{{ route('employees.index') }}" class="nav-link {{ Route::is('employees.index') || Route::is('employees.masterlist') || request()->is('employee-details*') ? 'active' : '' }}">
+                            <a href="#" class="nav-link {{ Route::is('employees.index') || Route::is('employees.masterlist') || Route::is('employees.add') || request()->is('employee-details*') ? 'active' : '' }}" onclick="toggleSubnav(event)">
                                 <i data-lucide="users"></i>
-                                <span>Master List</span>
+                                <span>201 Masterlist</span>
+                                <i data-lucide="chevron-down" class="subnav-arrow {{ Route::is('employees.index') || Route::is('employees.masterlist') || Route::is('employees.add') || request()->is('employee-details*') ? 'rotate' : '' }}" style="margin-left: auto; width: 14px; height: 14px; transition: transform 0.3s;"></i>
                             </a>
-                            @if(Route::is('employees.index') || Route::is('employees.masterlist') || request()->is('employee-details*'))
-                            <ul class="subnav">
-                                <li>
-                                    <a href="{{ route('employees.index') }}" class="subnav-link {{ Route::is('employees.index') ? 'active' : '' }}">
-                                        <i data-lucide="chevron-right"></i>
-                                        Current Page
-                                    </a>
-                                </li>
+                            <ul class="subnav" id="masterlistSubnav" style="{{ Route::is('employees.index') || Route::is('employees.masterlist') || Route::is('employees.add') || request()->is('employee-details*') ? 'display: block;' : 'display: none;' }}">
                                 <li>
                                     <a href="{{ route('employees.masterlist') }}" class="subnav-link {{ Route::is('employees.masterlist') ? 'active' : '' }}">
                                         <i data-lucide="chevron-right"></i>
-                                        Master List
+                                        Masterlist
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('employees.add') }}" class="subnav-link {{ Route::is('employees.add') ? 'active' : '' }}">
+                                        <i data-lucide="chevron-right"></i>
+                                        Add Employee
                                     </a>
                                 </li>
                             </ul>
-                            @endif
                         </li>
                         <li>
                             <a href="{{ route('employees.history') }}" class="nav-link {{ Route::is('employees.history') ? 'active' : '' }}">
@@ -766,6 +768,20 @@
             setTimeout(() => {
                 modal.remove();
             }, 500);
+        }
+
+        function toggleSubnav(e) {
+            e.preventDefault();
+            const subnav = document.getElementById('masterlistSubnav');
+            const arrow = e.currentTarget.querySelector('.subnav-arrow');
+            
+            if (subnav.style.display === 'none') {
+                subnav.style.display = 'block';
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                subnav.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
         }
 
         // Apply blur on load and set auto-close if modal exists

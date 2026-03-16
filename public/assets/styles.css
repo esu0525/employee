@@ -1192,34 +1192,34 @@ td {
     gap: 1.25rem;
 }
 
-.master-avatar-wrapper {
-    position: relative;
-    width: 50px;
-    height: 50px;
-    flex-shrink: 0;
+/* 3-Layer Master Avatar */
+.master-avatar-3layer {
+    width: 60px; height: 60px;
+    position: relative; flex-shrink: 0;
 }
-
-.master-avatar {
-    width: 100%;
-    height: 100%;
+.master-avatar-ring {
+    width: 100%; height: 100%;
     border-radius: 50%;
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
-    font-family: 'Outfit', sans-serif;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    padding: 3px;
+    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 50%, #ec4899 100%);
+}
+body[data-theme="night"] .master-avatar-ring {
+    background: linear-gradient(135deg, #f59e0b 0%, #fb923c 50%, #facc15 100%);
+}
+.master-avatar-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    padding: 3px;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
     overflow: hidden;
 }
+body[data-theme="dark"] .master-avatar-inner { background: #1e293b; }
+body[data-theme="night"] .master-avatar-inner { background: #3d2b1f; }
 
-.master-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+.master-avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
+.master-avatar-initials { font-size: 1.1rem; font-weight: 800; color: #3b82f6; font-family: 'Outfit', sans-serif; }
+body[data-theme="night"] .master-avatar-initials { color: #fb923c; }
 
 .master-info {
     display: flex;

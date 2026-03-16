@@ -27,6 +27,7 @@ Route::post('/portal/submit', [PortalController::class, 'submit'])->name('portal
 // ─── Protected Routes (require login + OTP) ────────────────────────────────
 Route::middleware([AuthMiddleware::class])->group(function () {
     Route::get('/dashboard', [EmployeeController::class, 'index'])->name('employees.index');
+    Route::get('/add-employee', [EmployeeController::class, 'addEmployee'])->name('employees.add');
     Route::get('/masterlist', [EmployeeController::class, 'masterlist'])->name('employees.masterlist');
     Route::post('/masterlist/import', [EmployeeController::class, 'import'])->name('employees.import');
     Route::get('/employee-details', [EmployeeController::class, 'show'])->name('employees.show');

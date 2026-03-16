@@ -43,6 +43,11 @@ class EmployeeController extends Controller
         ));
     }
 
+    public function addEmployee(): View
+    {
+        return view('add-employee');
+    }
+
     public function masterlist(Request $request)
     {
         $search = $request->query('search', '');
@@ -210,12 +215,22 @@ class EmployeeController extends Controller
             'last_name' => 'required|string|max:100',
             'first_name' => 'required|string|max:100',
             'middle_name' => 'nullable|string|max:100',
+            'suffix' => 'nullable|string|max:50',
             'box_number' => 'nullable|string|max:50',
             'position' => 'required|string|max:100',
             'department' => 'required|string|max:100',
+            'so_number' => 'nullable|string|max:100',
             'date_of_birth' => 'required|date',
             'sex' => 'required|string|in:Male,Female',
             'address' => 'required|string|max:500',
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:100',
+            'emergency_contact' => 'nullable|string|max:100',
+            'emergency_phone' => 'nullable|string|max:20',
+            'profile_picture' => 'nullable',
+            'cropped_image' => 'nullable|string',
+            'doc_items.*.classification' => 'required|string|max:100',
+            'doc_items.*.files.*' => 'nullable|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:10240',
         ]);
 
         // Generate ID
@@ -232,9 +247,57 @@ class EmployeeController extends Controller
         $data['status'] = 'active';
         $data['date_joined'] = now()->toDateString();
 
-        Employee::create($data);
+        // Handle Avatar Upload (Cropped)
+        if ($request->filled('cropped_image')) {
+            $imgData = $request->input('cropped_image');
+            // More robust prefix stripping
+            if (preg_match('/^data:image\/(\w+);base64,/', $imgData, $type)) {
+                $imgData = substr($imgData, strpos($imgData, ',') + 1);
+            }
+            $imgData = str_replace(' ', '+', $imgData);
+            $filename = time() . '_profile.jpg';
+            $path = public_path('uploads/avatars/' . $filename);
+            
+            if (!file_exists(public_path('uploads/avatars'))) {
+                mkdir(public_path('uploads/avatars'), 0777, true);
+            }
+            
+            file_put_contents($path, base64_decode($imgData));
+            $data['profile_picture'] = 'uploads/avatars/' . $filename;
+        } elseif ($request->hasFile('profile_picture')) {
+            $file = $request->file('profile_picture');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads/avatars'), $filename);
+            $data['profile_picture'] = 'uploads/avatars/' . $filename;
+        }
 
-        return redirect()->route('employees.index')->with('success_message', "Employee {$data['name']} has been successfully saved!");
+        // Create Employee
+        $employee = Employee::create($data);
+
+        // Handle Dynamic Document Classification Sets
+        if ($request->has('doc_items')) {
+            foreach ($request->doc_items as $index => $item) {
+                $category = $item['classification'] ?? 'UNCATEGORIZED';
+                
+                // Check if files exist for THIS specific row/index
+                if ($request->hasFile("doc_items.{$index}.files")) {
+                    $files = $request->file("doc_items.{$index}.files");
+                    
+                    foreach ($files as $fileIndex => $file) {
+                        $filename = time() . "_{$index}_{$fileIndex}_" . $file->getClientOriginalName();
+                        $file->move(public_path('uploads'), $filename);
+
+                        $employee->documents()->create([
+                            'document_name' => $file->getClientOriginalName(),
+                            'file_path' => 'uploads/' . $filename,
+                            'category' => $category
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return redirect()->route('employees.add')->with('success_message', "Employee {$data['name']} has been successfully saved!");
     }
 
     public function updateStatus(Request $request, $id): RedirectResponse
@@ -423,10 +486,35 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
 
         $request->validate([
-            'profile_picture' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'profile_picture' => 'nullable',
+            'cropped_image' => 'nullable|string',
         ]);
 
-        if ($request->hasFile('profile_picture')) {
+        if ($request->filled('cropped_image')) {
+            $imgData = $request->input('cropped_image');
+            // More robust prefix stripping
+            if (preg_match('/^data:image\/(\w+);base64,/', $imgData, $type)) {
+                $imgData = substr($imgData, strpos($imgData, ',') + 1);
+            }
+            $imgData = str_replace(' ', '+', $imgData);
+            $filename = time() . '_profile.jpg';
+            $path = public_path('uploads/avatars/' . $filename);
+            
+            if (!file_exists(public_path('uploads/avatars'))) {
+                mkdir(public_path('uploads/avatars'), 0777, true);
+            }
+            
+            file_put_contents($path, base64_decode($imgData));
+            
+            // Delete old avatar if exists
+            if ($employee->profile_picture && file_exists(public_path($employee->profile_picture))) {
+                @unlink(public_path($employee->profile_picture));
+            }
+
+            $employee->update([
+                'profile_picture' => 'uploads/avatars/' . $filename
+            ]);
+        } elseif ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('uploads/avatars'), $filename);
