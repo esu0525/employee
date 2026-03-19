@@ -17,11 +17,11 @@
         <div class="search-container">
             <form method="GET" action="{{ route('employees.index') }}" id="searchForm" style="width: 100%; position: relative;">
                 <i data-lucide="search" class="search-icon"></i>
-                <input 
+                    <input 
                     type="text" 
                     name="search" 
                     class="search-input" 
-                    placeholder="Search by name, position, or office..."
+                    placeholder="Search by name, position, or agency..."
                     value="{{ $search }}"
                     onchange="document.getElementById('searchForm').submit()"
                 >
@@ -72,7 +72,7 @@
                             }
                         @endphp
                         <span class="master-name">{{ $displayName }}</span>
-                        <span class="master-sub" style="font-size: 0.85rem; opacity: 0.8;">{{ $employee->position }} • {{ $employee->department }}</span>
+                        <span class="master-sub" style="font-size: 0.85rem; opacity: 0.8;">{{ $employee->position }} • {{ $employee->agency }}</span>
                     </div>
                 </div>
                 
@@ -145,12 +145,6 @@
                     <!-- Hidden but kept for compatibility -->
                     <input type="hidden" id="name" name="name">
 
-                    <!-- Box Number -->
-                    <div class="form-group">
-                        <label class="form-label" for="box_number">Box Number</label>
-                        <input type="text" id="box_number" name="box_number" class="form-input" placeholder="e.g. A1">
-                    </div>
-
                     <!-- Current Position -->
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="form-label" for="position">Current Position *</label>
@@ -177,10 +171,10 @@
                         </select>
                     </div>
 
-                    <!-- School/Department -->
+                    <!-- Agency/Department -->
                     <div class="form-group">
-                        <label class="form-label" for="department">School/Department *</label>
-                        <input type="text" id="department" name="department" class="form-input" placeholder="SDO - Caloocan City" required>
+                        <label class="form-label" for="agency">Agency *</label>
+                        <input type="text" id="agency" name="agency" class="form-input" placeholder="SDO - Caloocan City" required>
                     </div>
 
                     <!-- Address -->
@@ -219,16 +213,16 @@
                         <label class="form-label" for="status">New Status *</label>
                         <select id="statusSelect" name="status" class="form-input" required onchange="toggleTransferLocation()">
                             <option value="" disabled selected>Select status</option>
-                            <option value="inactive">Inactive</option>
                             <option value="resign">Resign</option>
                             <option value="retired">Retire / Retired</option>
                             <option value="transfer">Transfer</option>
+                            <option value="others">Others</option>
                         </select>
                     </div>
 
                     <div id="transferLocationGroup" class="form-group" style="display: none;">
                         <label class="form-label" for="transfer_location">Transfer Location *</label>
-                        <input type="text" id="transfer_location" name="transfer_location" class="form-input" placeholder="Enter school or office name">
+                        <input type="text" id="transfer_location" name="transfer_location" class="form-input" placeholder="Enter agency or office name">
                     </div>
                 </div>
             </div>

@@ -254,6 +254,10 @@ h4,
     font-weight: 600;
 }
 
+.subnav-arrow.rotate {
+    transform: rotate(180deg);
+}
+
 /* Sidebar Footer */
 .sidebar-footer {
     padding: 1.5rem;
@@ -470,6 +474,7 @@ h4,
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     font-size: 1rem;
+    color: var(--text-main);
     transition: var(--transition);
     box-shadow: var(--shadow-sm);
 }
@@ -1231,8 +1236,8 @@ body[data-theme="night"] .master-avatar-initials { color: #fb923c; }
     font-weight: 700;
     color: var(--text-main);
     letter-spacing: -0.01em;
-    text-transform: uppercase;
-    font-family: 'Cambria', serif;
+    text-transform: none;
+    font-family: 'Outfit', sans-serif;
 }
 
 .master-sub {
@@ -1323,4 +1328,67 @@ body[data-theme="night"] .master-avatar-initials { color: #fb923c; }
     padding: 2rem 0;
     border-top: 1px solid #f1f5f9;
     margin-top: 2rem;
+}
+
+/* Global Dashboard & Summary Card Styles */
+.summary-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.summary-card {
+    background: var(--bg-card);
+    padding: 1.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: var(--shadow-sm);
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+}
+
+.card-icon-box {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.card-icon-box i { width: 1.5rem; height: 1.5rem; }
+
+.card-primary .card-icon-box { background: rgba(79, 70, 229, 0.1); color: #4f46e5; }
+.card-info .card-icon-box { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
+.card-warning .card-icon-box { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.card-danger .card-icon-box { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+.card-stats { display: flex; flex-direction: column; min-width: 0; }
+.stats-value { font-size: 1.5rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-label { font-size: 0.65rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+/* Dashboard Specific Layout */
+.dashboard-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 2rem;
+}
+
+.dashboard-column { display: flex; flex-direction: column; gap: 2rem; }
+
+.dashboard-section {
+    background: var(--bg-card);
+    border-radius: 28px;
+    border: 1px solid var(--border);
+    padding: 2rem;
+    box-shadow: var(--shadow-sm);
 }

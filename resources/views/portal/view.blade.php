@@ -47,8 +47,8 @@
                     <p style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 2px 0;">{{ $request->employee_name }}</p>
                 </div>
                 <div style="border-bottom: 1.5px solid #1e293b; padding-bottom: 4px;">
-                    <p style="font-size: 10px; font-weight: 800; color: #64748b; margin: 0; text-transform: uppercase;">School / Station</p>
-                    <p style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 2px 0;">{{ $request->school ?: 'SDO Quezon City' }}</p>
+                    <p style="font-size: 10px; font-weight: 800; color: #64748b; margin: 0; text-transform: uppercase;">Agency</p>
+                    <p style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 2px 0;">{{ $request->agency ?: 'SDO Quezon City' }}</p>
                 </div>
             </div>
             <div style="display: flex; flex-direction: column; gap: 20px;">

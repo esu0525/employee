@@ -26,7 +26,8 @@ Route::post('/portal/submit', [PortalController::class, 'submit'])->name('portal
 
 // ─── Protected Routes (require login + OTP) ────────────────────────────────
 Route::middleware([AuthMiddleware::class])->group(function () {
-    Route::get('/dashboard', [EmployeeController::class, 'index'])->name('employees.index');
+    Route::get('/dashboard', [EmployeeController::class, 'dashboard'])->name('dashboard');
+    Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/add-employee', [EmployeeController::class, 'addEmployee'])->name('employees.add');
     Route::get('/masterlist', [EmployeeController::class, 'masterlist'])->name('employees.masterlist');
     Route::post('/masterlist/import', [EmployeeController::class, 'import'])->name('employees.import');
@@ -35,7 +36,8 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::post('/employee-details/{id}/update-avatar', [EmployeeController::class, 'updateAvatar'])->name('employees.update-avatar');
     Route::post('/add-employee', [EmployeeController::class, 'store'])->name('employees.store');
     Route::post('/employee/update-status/{id}', [EmployeeController::class, 'updateStatus'])->name('employees.update-status');
-    Route::get('/history', [EmployeeController::class, 'history'])->name('employees.history');
+    Route::get('/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
+    Route::get('/history', function() { return redirect()->route('employees.archive'); });
     Route::get('/requests', [EmployeeController::class, 'requests'])->name('employees.requests');
     Route::post('/employee-details/upload/{id}', [EmployeeController::class, 'upload'])->name('employees.upload');
     Route::delete('/employee-details/delete-doc/{id}', [EmployeeController::class, 'deleteDoc'])->name('employees.delete-doc');

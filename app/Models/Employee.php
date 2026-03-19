@@ -11,9 +11,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $last_name
  * @property string|null $first_name
  * @property string|null $middle_name
- * @property string|null $box_number
  * @property string $position
- * @property string $department
+ * @property string $agency
  * @property string $email
  * @property string $phone
  * @property Carbon $date_joined
@@ -43,7 +42,7 @@ use Illuminate\Support\Carbon;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereDateJoined($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereDateOfBirth($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereDepartment($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereAgency($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereEmail($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereEmergencyContact($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Employee whereEmergencyPhone($value)
@@ -64,11 +63,11 @@ class Employee extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'suffix', 'box_number', 'so_number',
-        'position', 'department', 'email', 'phone',
+        'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'suffix', 'so_number',
+        'position', 'agency', 'email', 'phone',
         'date_joined', 'status', 'status_date', 'transfer_location',
-        'address', 'date_of_birth', 'sex', 'marital_status', 'religion', 'blood_type', 'nationality', 'emergency_contact', 'emergency_phone',
-        'effective_date', 'school', 'transfer_to', 'so_no'
+        'address', 'date_of_birth', 'sex', 'civil_status', 'nationality', 'emergency_contact', 'emergency_phone',
+        'effective_date', 'school', 'transfer_to', 'so_no', 'status_specify', 'retirement_under'
     ];
 
     protected $casts = [
@@ -77,6 +76,40 @@ class Employee extends Model
         'date_of_birth' => 'date',
         'effective_date' => 'date',
     ];
+
+    public function setLastNameAttribute($value) { $this->attributes['last_name'] = $this->formatTitle($value); }
+    public function setFirstNameAttribute($value) { $this->attributes['first_name'] = $this->formatTitle($value); }
+    public function setMiddleNameAttribute($value) { $this->attributes['middle_name'] = $this->formatTitle($value); }
+    public function setNameAttribute($value) { $this->attributes['name'] = $this->formatTitle($value); }
+    public function setSuffixAttribute($value) { $this->attributes['suffix'] = $this->formatTitle($value); }
+    public function setPositionAttribute($value) { $this->attributes['position'] = $this->formatTitle($value); }
+    public function setAgencyAttribute($value) { $this->attributes['agency'] = $this->formatTitle($value); }
+    public function setAddressAttribute($value) { $this->attributes['address'] = $this->formatTitle($value); }
+    public function setCivilStatusAttribute($value) { $this->attributes['civil_status'] = $this->formatTitle($value); }
+    public function setNationalityAttribute($value) { $this->attributes['nationality'] = $this->formatTitle($value); }
+    public function setEmergencyContactAttribute($value) { $this->attributes['emergency_contact'] = $this->formatTitle($value); }
+    public function setTransferToAttribute($value) { $this->attributes['transfer_to'] = $this->formatTitle($value); }
+    public function setStatusSpecifyAttribute($value) { $this->attributes['status_specify'] = $this->formatTitle($value); }
+    public function setRetirementUnderAttribute($value) { $this->attributes['retirement_under'] = $this->formatTitle($value); }
+    
+    public function setPhoneAttribute($value) { $this->attributes['phone'] = $this->formatPhone($value); }
+    public function setEmergencyPhoneAttribute($value) { $this->attributes['emergency_phone'] = $this->formatPhone($value); }
+
+    protected function formatTitle($value)
+    {
+        if (empty($value)) return $value;
+        return ucwords(mb_strtolower($value));
+    }
+
+    protected function formatPhone($value)
+    {
+        if (empty($value)) return $value;
+        $clean = preg_replace('/[^0-9]/', '', $value);
+        if (strlen($clean) == 11) {
+            return substr($clean, 0, 4) . '-' . substr($clean, 4, 3) . '-' . substr($clean, 7);
+        }
+        return $value;
+    }
 
     public function documents()
     {

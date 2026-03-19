@@ -13,34 +13,56 @@ use Illuminate\Support\Facades\File;
 
 class EmployeeController extends Controller
 {
-    public function index(Request $request): View
+    public function dashboard(): View
     {
-        $search = $request->query('search', '');
+        $total_employees = Employee::count();
+        $total_active = Employee::where('status', 'active')->count();
+        
+        $pending_requests = EmployeeRequest::where('status', 'pending')->count();
+        $recent_requests = EmployeeRequest::orderBy('request_date', 'desc')->take(5)->get();
+        
+        $history_count = Employee::whereIn('status', ['resign', 'retired', 'transfer', 'others'])->count();
+        $recent_activity = Employee::whereIn('status', ['resign', 'retired', 'transfer', 'others'])
+            ->orderBy('status_date', 'desc')
+            ->take(5)
+            ->get();
 
-        $query = Employee::where('status', 'active');
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('position', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
-            });
+        // Recruitment Trend (Last 6 months)
+        $recruitment_stats = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $count = Employee::whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
+            $recruitment_stats[] = [
+                'month' => $month->format('M'),
+                'count' => $count
+            ];
         }
 
-        $employees = $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc')->get();
+        $status_stats = [
+            'active' => $total_active,
+            'resign' => Employee::where('status', 'resign')->count(),
+            'retired' => Employee::where('status', 'retired')->count(),
+            'transfer' => Employee::where('status', 'transfer')->count(),
+            'others'   => Employee::where('status', 'others')->count(),
+        ];
 
-        $total_active = Employee::where('status', 'active')->count();
-        $total_departments = Employee::where('status', 'active')->distinct('department')->count('department');
-        $filtered_count = $employees->count();
-
-        return view('index', compact(
-            'employees',
-            'search',
+        return view('dashboard', compact(
+            'total_employees',
             'total_active',
-            'total_departments',
-            'filtered_count'
+            'pending_requests',
+            'recent_requests',
+            'history_count',
+            'recent_activity',
+            'recruitment_stats',
+            'status_stats'
         ));
+    }
+
+    public function index(Request $request): RedirectResponse
+    {
+        return redirect()->route('dashboard');
     }
 
     public function addEmployee(): View
@@ -51,19 +73,34 @@ class EmployeeController extends Controller
     public function masterlist(Request $request)
     {
         $search = $request->query('search', '');
-        $sort = $request->query('sort', 'name'); // 'name' or 'box'
+        $sort = $request->query('sort', 'name'); // 'name' or 'position'
 
         $query = Employee::where('status', 'active');
 
         if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
+            $terms = explode(' ', $search);
+            $query->where(function ($q) use ($search, $terms) {
+                // Try whole string matches first on single fields
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
                     ->orWhere('position', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%")
-                    ->orWhere('box_number', 'like', "%{$search}%");
+                    ->orWhere('agency', 'like', "%{$search}%");
+
+                // Try term by term matching for multi-word full names
+                if (count($terms) > 1) {
+                    $q->orWhere(function ($sq) use ($terms) {
+                        foreach ($terms as $term) {
+                            $sq->where(function($qq) use ($term) {
+                                $qq->where('first_name', 'like', "%{$term}%")
+                                   ->orWhere('last_name', 'like', "%{$term}%")
+                                   ->orWhere('middle_name', 'like', "%{$term}%")
+                                   ->orWhere('name', 'like', "%{$term}%");
+                            });
+                        }
+                    });
+                }
             });
         }
 
@@ -75,11 +112,23 @@ class EmployeeController extends Controller
 
         $employees = $query->paginate(20)->withQueryString();
 
+        // Summary Statistics for Masterlist
+        $total_active = Employee::where('status', 'active')->count();
+        $newly_joined = Employee::where('status', 'active')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->count();
+
         if ($request->ajax()) {
             return view('partials.masterlist-table', compact('employees', 'sort'))->render();
         }
 
-        return view('masterlist', compact('employees', 'search', 'sort'));
+        return view('masterlist', compact(
+            'employees', 
+            'search', 
+            'sort', 
+            'total_active', 
+            'newly_joined'
+        ));
     }
 
     public function import(Request $request): RedirectResponse
@@ -91,44 +140,202 @@ class EmployeeController extends Controller
         $file = $request->file('csv_file');
         $handle = fopen($file->getRealPath(), 'r');
         
-        // Skip header
-        fgetcsv($handle);
+        $header = fgetcsv($handle);
+        $isSeparationList = false;
+        
+        if ($header) {
+            $headerString = implode(',', $header);
+            if (str_contains(strtolower($headerString), 'remark') || str_contains(strtolower($headerString), 'separation')) {
+                $isSeparationList = true;
+            }
+        }
+
+        // Get the latest ID numeric part once before the loop
+        $maxEmployee = Employee::where('id', 'LIKE', 'EMP%')
+            ->selectRaw('MAX(CAST(SUBSTRING(id, 4) AS UNSIGNED)) as max_num')
+            ->first();
+        
+        $nextIdNum = ($maxEmployee?->max_num ?? 0) + 1;
 
         $importCount = 0;
         while (($row = fgetcsv($handle)) !== false) {
-            if (empty($row[0])) continue; // Skip empty rows
+            if (empty($row[0]) && (count($row) < 2 || empty($row[1]))) continue; 
 
-            $lastName = trim($row[0] ?? '');
-            $firstName = trim($row[1] ?? '');
-            $middleName = trim($row[2] ?? '');
-            $position = trim($row[3] ?? 'Employee');
-            $office = trim($row[4] ?? 'Unknown');
+            $col0 = trim($row[0] ?? '');
+            $col1 = trim($row[1] ?? '');
+            $col2 = trim($row[2] ?? '');
+            $col3 = trim($row[3] ?? '');
+            $col4 = trim($row[4] ?? '');
+            $col5 = trim($row[5] ?? '');
 
-            $mi = !empty($middleName) ? ' ' . strtoupper(substr($middleName, 0, 1)) . '.' : '';
-            $fullName = "{$firstName}{$mi} {$lastName}";
+            $lastName = '';
+            $firstName = '';
+            $middleName = '';
+            $suffix = '';
+            $position = 'Employee';
+            $office = 'Unknown';
+            $sex = 'Unknown';
+            $status = 'active';
+            $status_date = null;
+            $status_specify = null;
+            $so_no = null;
+            $effective_date = null;
 
-            // Generate ID
-            $lastEmployee = Employee::orderBy('id', 'desc')->first();
-            $lastIdNum = $lastEmployee ? intval(substr($lastEmployee->id, 3)) : 0;
-            $newId = 'EMP' . str_pad($lastIdNum + 1, 3, '0', STR_PAD_LEFT);
+            if ($isSeparationList) {
+                // Name, Date of Separation, SCHOOL, Remarks, S.O No.
+                // Parse Name (col0)
+                if (str_contains($col0, ',')) {
+                    $parsed = $this->parseComplexName($col0);
+                    $lastName = $parsed['last'];
+                    $firstName = $parsed['first'];
+                    $middleName = $parsed['middle'];
+                    $suffix = $parsed['suffix'];
+                } else {
+                    // Try space split
+                    $nameParts = explode(' ', $col0);
+                    if (count($nameParts) >= 2) {
+                        $lastName = array_pop($nameParts);
+                        $firstName = implode(' ', $nameParts);
+                    } else {
+                        $lastName = $col0;
+                        $firstName = 'Unknown';
+                    }
+                }
+                
+                // Date (col1)
+                if ($col1 && $col1 !== '-') {
+                    try {
+                        $effective_date = \Carbon\Carbon::parse($col1)->format('Y-m-d');
+                        $status_date = $effective_date;
+                    } catch (\Exception $e) {}
+                }
+
+                $office = $col2 ?: 'Unknown';
+                $remarks = strtolower($col3 ?: '');
+                $so_no = $col4 ?: null;
+                $status_specify = $col3 ?: null;
+
+                // Category Logic
+                if (str_contains($remarks, 'transfer')) {
+                    $status = 'transfer';
+                } elseif (str_contains($remarks, 'retire')) {
+                    $status = 'retired';
+                } elseif (str_contains($remarks, 'resign')) {
+                    $status = 'resign';
+                } else {
+                    $status = 'others';
+                }
+            } else {
+                $position = $col3 ?: 'Employee';
+                $office = $col4 ?: 'Unknown';
+                $sex = $col5 ?: 'Unknown';
+
+                if (str_contains($col0, ',')) {
+                    $parsed = $this->parseComplexName($col0);
+                    $lastName = $parsed['last'];
+                    $firstName = $parsed['first'];
+                    $middleName = $parsed['middle'];
+                    $suffix = $parsed['suffix'];
+                } else if (!empty($col0) && empty($col1)) {
+                    $nameParts = explode(' ', $col0);
+                    if (count($nameParts) >= 2) {
+                        $lastName = array_pop($nameParts);
+                        $firstName = implode(' ', $nameParts);
+                    } else {
+                        $lastName = $col0;
+                        $firstName = 'Unknown';
+                    }
+                } else {
+                    $lastName = $col0;
+                    $firstName = $col1;
+                    $middleName = $col2;
+                    if (str_contains($firstName ?? '', ',')) {
+                        $parsed = $this->parseComplexName($lastName . ', ' . $firstName);
+                        $lastName = $parsed['last'];
+                        $firstName = $parsed['first'];
+                        $middleName = $parsed['middle'];
+                        $suffix = $parsed['suffix'];
+                    }
+                }
+            }
+
+            $mi = '';
+            if (!empty($middleName)) {
+                $rawMi = trim(str_replace('.', '', $middleName));
+                if (!empty($rawMi)) {
+                    $mi = strtoupper(substr($rawMi, 0, 1)) . '.';
+                }
+            }
+
+            $dbDisplayName = $lastName . ', ' . $firstName;
+            if ($mi) $dbDisplayName .= ' ' . $mi;
+            if ($suffix) $dbDisplayName .= ' ' . $suffix;
+
+            $newId = 'EMP' . str_pad($nextIdNum, 3, '0', STR_PAD_LEFT);
 
             Employee::create([
                 'id' => $newId,
-                'name' => $fullName,
-                'last_name' => $lastName,
-                'first_name' => $firstName,
-                'middle_name' => $middleName,
+                'name' => trim($dbDisplayName),
+                'last_name' => trim($lastName),
+                'first_name' => trim($firstName),
+                'middle_name' => trim($middleName), 
+                'suffix' => trim($suffix),
                 'position' => $position,
-                'department' => $office,
-                'status' => 'active',
+                'agency' => $office,
+                'sex' => $sex,
+                'status' => $status,
+                'status_date' => $status_date,
+                'effective_date' => $effective_date,
+                'status_specify' => $status_specify,
+                'so_no' => $so_no,
                 'date_joined' => now()
             ]);
 
+            $nextIdNum++;
             $importCount++;
         }
+
         fclose($handle);
 
         return back()->with('success', "$importCount employees imported successfully!");
+    }
+
+    private function parseComplexName($fullName)
+    {
+        $parts = explode(',', $fullName);
+        $last = trim($parts[0] ?? '');
+        $rest = trim($parts[1] ?? '');
+
+        // Now split the rest (First Middle Suffix)
+        $bits = explode(' ', $rest);
+        $suffixes = ['JR.', 'SR.', 'III', 'IV', 'V', 'II', 'JR', 'SR', 'JR', 'SR', 'D.O.']; // simplified list
+        
+        $foundSuffix = '';
+        $foundMiddle = '';
+        $firstBits = [];
+
+        foreach ($bits as $index => $bit) {
+            $bitUpper = strtoupper(trim($bit, '. '));
+            if (in_array($bitUpper, $suffixes) || in_array($bitUpper . '.', $suffixes)) {
+                $foundSuffix = trim($bit);
+                continue;
+            }
+            
+            // Check if it's a middle initial (single letter or single letter with dot)
+            if (strlen(trim($bit, '.')) == 1 && $index > 0) {
+                $foundMiddle = trim($bit);
+                continue;
+            }
+
+            $firstBits[] = $bit;
+        }
+
+        return [
+            'last' => $last,
+            'first' => implode(' ', $firstBits),
+            'middle' => $foundMiddle,
+            'suffix' => $foundSuffix
+        ];
     }
 
     public function show(Request $request): View|RedirectResponse
@@ -145,34 +352,65 @@ class EmployeeController extends Controller
 
         $documents = $employee->documents()->orderBy('created_at', 'desc')->get();
         $doc_count = $documents->count();
+        $isArchived = ($employee->status !== 'active');
 
-        return view('employee-details', compact('employee', 'documents', 'doc_count'));
+        return view('employee-details', compact('employee', 'documents', 'doc_count', 'isArchived'));
     }
 
-    public function history(Request $request): View
+    public function archive(Request $request): View
     {
         $search = $request->query('search', '');
+        $filter_year = $request->query('year');
+        $filter_month = $request->query('month');
+        $filter_date = $request->query('date');
         
         // Base query for each status
-        $baseQuery = function($status) use ($search) {
+        $baseQuery = function($status) use ($search, $filter_year, $filter_month, $filter_date) {
             $query = Employee::where('status', $status);
+            
+            if ($filter_year) $query->whereYear('effective_date', $filter_year);
+            if ($filter_month) $query->whereMonth('effective_date', $filter_month);
+            if ($filter_date) $query->whereDate('effective_date', $filter_date);
+
             if (!empty($search)) {
-                $query->where(function ($q) use ($search) {
+                $terms = explode(' ', $search);
+                $query->where(function ($q) use ($search, $terms) {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('position', 'like', "%{$search}%")
-                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('agency', 'like', "%{$search}%")
                         ->orWhere('id', 'like', "%{$search}%")
                         ->orWhere('transfer_location', 'like', "%{$search}%");
+
+                    if (count($terms) > 1) {
+                        $q->orWhere(function ($sq) use ($terms) {
+                            foreach ($terms as $term) {
+                                $sq->where(function($qq) use ($term) {
+                                    $qq->where('first_name', 'like', "%{$term}%")
+                                       ->orWhere('last_name', 'like', "%{$term}%")
+                                       ->orWhere('name', 'like', "%{$term}%");
+                                });
+                            }
+                        });
+                    }
                 });
             }
-            return $query->orderBy('status_date', 'desc')->get();
+            return $query->orderBy('effective_date', 'desc')->orderBy('status_date', 'desc')->get();
         };
 
         $resign = $baseQuery('resign');
         $retired = $baseQuery('retired');
         $transfer = $baseQuery('transfer');
+        $others = $baseQuery('others');
 
-        return view('history', compact('resign', 'retired', 'transfer', 'search'));
+        $resign_count = Employee::where('status', 'resign')->count();
+        $retired_count = Employee::where('status', 'retired')->count();
+        $transfer_count = Employee::where('status', 'transfer')->count();
+        $others_count = Employee::where('status', 'others')->count();
+
+        return view('archive', compact(
+            'resign', 'retired', 'transfer', 'others', 'search',
+            'resign_count', 'retired_count', 'transfer_count', 'others_count'
+        ));
     }
 
     public function requests(Request $request): View
@@ -216,41 +454,34 @@ class EmployeeController extends Controller
             'first_name' => 'required|string|max:100',
             'middle_name' => 'nullable|string|max:100',
             'suffix' => 'nullable|string|max:50',
-            'box_number' => 'nullable|string|max:50',
             'position' => 'required|string|max:100',
-            'department' => 'required|string|max:100',
+            'agency' => 'required|string|max:100',
             'so_number' => 'nullable|string|max:100',
             'date_of_birth' => 'required|date',
             'sex' => 'required|string|in:Male,Female',
+            'civil_status' => 'required|string|max:50',
             'address' => 'required|string|max:500',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
-            'emergency_contact' => 'nullable|string|max:100',
-            'emergency_phone' => 'nullable|string|max:20',
             'profile_picture' => 'nullable',
             'cropped_image' => 'nullable|string',
             'doc_items.*.classification' => 'required|string|max:100',
             'doc_items.*.files.*' => 'nullable|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:10240',
         ]);
 
-        // Generate ID
-        $lastEmployee = Employee::orderBy('id', 'desc')->first();
-        if ($lastEmployee) {
-            $lastId = intval(substr($lastEmployee->id, 3));
-            $newId = 'EMP' . str_pad($lastId + 1, 3, '0', STR_PAD_LEFT);
-        }
-        else {
-            $newId = 'EMP001';
-        }
+        // Generate ID (Numeric-first sorting)
+        $maxNum = (int)Employee::where('id', 'LIKE', 'EMP%')
+            ->selectRaw('MAX(CAST(SUBSTRING(id, 4) AS UNSIGNED)) as max_num')
+            ->value('max_num') ?? 0;
+        $nextNum = $maxNum + 1;
+        $newId = $nextNum >= 1000 ? 'EMP' . $nextNum : 'EMP' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
 
         $data['id'] = $newId;
         $data['status'] = 'active';
         $data['date_joined'] = now()->toDateString();
 
-        // Handle Avatar Upload (Cropped)
         if ($request->filled('cropped_image')) {
             $imgData = $request->input('cropped_image');
-            // More robust prefix stripping
             if (preg_match('/^data:image\/(\w+);base64,/', $imgData, $type)) {
                 $imgData = substr($imgData, strpos($imgData, ',') + 1);
             }
@@ -271,22 +502,16 @@ class EmployeeController extends Controller
             $data['profile_picture'] = 'uploads/avatars/' . $filename;
         }
 
-        // Create Employee
         $employee = Employee::create($data);
 
-        // Handle Dynamic Document Classification Sets
         if ($request->has('doc_items')) {
             foreach ($request->doc_items as $index => $item) {
                 $category = $item['classification'] ?? 'UNCATEGORIZED';
-                
-                // Check if files exist for THIS specific row/index
                 if ($request->hasFile("doc_items.{$index}.files")) {
                     $files = $request->file("doc_items.{$index}.files");
-                    
                     foreach ($files as $fileIndex => $file) {
                         $filename = time() . "_{$index}_{$fileIndex}_" . $file->getClientOriginalName();
                         $file->move(public_path('uploads'), $filename);
-
                         $employee->documents()->create([
                             'document_name' => $file->getClientOriginalName(),
                             'file_path' => 'uploads/' . $filename,
@@ -304,12 +529,20 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         $request->validate([
-            'status' => 'required|string|in:active,inactive,resign,retired,transfer',
+            'status' => 'required|string|in:transfer,retired,resign,others',
             'so_no' => 'required_if:status,transfer|nullable|string|max:255',
             'transfer_to' => 'required_if:status,transfer|nullable|string|max:255',
             'effective_date' => 'required|date',
             'retirement_under' => 'required_if:status,retired|nullable|string|max:255',
+            'status_specify' => 'required_if:status,others|nullable|string|max:255',
         ]);
+
+        $retirementValue = $request->retirement_under;
+        if($request->status === 'retired' && !empty($retirementValue)) {
+            if(!str_contains(strtolower($retirementValue), 'retirement under')) {
+                $retirementValue = "Retirement under " . $retirementValue;
+            }
+        }
 
         $employee->update([
             'status' => $request->status,
@@ -317,10 +550,11 @@ class EmployeeController extends Controller
             'so_no' => $request->so_no,
             'transfer_to' => $request->transfer_to,
             'effective_date' => $request->effective_date,
-            'retirement_under' => $request->retirement_under,
+            'retirement_under' => $retirementValue,
+            'status_specify' => $request->status_specify,
         ]);
 
-        return redirect()->route('employees.index')->with('success_modal', [
+        return redirect()->route('employees.masterlist')->with('success_modal', [
             'title' => 'Status Updated!',
             'message' => "Employee has been successfully moved to " . ucfirst($request->status) . " list."
         ]);
@@ -331,12 +565,12 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
 
         if ($employee->status !== 'active') {
-            return back()->with('error_message', 'Documents cannot be uploaded for inactive or history employees.');
+            return back()->with('error_message', 'Documents cannot be uploaded for inactive or archive employees.');
         }
 
         $request->validate([
             'category' => 'nullable|string|max:50',
-            'documents.*' => 'required|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:10240',
+            'documents.*' => 'required|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:102400',
         ]);
 
         if ($request->hasFile('documents')) {
@@ -372,7 +606,7 @@ class EmployeeController extends Controller
         $employee = $doc->employee;
 
         if ($employee && $employee->status !== 'active') {
-            return back()->with('error_message', 'Documents cannot be deleted for inactive or history employees.');
+            return back()->with('error_message', 'Documents cannot be deleted for inactive or archive employees.');
         }
 
         $file_path = public_path($doc->file_path);
@@ -414,6 +648,7 @@ class EmployeeController extends Controller
         EmployeeRequest::create([
             'employee_id' => $employee->id,
             'employee_name' => $employee->name,
+            'agency' => $employee->agency,
             'request_type' => $data['request_type'],
             'request_date' => now()->toDateString(),
             'status' => 'pending',
@@ -441,6 +676,7 @@ class EmployeeController extends Controller
 
         return view('approved-list', compact('approved_requests', 'search'));
     }
+
     public function update(Request $request, $id): RedirectResponse
     {
         $employee = Employee::findOrFail($id);
@@ -448,39 +684,38 @@ class EmployeeController extends Controller
             'last_name' => 'nullable|string|max:100',
             'first_name' => 'nullable|string|max:100',
             'middle_name' => 'nullable|string|max:100',
+            'suffix' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'position' => 'required|string|max:100',
-            'department' => 'required|string|max:100',
+            'agency' => 'required|string|max:100',
             'so_number' => 'nullable|string|max:100',
             'date_of_birth' => 'nullable|date',
             'sex' => 'nullable|string|in:Male,Female',
-            'marital_status' => 'nullable|string|max:50',
-            'religion' => 'nullable|string|max:100',
-            'blood_type' => 'nullable|string|max:10',
+            'civil_status' => 'nullable|string|max:50',
             'nationality' => 'nullable|string|max:100',
             'address' => 'nullable|string|max:500',
-            'emergency_contact' => 'nullable|string|max:255',
-            'emergency_phone' => 'nullable|string|max:20',
         ]);
 
         if ($request->filled('first_name') && $request->filled('last_name')) {
             $mi = !empty($data['middle_name']) ? ' ' . strtoupper(substr($data['middle_name'], 0, 1)) . '.' : '';
-            $data['name'] = "{$data['first_name']}{$mi} {$data['last_name']}";
+            $suffix = !empty($data['suffix']) ? ' ' . $data['suffix'] : '';
+            $data['name'] = "{$data['last_name']}, {$data['first_name']}{$mi}{$suffix}";
         } else {
-            // Keep the current name if names aren't being updated
             unset($data['name']);
             unset($data['first_name']);
             unset($data['last_name']);
             unset($data['middle_name']);
+            unset($data['suffix']);
         }
 
         $employee->update($data);
 
-        $tab = $request->input('position') ? 'work' : 'personal';
+        $tab = $request->input('active_tab', 'personal');
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => $tab])
             ->with('success_message', 'Employee details updated successfully.');
     }
+
     public function updateAvatar(Request $request, $id): RedirectResponse
     {
         $employee = Employee::findOrFail($id);
@@ -492,7 +727,6 @@ class EmployeeController extends Controller
 
         if ($request->filled('cropped_image')) {
             $imgData = $request->input('cropped_image');
-            // More robust prefix stripping
             if (preg_match('/^data:image\/(\w+);base64,/', $imgData, $type)) {
                 $imgData = substr($imgData, strpos($imgData, ',') + 1);
             }
@@ -506,7 +740,6 @@ class EmployeeController extends Controller
             
             file_put_contents($path, base64_decode($imgData));
             
-            // Delete old avatar if exists
             if ($employee->profile_picture && file_exists(public_path($employee->profile_picture))) {
                 @unlink(public_path($employee->profile_picture));
             }
@@ -519,7 +752,6 @@ class EmployeeController extends Controller
             $filename = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('uploads/avatars'), $filename);
 
-            // Delete old avatar if exists
             if ($employee->profile_picture && file_exists(public_path($employee->profile_picture))) {
                 @unlink(public_path($employee->profile_picture));
             }

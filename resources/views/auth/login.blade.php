@@ -433,7 +433,7 @@
         <div class="bg-blobs"><div class="blob-1"></div></div>
         <div class="form-inner">
             <h1 class="form-title">Create Account</h1>
-            <p class="form-subtitle">Register to manage your school personnel records</p>
+            <p class="form-subtitle">Register to manage your agency personnel records</p>
 
             @if($errors->any())
                 <div class="alert alert-error">

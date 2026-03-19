@@ -57,8 +57,8 @@
                         <input type="text" name="employee_name" class="portal-input" placeholder="e.g. Juan De La Cruz" required>
                     </div>
                     <div class="form-group">
-                        <label class="portal-label">SCHOOL / DEPARTMENT <span style="color: #ef4444;">*</span></label>
-                        <input type="text" name="school" class="portal-input" placeholder="e.g. SDO Quezon City" required>
+                        <label class="portal-label">AGENCY <span style="color: #ef4444;">*</span></label>
+                        <input type="text" name="agency" class="portal-input" placeholder="e.g. SDO Quezon City" required>
                     </div>
                     <div class="form-group">
                         <label class="portal-label">NUMBER OF COPIES <span style="color: #ef4444;">*</span></label>

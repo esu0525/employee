@@ -263,6 +263,73 @@
             background: radial-gradient(circle at top left, #fdfbf7, #f2ead3);
         }
 
+        /* Modern Tiny Toast - Top Right */
+        .modern-toast-mini {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 10000;
+            background: #10b981;
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 200px;
+            max-width: 320px;
+            opacity: 0;
+            transform: translateX(30px) scale(0.95);
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modern-toast-mini.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) scale(1);
+        }
+
+        .toast-mini-icon {
+            display: flex; align-items: center; justify-content: center;
+            width: 1.5rem; height: 1.5rem; background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+        }
+        .toast-mini-icon i { width: 1rem; height: 1rem; stroke-width: 3px; }
+
+        /* Status Badge Colors */
+        .badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-flex;
+            align-items: center;
+        }
+        .badge-resign { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
+        .badge-retired { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+        .badge-transfer { background: #e0f2fe; color: #0ea5e9; border: 1px solid #bae6fd; }
+        .badge-others { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+        body[data-theme="dark"] .badge-resign { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+        body[data-theme="dark"] .badge-retired { background: rgba(217, 119, 6, 0.15); color: #fcd34d; border-color: rgba(217, 119, 6, 0.3); }
+        body[data-theme="dark"] .badge-transfer { background: rgba(14, 165, 233, 0.15); color: #7dd3fc; border-color: rgba(14, 165, 233, 0.3); }
+        body[data-theme="dark"] .badge-others { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3); }
+
+
+        .toast-mini-content { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+        .toast-mini-title { font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.02em; }
+        .toast-mini-msg { font-size: 0.75rem; font-weight: 500; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .toast-mini-close {
+            background: none; border: none; color: white; opacity: 0.6; cursor: pointer; padding: 2px; transition: 0.2s;
+        }
+        .toast-mini-close:hover { opacity: 1; transform: scale(1.1); }
+        .toast-mini-close i { width: 14px; height: 14px; }
+
         /* Top Header Styles */
         .top-header {
             display: flex;
@@ -490,14 +557,20 @@
                 <nav class="sidebar-nav">
                     <ul>
                         <li>
-                            <a href="#" class="nav-link {{ Route::is('employees.index') || Route::is('employees.masterlist') || Route::is('employees.add') || request()->is('employee-details*') ? 'active' : '' }}" onclick="toggleSubnav(event)">
+                            <a href="{{ route('dashboard') }}" class="nav-link {{ Route::is('dashboard') ? 'active' : '' }}">
+                                <i data-lucide="layout-dashboard"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="nav-link {{ Route::is('employees.masterlist') || Route::is('employees.add') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'active' : '' }}" onclick="toggleSubnav(event)">
                                 <i data-lucide="users"></i>
                                 <span>201 Masterlist</span>
-                                <i data-lucide="chevron-down" class="subnav-arrow {{ Route::is('employees.index') || Route::is('employees.masterlist') || Route::is('employees.add') || request()->is('employee-details*') ? 'rotate' : '' }}" style="margin-left: auto; width: 14px; height: 14px; transition: transform 0.3s;"></i>
+                                <i data-lucide="chevron-down" class="subnav-arrow {{ Route::is('employees.masterlist') || Route::is('employees.add') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'rotate' : '' }}" style="margin-left: auto; width: 14px; height: 14px; transition: transform 0.3s;"></i>
                             </a>
-                            <ul class="subnav" id="masterlistSubnav" style="{{ Route::is('employees.index') || Route::is('employees.masterlist') || Route::is('employees.add') || request()->is('employee-details*') ? 'display: block;' : 'display: none;' }}">
+                            <ul class="subnav" id="masterlistSubnav" style="{{ Route::is('employees.masterlist') || Route::is('employees.add') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'display: block;' : 'display: none;' }}">
                                 <li>
-                                    <a href="{{ route('employees.masterlist') }}" class="subnav-link {{ Route::is('employees.masterlist') ? 'active' : '' }}">
+                                    <a href="{{ route('employees.masterlist') }}" class="subnav-link {{ Route::is('employees.masterlist') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'active' : '' }}">
                                         <i data-lucide="chevron-right"></i>
                                         Masterlist
                                     </a>
@@ -511,9 +584,9 @@
                             </ul>
                         </li>
                         <li>
-                            <a href="{{ route('employees.history') }}" class="nav-link {{ Route::is('employees.history') ? 'active' : '' }}">
-                                <i data-lucide="history"></i>
-                                <span>History</span>
+                            <a href="{{ route('employees.archive') }}" class="nav-link {{ Route::is('employees.archive') || (isset($isArchived) && $isArchived) ? 'active' : '' }}">
+                                <i data-lucide="archive"></i>
+                                <span>Archive</span>
                             </a>
                         </li>
                         <li>
@@ -794,12 +867,67 @@
                     closeWelcomeModal();
                 }, 2000);
             }
+
+            // Auto-dismiss success toast if it exists
+            const toast = document.getElementById('successToast');
+            if (toast) {
+                setTimeout(() => {
+                    closeToast();
+                }, 4000);
+            }
             
             // Re-initialize icons just in case
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
         });
+
+        // Global Formatting Script
+        document.addEventListener('input', function(e) {
+            // 1. Title Case Formatting (Big First Letter, Small Following)
+            // Target text inputs and textareas, but skip specific non-title fields
+            const isText = (e.target.tagName === 'INPUT' && (e.target.type === 'text' || !e.target.type)) || e.target.tagName === 'TEXTAREA';
+            const skipFields = ['email', 'password', 'id', 'username', 'so_no', 'so_number'];
+            
+            if (isText && !skipFields.includes(e.target.name) && !skipFields.includes(e.target.id)) {
+                const cursorStart = e.target.selectionStart;
+                const cursorEnd = e.target.selectionEnd;
+                
+                let val = e.target.value;
+                if (val) {
+                    // Capitalize first letter of each word and lowercase the rest
+                    e.target.value = val.replace(/\w\S*/g, function(txt) {
+                        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                    });
+                }
+                
+                // Restore cursor position
+                e.target.setSelectionRange(cursorStart, cursorEnd);
+            }
+
+            // 2. Phone Formatting ####-###-####
+            const isPhoneField = e.target.name?.includes('phone') || e.target.id?.includes('phone');
+            if (isPhoneField) {
+                let val = e.target.value.replace(/\D/g, '');
+                if (val.length > 11) val = val.substr(0, 11);
+                
+                let formatted = val;
+                if (val.length > 4 && val.length <= 7) {
+                    formatted = val.substr(0, 4) + '-' + val.substr(4);
+                } else if (val.length > 7) {
+                    formatted = val.substr(0, 4) + '-' + val.substr(4, 3) + '-' + val.substr(7);
+                }
+                e.target.value = formatted;
+            }
+        });
+
+        function closeToast() {
+            const toast = document.getElementById('successToast');
+            if (toast) {
+                toast.classList.remove('active');
+                setTimeout(() => toast.remove(), 400);
+            }
+        }
     </script>
     @stack('scripts')
 </body>

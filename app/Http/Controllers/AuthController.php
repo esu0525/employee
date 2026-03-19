@@ -20,7 +20,7 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (session()->has('auth_user_id')) {
-            return redirect()->route('employees.index');
+            return redirect()->route('dashboard');
         }
         return view('auth.login');
     }
@@ -201,7 +201,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success'  => true,
-            'redirect' => route('employees.index'),
+            'redirect' => route('dashboard'),
         ], 200, ['Connection' => 'close']);
     }
 

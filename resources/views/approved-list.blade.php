@@ -44,7 +44,7 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Employee / School</th>
+                        <th>Employee / Agency</th>
                         <th>Document / Purpose</th>
                         <th>Copies</th>
                         <th>Request Date</th>
@@ -60,7 +60,7 @@
                                 <div style="line-height: 1.4;">
                                     <span style="font-weight: 600; color: var(--text-main); font-size: 0.8125rem;">{{ $req->employee_name }}</span>
                                     <br>
-                                    <span style="font-size: 0.6875rem; color: var(--text-muted);">{{ $req->school ?? $req->employee_id }}</span>
+                                    <span style="font-size: 0.6875rem; color: var(--text-muted);">{{ $req->agency ?? $req->employee_id }}</span>
                                 </div>
                             </td>
                             <td>

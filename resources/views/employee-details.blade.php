@@ -17,8 +17,20 @@
             <div class="banner-overlay"></div>
             
             <div class="banner-navigation">
-                <a href="{{ route('employees.masterlist') }}" class="banner-back-btn">
-                    <i data-lucide="arrow-left"></i>
+                @php
+                    $isArchived = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']);
+                    
+                    // Construct Full Name with FULL Middle Name for Detail View
+                    $fullNameDisplay = $employee->last_name . ', ' . $employee->first_name;
+                    if ($employee->middle_name) {
+                        $fullNameDisplay .= ' ' . $employee->middle_name;
+                    }
+                    if ($employee->suffix) {
+                        $fullNameDisplay .= ' ' . $employee->suffix;
+                    }
+                @endphp
+                <a href="{{ $isArchived ? route('employees.archive') : route('employees.masterlist') }}" class="banner-back-btn">
+                    <i data-lucide="{{ $isArchived ? 'archive' : 'arrow-left' }}"></i>
                 </a>
                 
                 <div class="status-badge status-{{ $employee->status }}">
@@ -56,11 +68,10 @@
             </div>
             
             <div class="profile-main-meta">
-                <h1 class="employee-display-name">{{ $employee->name }}</h1>
+                <h1 class="employee-display-name">{{ $fullNameDisplay }}</h1>
                 <div class="employee-sub-meta">
                     <span class="meta-item"><i data-lucide="briefcase"></i> {{ $employee->position }}</span>
-                    <span class="meta-item"><i data-lucide="building"></i> {{ $employee->department }}</span>
-                    <span class="meta-item"><i data-lucide="map-pin"></i> {{ $employee->address ? explode(',', $employee->address)[0] : 'No Address set' }}</span>
+                    <span class="meta-item"><i data-lucide="building"></i> {{ $employee->agency }}</span>
                 </div>
             </div>
 
@@ -109,13 +120,14 @@
                             </button>
                         </div>
                         <div class="info-grid-modern">
-                            <div class="info-group"><label>Full Name</label><span>{{ $employee->name }}</span></div>
+                            <div class="info-group"><label>Full Name</label><span>{{ $fullNameDisplay }}</span></div>
                             <div class="info-group"><label>Current Position</label><span>{{ $employee->position }}</span></div>
                             <div class="info-group"><label>Birthday</label><span>{{ $employee->date_of_birth ? $employee->date_of_birth->format('M d, Y') : '--' }}</span></div>
                             <div class="info-group"><label>Age</label><span>{{ $employee->date_of_birth ? $employee->date_of_birth->age . ' years' : '--' }}</span></div>
                             <div class="info-group"><label>Sex</label><span>{{ $employee->sex ?: '--' }}</span></div>
+                            <div class="info-group"><label>Civil Status</label><span>{{ $employee->civil_status ?: '--' }}</span></div>
                             <div class="info-group full-width"><label>Address</label><span>{{ $employee->address ?: '--' }}</span></div>
-                            <div class="info-group full-width"><label>School/Department</label><span>{{ $employee->department }}</span></div>
+                            <div class="info-group full-width"><label>Agency</label><span>{{ $employee->agency }}</span></div>
                         </div>
                     </div>
 
@@ -128,13 +140,6 @@
                             <div class="info-group full-width"><label><i data-lucide="mail"></i> Email Address</label><span>{{ $employee->email ?: '--' }}</span></div>
                             <div class="info-group full-width"><label><i data-lucide="phone"></i> Phone Number</label><span>{{ $employee->phone ?: '--' }}</span></div>
                             
-                            <div style="grid-column: span 2; margin-top: 1rem; border-top: 1px dashed #e2e8f0; padding-top: 1rem;">
-                                <h4 style="font-size: 0.7rem; font-weight: 800; color: #ef4444; text-transform: uppercase; margin-bottom: 0.75rem;">Emergency Contact</h4>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="info-group"><label>Contact Person</label><span>{{ $employee->emergency_contact ?: '--' }}</span></div>
-                                    <div class="info-group"><label>Contact Number</label><span>{{ $employee->emergency_phone ?: '--' }}</span></div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -155,12 +160,8 @@
                             <span>{{ $employee->position }}</span>
                         </div>
                         <div class="info-group">
-                            <label><i data-lucide="building-2" style="color: #10b981;"></i> Office</label>
-                            <span>{{ $employee->department }}</span>
-                        </div>
-                        <div class="info-group">
-                            <label><i data-lucide="hash" style="color: #8b5cf6;"></i> S.O Number</label>
-                            <span>{{ $employee->so_number ?: '--' }}</span>
+                            <label><i data-lucide="building-2" style="color: #10b981;"></i> Agency</label>
+                            <span>{{ $employee->agency }}</span>
                         </div>
                         <div class="info-group">
                             <label><i data-lucide="info" style="color: #f59e0b;"></i> Employment Status</label>
@@ -316,8 +317,8 @@
                                 <button onclick="prevDoc()" id="btnPrev" class="tool-btn"><i data-lucide="chevron-left"></i></button>
                                 <span id="docCounter" class="tool-counter">0/0</span>
                                 <button onclick="nextDoc()" id="btnNext" class="tool-btn"><i data-lucide="chevron-right"></i></button>
-                                <div class="divider"></div>
-                                <button onclick="printPreview()" class="tool-btn print"><i data-lucide="printer"></i></button>
+                                <button onclick="fullscreenDoc()" class="tool-btn maximize" title="Fullscreen View"><i data-lucide="maximize"></i></button>
+                                <button onclick="openExternal()" class="tool-btn external" title="Open in New Tab"><i data-lucide="external-link"></i></button>
                             </div>
                         </div>
                         
@@ -344,13 +345,14 @@
         </div>
         <form action="{{ route('employees.details-update', ['id' => $employee->id]) }}" method="POST">
             @csrf
+            <input type="hidden" name="active_tab" value="work">
             <input type="hidden" name="last_name" value="{{ $employee->last_name }}">
             <input type="hidden" name="first_name" value="{{ $employee->first_name }}">
             <input type="hidden" name="middle_name" value="{{ $employee->middle_name }}">
+            <input type="hidden" name="suffix" value="{{ $employee->suffix }}">
             <div class="modal-body-modern">
                 <div class="modal-input"><label>Position</label><input type="text" name="position" value="{{ $employee->position }}" required></div>
-                <div class="modal-input"><label>Office</label><input type="text" name="department" value="{{ $employee->department }}" required></div>
-                <div class="modal-input"><label>S.O Number</label><input type="text" name="so_number" value="{{ $employee->so_number }}"></div>
+                <div class="modal-input"><label>Agency</label><input type="text" name="agency" value="{{ $employee->agency }}" required></div>
             </div>
             <div class="modal-footer-modern"><button type="button" class="btn-cancel" onclick="closeEditModal('work')">Cancel</button><button type="submit" class="btn-save">Save Changes</button></div>
         </form>
@@ -365,6 +367,7 @@
         </div>
         <form action="{{ route('employees.details-update', ['id' => $employee->id]) }}" method="POST">
             @csrf
+            <input type="hidden" name="active_tab" value="personal">
             <div class="modal-body-modern scrollable">
                 <div class="grid-2">
                     <div class="modal-input"><label>First Name</label><input type="text" name="first_name" value="{{ $employee->first_name }}" required></div>
@@ -372,6 +375,9 @@
                 </div>
                 <div class="grid-2">
                     <div class="modal-input"><label>Middle Name</label><input type="text" name="middle_name" value="{{ $employee->middle_name }}"></div>
+                    <div class="modal-input"><label>Suffix</label><input type="text" name="suffix" value="{{ $employee->suffix }}" placeholder="e.g. Jr., III"></div>
+                </div>
+                <div class="grid-2">
                     <div class="modal-input"><label>Date of Birth</label><input type="date" name="date_of_birth" value="{{ $employee->date_of_birth ? $employee->date_of_birth->format('Y-m-d') : '' }}"></div>
                 </div>
                 <div class="grid-2">
@@ -383,18 +389,14 @@
                         </select>
                     </div>
                     <div class="modal-input">
-                        <label>Marital Status</label>
-                        <select name="marital_status">
-                            <option value="Single" {{ $employee->marital_status == 'Single' ? 'selected' : '' }}>Single</option>
-                            <option value="Married" {{ $employee->marital_status == 'Married' ? 'selected' : '' }}>Married</option>
-                            <option value="Divorced" {{ $employee->marital_status == 'Divorced' ? 'selected' : '' }}>Divorced</option>
-                            <option value="Widowed" {{ $employee->marital_status == 'Widowed' ? 'selected' : '' }}>Widowed</option>
+                        <label>Civil Status</label>
+                        <select name="civil_status">
+                            <option value="Single" {{ $employee->civil_status == 'Single' ? 'selected' : '' }}>Single</option>
+                            <option value="Married" {{ $employee->civil_status == 'Married' ? 'selected' : '' }}>Married</option>
+                            <option value="Divorced" {{ $employee->civil_status == 'Divorced' ? 'selected' : '' }}>Divorced</option>
+                            <option value="Widowed" {{ $employee->civil_status == 'Widowed' ? 'selected' : '' }}>Widowed</option>
                         </select>
                     </div>
-                </div>
-                <div class="grid-2">
-                    <div class="modal-input"><label>Blood Type</label><input type="text" name="blood_type" value="{{ $employee->blood_type }}" placeholder="e.g. O+"></div>
-                    <div class="modal-input"><label>Religion</label><input type="text" name="religion" value="{{ $employee->religion }}"></div>
                 </div>
                 <div class="modal-input"><label>Nationality</label><input type="text" name="nationality" value="{{ $employee->nationality ?: 'Filipino' }}"></div>
                 <div class="grid-2">
@@ -402,11 +404,9 @@
                     <div class="modal-input"><label>Phone</label><input type="text" name="phone" value="{{ $employee->phone }}"></div>
                 </div>
                 <div class="modal-input"><label>Address</label><textarea name="address" rows="2">{{ $employee->address }}</textarea></div>
-                <div class="modal-input"><label>Emergency Contact</label><input type="text" name="emergency_contact" value="{{ $employee->emergency_contact }}"></div>
-                <div class="modal-input"><label>Emergency Phone</label><input type="text" name="emergency_phone" value="{{ $employee->emergency_phone }}"></div>
                 
                 <input type="hidden" name="position" value="{{ $employee->position }}">
-                <input type="hidden" name="department" value="{{ $employee->department }}">
+                <input type="hidden" name="agency" value="{{ $employee->agency }}">
             </div>
             <div class="modal-footer-modern"><button type="button" class="btn-cancel" onclick="closeEditModal('personal')">Cancel</button><button type="submit" class="btn-save">Save Profile</button></div>
         </form>
@@ -416,7 +416,7 @@
 <form id="importForm" method="POST" action="{{ route('employees.upload', ['id' => $employee->id]) }}" enctype="multipart/form-data" style="display: none;">
     @csrf
     <input type="hidden" name="category" id="importCategory" value="GENERAL">
-    <input type="file" name="documents[]" id="importFileInput" accept=".pdf,image/*,.docx,.doc,.xlsx" multiple onchange="this.form.submit()">
+    <input type="file" name="documents[]" id="importFileInput" accept=".pdf,image/*,.docx,.doc,.xlsx" multiple onchange="handleBatchUpload(this)">
 </form>
 
 <!-- Cropper Modal -->
@@ -1060,6 +1060,32 @@
     #cropperModal.active, #viewPhotoModal.active {
         display: flex !important;
     }
+
+    /* Fullscreen Viewer Styles */
+    .preview-mini-card.is-fullscreen {
+        height: 100vh !important;
+        width: 100vw !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        display: flex;
+        flex-direction: column;
+        z-index: 9999;
+        background: #000;
+    }
+    
+    .preview-mini-card.is-fullscreen .preview-header-modern {
+        padding: 1rem 2rem;
+        background: var(--bg-card);
+        border-bottom: 2px solid var(--border);
+    }
+    
+    .preview-mini-card.is-fullscreen .mini-iframe,
+    .preview-mini-card.is-fullscreen .mini-placeholder {
+        flex: 1;
+        height: calc(100vh - 70px) !important;
+        background: #000;
+    }
 </style>
 @endpush
 
@@ -1195,24 +1221,73 @@
         content.classList.toggle('active');
     }
 
-    function triggerCategoryUpload(cat) {
-        document.getElementById('importCategory').value = cat;
-        document.getElementById('importFileInput').click();
-    }
-
     function triggerImport() {
         document.getElementById('importCategory').value = 'GENERAL';
         document.getElementById('importFileInput').click();
     }
 
+    function handleBatchUpload(input) {
+        if (!input.files || input.files.length === 0) return;
+        
+        const files = input.files;
+        let totalSize = 0;
+        const maxSize = 500 * 1024 * 1024; // 500MB (matching our new php.ini)
+        
+        for (let i = 0; i < files.length; i++) {
+            totalSize += files[i].size;
+            
+            // Check individual file size (optional, e.g. 100MB) 
+            if (files[i].size > 100 * 1024 * 1024) {
+                alert(`File "${files[i].name}" is too large (max 100MB per file).`);
+                input.value = '';
+                return;
+            }
+        }
+        
+        if (totalSize > maxSize) {
+            alert(`Total upload size is too large (${(totalSize/1024/1024).toFixed(1)}MB). Max limit is 500MB.`);
+            input.value = '';
+            return;
+        }
+
+        // Show a loading indicator
+        const toast = document.createElement('div');
+        toast.className = 'toast-modern animate-fade-in';
+        toast.innerHTML = `
+            <div class="toast-content" id="uploadingToast">
+                <i data-lucide="loader" class="animate-spin" style="color: #3b82f6;"></i>
+                <span>Uploading ${files.length} document(s)... <strong>Don't close the browser</strong></span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        if(typeof lucide !== 'undefined') lucide.createIcons();
+
+        // Submit form
+        document.getElementById('importForm').submit();
+    }
+
+    function triggerCategoryUpload(cat) {
+        document.getElementById('importCategory').value = cat;
+        document.getElementById('importFileInput').click();
+    }
+
     function previewDocById(id, url, name) {
-        const frame = document.getElementById('pdfFrame');
+        let frame = document.getElementById('pdfFrame');
         const noPreview = document.getElementById('noPreview');
         const controls = document.getElementById('previewControls');
         
         document.querySelectorAll('.mini-doc-item').forEach(item => item.classList.remove('active'));
         const activeItem = document.getElementById('doc-item-' + id);
         if (activeItem) activeItem.classList.add('active');
+
+        // To prevent "Leave site?" prompt from the native PDF viewer's unsaved state, 
+        // we replace the iframe completely instead of just changing src.
+        const parent = frame.parentElement;
+        const newFrame = frame.cloneNode(false); // Clone without src
+        frame.onbeforeunload = null; // Clear any listeners
+        frame.remove();
+        parent.appendChild(newFrame);
+        frame = newFrame; // Keep reference updated
 
         // Viewer logic for images vs pdfs vs docs
         const extension = url.split('.').pop().toLowerCase();
@@ -1221,13 +1296,12 @@
         noPreview.innerHTML = '';
         noPreview.style.display = 'none';
         frame.style.display = 'none';
-        frame.src = '';
+        frame.src = 'about:blank'; // Clear previous
 
         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
             noPreview.innerHTML = `<img src="${url}" style="max-width: 90%; max-height: 90%; object-fit: contain; box-shadow: 0 20px 50px rgba(0,0,0,0.15); border-radius: 12px; border: 4px solid white;">`;
             noPreview.style.display = 'flex';
         } else if (['docx'].includes(extension)) {
-            // Local viewing for .docx
             noPreview.style.display = 'flex';
             noPreview.innerHTML = '<div id="docx-container" style="width: 100%; height: 100%; overflow: auto; padding: 2rem; background: #f1f5f9;"></div>';
             fetch(url)
@@ -1240,7 +1314,6 @@
             frame.src = url;
             frame.style.display = 'block';
         } else if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
-            // Attempt to use Google Docs Viewer
             noPreview.style.display = 'flex';
             noPreview.innerHTML = `
                 <div style="text-align: center; width: 100%; height: 100%; display: flex; flex-direction: column;">
@@ -1257,7 +1330,6 @@
             `;
             if(typeof lucide !== 'undefined') lucide.createIcons();
         } else {
-            // Fallback for other formats
             let icon = 'file-text';
             if(['xlsx', 'xls'].includes(extension)) icon = 'file-spreadsheet';
             
@@ -1338,6 +1410,32 @@
         const frame = document.getElementById('pdfFrame');
         if (frame.src) frame.contentWindow.print();
     }
+
+    function openExternal() {
+        if (currentIndex !== -1 && documentsList[currentIndex]) {
+            window.open(documentsList[currentIndex].url, '_blank');
+        }
+    }
+
+    function fullscreenDoc() {
+        const viewer = document.querySelector('.preview-mini-card');
+        if (!document.fullscreenElement) {
+            viewer.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+            viewer.classList.add('is-fullscreen');
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    // Handle fullscreen change to cleanup classes
+    document.addEventListener('fullscreenchange', () => {
+        const viewer = document.querySelector('.preview-mini-card');
+        if (!document.fullscreenElement) {
+            viewer.classList.remove('is-fullscreen');
+        }
+    });
 
     function openEditModal(type) { document.getElementById(type + 'EditModal').classList.add('active'); }
     function closeEditModal(type) { document.getElementById(type + 'EditModal').classList.remove('active'); }

@@ -33,7 +33,7 @@
                 <thead>
                     <tr>
                         <th style="padding: 0.625rem 0.75rem; text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); width: 40px;">ID</th>
-                        <th style="padding: 0.625rem 0.75rem; text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border);">Employee / School</th>
+                        <th style="padding: 0.625rem 0.75rem; text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border);">Employee / Agency</th>
                         <th style="padding: 0.625rem 0.75rem; text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border);">Document / Purpose</th>
                         <th style="padding: 0.625rem 0.75rem; text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); width: 60px;">Copies</th>
                         <th style="padding: 0.625rem 0.75rem; text-align: left; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); width: 100px;">Date</th>
@@ -53,7 +53,7 @@
                                     <span style="font-weight: 600; color: var(--text-main); font-size: 0.8125rem; border-bottom: 1px dashed var(--primary);">{{ $req->employee_name }}</span>
                                 </a>
                                 <br>
-                                <span style="font-size: 0.6875rem; color: var(--text-muted);">{{ $req->school ?? $req->employee_id }}</span>
+                                <span style="font-size: 0.6875rem; color: var(--text-muted);">{{ $req->agency ?? $req->employee_id }}</span>
                             </td>
                             <td style="padding: 0.5rem 0.75rem; vertical-align: middle;">
                                 <span style="display: block; font-weight: 600; font-size: 0.75rem; color: var(--primary);">{{ $req->request_type }}</span>

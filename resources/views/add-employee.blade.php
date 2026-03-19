@@ -139,6 +139,17 @@
                             </select>
                             @error('sex')<span class="field-error">{{ $message }}</span>@enderror
                         </div>
+                        <div class="form-group">
+                            <label class="form-label" for="civil_status">Civil Status <span class="required-star">*</span></label>
+                            <select id="civil_status" name="civil_status" class="form-input {{ $errors->has('civil_status') ? 'input-error' : '' }}" required>
+                                <option value="" disabled {{ old('civil_status') ? '' : 'selected' }}>Select status</option>
+                                <option value="Single" {{ old('civil_status') === 'Single' ? 'selected' : '' }}>Single</option>
+                                <option value="Married" {{ old('civil_status') === 'Married' ? 'selected' : '' }}>Married</option>
+                                <option value="Divorced" {{ old('civil_status') === 'Divorced' ? 'selected' : '' }}>Divorced</option>
+                                <option value="Widowed" {{ old('civil_status') === 'Widowed' ? 'selected' : '' }}>Widowed</option>
+                            </select>
+                            @error('civil_status')<span class="field-error">{{ $message }}</span>@enderror
+                        </div>
                         <div class="form-group" style="grid-column: 1 / -1;">
                             <label class="form-label" for="address">Address <span class="required-star">*</span></label>
                             <input type="text" id="address" name="address" class="form-input {{ $errors->has('address') ? 'input-error' : '' }}" placeholder="e.g. 123 Rizal Street, Brgy. Example, Caloocan City" required value="{{ old('address') }}">
@@ -162,14 +173,6 @@
                             <label class="form-label" for="email">Personal Email</label>
                             <input type="email" id="email" name="email" class="form-input" placeholder="e.g. juan@example.com" value="{{ old('email') }}">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label" for="emergency_contact">Emergency Contact Name</label>
-                            <input type="text" id="emergency_contact" name="emergency_contact" class="form-input" placeholder="e.g. Maria Dela Cruz" value="{{ old('emergency_contact') }}">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="emergency_phone">Emergency Contact No.</label>
-                            <input type="text" id="emergency_phone" name="emergency_phone" class="form-input" placeholder="e.g. 09123456789" value="{{ old('emergency_phone') }}">
-                        </div>
                     </div>
                 </div>
 
@@ -186,13 +189,9 @@
                             @error('position')<span class="field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="department">School / Department <span class="required-star">*</span></label>
-                            <input type="text" id="department" name="department" class="form-input {{ $errors->has('department') ? 'input-error' : '' }}" placeholder="e.g. SDO - Caloocan City" required value="{{ old('department') }}">
-                            @error('department')<span class="field-error">{{ $message }}</span>@enderror
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="so_number">S.O. Number</label>
-                            <input type="text" id="so_number" name="so_number" class="form-input" placeholder="e.g. 123-2026" value="{{ old('so_number') }}">
+                            <label class="form-label" for="agency">Agency <span class="required-star">*</span></label>
+                            <input type="text" id="agency" name="agency" class="form-input {{ $errors->has('agency') ? 'input-error' : '' }}" placeholder="e.g. SDO - Caloocan City" required value="{{ old('agency') }}">
+                            @error('agency')<span class="field-error">{{ $message }}</span>@enderror
                         </div>
                     </div>
                 </div>
@@ -759,9 +758,13 @@ function syncFullName() {
     const suffix = document.getElementById('suffix').value.trim();
     
     const mi = middle ? ' ' + middle.charAt(0).toUpperCase() + '.' : '';
-    const sfx = suffix ? ', ' + suffix : '';
+    const sfx = suffix ? ' ' + suffix : '';
     
-    document.getElementById('name').value = `${first}${mi} ${last}${sfx}`.trim();
+    if (last && first) {
+        document.getElementById('name').value = `${last}, ${first}${mi}${sfx}`.trim();
+    } else {
+        document.getElementById('name').value = '';
+    }
 }
 
 let cropper;

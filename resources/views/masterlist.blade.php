@@ -10,6 +10,29 @@
         <p class="page-subtitle">List of active employees.</p>
     </div>
 
+    <!-- Masterlist Summary Cards -->
+    <div class="summary-cards-grid" style="grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="summary-card card-primary animate-up" style="--delay: 0.1s;">
+            <div class="card-icon-box" style="width: 3.5rem; height: 3.5rem;">
+                <i data-lucide="users" style="width: 1.75rem; height: 1.75rem;"></i>
+            </div>
+            <div class="card-stats">
+                <span class="stats-value" style="font-size: 1.75rem;">{{ $total_active }}</span>
+                <span class="stats-label">Active Records</span>
+            </div>
+        </div>
+        
+        <div class="summary-card card-warning animate-up" style="--delay: 0.2s;">
+            <div class="card-icon-box" style="width: 3.5rem; height: 3.5rem;">
+                <i data-lucide="sparkles" style="width: 1.75rem; height: 1.75rem;"></i>
+            </div>
+            <div class="card-stats">
+                <span class="stats-value" style="font-size: 1.75rem;">{{ $newly_joined }}</span>
+                <span class="stats-label">Recent Hires</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Action Bar -->
     <div class="action-bar">
         <div class="search-container">
@@ -18,7 +41,7 @@
                 type="text" 
                 id="searchInput"
                 class="search-input" 
-                placeholder="Search by name, position, or office..."
+                placeholder="Search by name, position, or agency..."
                 value="{{ $search }}"
                 autocomplete="off"
             >
@@ -51,7 +74,7 @@
                         <p style="font-weight: 600; margin-bottom: 0.5rem;">CSV Format Instructions:</p>
                         <ul style="margin-left: 1.25rem;">
                             <li>File must be in <strong>.csv</strong> format</li>
-                            <li>Columns: <strong>last_name, first_name, middle_name, position, office</strong></li>
+                            <li>Columns: <strong>last_name, first_name, middle_name, position, agency</strong></li>
                         </ul>
                     </div>
                     <div class="form-group">
@@ -85,10 +108,10 @@
                     <div class="form-group">
                         <label class="form-label">New Status</label>
                         <select name="status" id="statusSelect" class="form-input" required onchange="handleStatusFields()">
-                            <option value="active">Active</option>
                             <option value="transfer">Transfer</option>
                             <option value="retired">Retirement</option>
                             <option value="resign">Resignation</option>
+                            <option value="others">Others</option>
                         </select>
                     </div>
 
@@ -108,6 +131,13 @@
                         <div class="form-group">
                             <label class="form-label">Retirement Under (e.g. 8291/8292)</label>
                             <input type="text" name="retirement_under" class="form-input" placeholder="RA 8291 / RA 1616">
+                        </div>
+                    </div>
+
+                    <div id="othersFields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Please Specify</label>
+                            <input type="text" name="status_specify" id="status_specify" class="form-input" placeholder="Specify status details...">
                         </div>
                     </div>
 
@@ -150,13 +180,17 @@
 
 
     <!-- Success Toast (reused or local) -->
+    <!-- Modern Tiny Success Toast -->
     @if(session('success'))
-    <div class="toast-notification toast-success" id="successToast">
-        <div class="toast-icon"><i data-lucide="check"></i></div>
-        <div class="toast-content">
-            <p class="toast-title">Import Successful</p>
-            <p class="toast-text">{{ session('success') }}</p>
+    <div class="modern-toast-mini active" id="successToast">
+        <div class="toast-mini-icon">
+            <i data-lucide="check-circle-2"></i>
         </div>
+        <div class="toast-mini-content">
+            <span class="toast-mini-title">Done!</span>
+            <span class="toast-mini-msg">{{ session('success') }}</span>
+        </div>
+        <button class="toast-mini-close" onclick="closeToast()"><i data-lucide="x"></i></button>
     </div>
     @endif
 
@@ -205,6 +239,22 @@
         align-items: center; 
         background: #f8fafc; 
     }
+    .modal-header .icon-btn {
+        border: none !important;
+        background: none !important;
+        padding: 0.5rem;
+        color: #64748b;
+        cursor: pointer;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-header .icon-btn:hover {
+        color: #1e293b;
+    }
+    body[data-theme="dark"] .modal-header .icon-btn { color: #94a3b8; }
+    body[data-theme="dark"] .modal-header .icon-btn:hover { color: #f8fafc; }
     body[data-theme="dark"] .modal-header { background: #0f172a; border-bottom-color: #334155; }
     body[data-theme="night"] .modal-header { background: #fdf6e3; border-bottom-color: #ead6bb; }
 
@@ -247,59 +297,71 @@
 
     .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
     
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-    .pagination-links a, .pagination-links span {
-        padding: 0.5rem 0.75rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        color: #64748b;
-        font-weight: 500;
-        text-decoration: none;
-        transition: 0.2s;
+    /* Modern Nav Buttons */
+    .btn-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.75rem 1.25rem;
+        border-radius: 14px;
         font-size: 0.875rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 1px solid var(--border);
+        background: var(--bg-main);
+        color: var(--text-muted);
+        cursor: pointer;
     }
-    .pagination-links a:hover {
-        background: #f1f5f9;
-        border-color: #3b82f6;
-        color: #3b82f6;
-    }
-    .pagination-links .active {
-        background: #3b82f6;
-        border-color: #3b82f6;
+    
+    .btn-nav i { width: 1.125rem; height: 1.125rem; stroke-width: 2.5px; }
+
+    .btn-nav-active:hover {
+        background: var(--primary);
         color: white;
+        border-color: var(--primary);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px -4px rgba(79, 70, 229, 0.4);
     }
 
-    /* Status Button */
+    .btn-nav-active:active { transform: translateY(-1px); }
+
+    .btn-nav.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    /* Status Button - RESTORED EXACTLY */
     .btn-update-status {
-        display: flex; align-items: center; gap: 0.4rem;
-        padding: 0.45rem 0.8rem; border-radius: 8px;
-        background: #f1f5f9; border: 1px solid #e2e8f0;
-        color: #64748b; font-size: 0.75rem; font-weight: 700;
-        cursor: pointer; transition: 0.2s; margin-right: 0.5rem;
+        display: flex; 
+        align-items: center; 
+        gap: 0.4rem;
+        padding: 0.45rem 0.8rem; 
+        border-radius: 8px;
+        background: #f1f5f9; 
+        border: 1px solid #e2e8f0;
+        color: #64748b; 
+        font-size: 0.75rem; 
+        font-weight: 700;
+        cursor: pointer; 
+        transition: 0.2s; 
+        margin-right: 0.5rem;
     }
     .btn-update-status:hover {
-        background: #eef2f6; color: #3b82f6; border-color: #3b82f6;
+        background: #eef2f6; 
+        color: #3b82f6; 
+        border-color: #3b82f6;
     }
     .btn-update-status i { width: 14px; height: 14px; }
 
-    /* Success Animation */
-    .success-anim-box { display: flex; justify-content: center; }
-    .success-circle {
-        width: 80px; height: 80px; border-radius: 50%;
-        background: #ecfdf5; border: 4px solid #10b981;
-        display: flex; align-items: center; justify-content: center;
-        animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    @keyframes slideInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    .success-check { color: #10b981; width: 40px; height: 40px; stroke-width: 3; animation: checkAnim 0.6s 0.2s both; }
-
-    @keyframes popIn {
-        0% { transform: scale(0); opacity: 0; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes checkAnim {
-        0% { transform: scale(0.5); opacity: 0; }
-        100% { transform: scale(1); opacity: 1; }
+    
+    .animate-up {
+        animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation-delay: var(--delay);
     }
 </style>
 @endpush
@@ -356,12 +418,11 @@
     }
 
     function attachPaginationLinks() {
-        const links = document.querySelectorAll('.pagination-links a');
+        const links = document.querySelectorAll('.pagination-ajax');
         links.forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
-                const url = new URL(this.href);
-                const page = url.searchParams.get('page');
+                const page = this.getAttribute('data-page');
                 fetchData(page);
             });
         });
@@ -398,11 +459,30 @@
         const status = document.getElementById('statusSelect').value;
         const transferFields = document.getElementById('transferFields');
         const retirementFields = document.getElementById('retirementFields');
+        const othersFields = document.getElementById('othersFields');
         const commonFields = document.getElementById('commonHistoryFields');
 
         transferFields.style.display = status === 'transfer' ? 'block' : 'none';
         retirementFields.style.display = status === 'retired' ? 'block' : 'none';
-        commonFields.style.display = (['transfer', 'retired', 'resign'].includes(status)) ? 'block' : 'none';
+        othersFields.style.display = status === 'others' ? 'block' : 'none';
+        commonFields.style.display = (['transfer', 'retired', 'resign', 'others'].includes(status)) ? 'block' : 'none';
+    }
+
+    // Close modal on click outside
+    window.onclick = function(event) {
+        const statusModal = document.getElementById('statusModal');
+        const importModal = document.getElementById('importModal');
+        const successModal = document.getElementById('successModal');
+        
+        if (event.target == statusModal) {
+            closeStatusModal();
+        }
+        if (event.target == importModal) {
+            closeImportModal();
+        }
+        if (event.target == successModal) {
+            closeSuccessModal();
+        }
     }
 
     function closeSuccessModal() {
@@ -410,18 +490,7 @@
         if (modal) modal.classList.remove('active');
     }
 
-    // Initial attachment
-    document.addEventListener('DOMContentLoaded', () => {
+        // attach initial links
         attachPaginationLinks();
-        
-        // Auto-dismiss success toast if it exists (for legacy)
-        const toast = document.getElementById('successToast');
-        if (toast) {
-            setTimeout(() => {
-                toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
-                setTimeout(() => toast.remove(), 300);
-            }, 4000);
-        }
-    });
 </script>
 @endpush

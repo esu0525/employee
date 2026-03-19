@@ -28,7 +28,7 @@ class PortalController extends Controller
     {
         $request->validate([
             'employee_name' => 'required|string|max:255',
-            'school' => 'required|string|max:255',
+            'agency' => 'required|string|max:255',
             'num_copies' => 'required|integer|min:1',
             'doc_types' => 'required|array',
             'purpose' => 'required|string',
@@ -63,7 +63,7 @@ class PortalController extends Controller
         EmployeeRequest::create([
             'employee_id' => $employee_id,
             'employee_name' => $request->employee_name,
-            'school' => $request->school,
+            'agency' => $request->agency,
             'request_type' => $request_type,
             'num_copies' => $request->num_copies,
             'purpose' => $purpose,
