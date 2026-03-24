@@ -431,12 +431,34 @@
 @endpush
 
 @section('content')
-<div class="page-header profile-header-pad">
-    <div>
-        <h1 class="page-title" style="font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2rem; color: var(--text-main); margin-bottom: 0.5rem;">My Profile</h1>
-        <p class="page-subtitle" style="color: var(--text-muted); font-size: 1rem;">Manage your personal information and security settings</p>
+@php
+    $viewer = \App\Models\User::find(session('auth_user_id'));
+    $viewer_role = $viewer ? $viewer->role : 'staff';
+    $isReadOnly = $isReadOnly ?? false;
+    $isOwnProfile = (session('auth_user_id') == $user->id);
+    // Allow admin to edit others
+    $canEdit = ($isOwnProfile || $viewer_role === 'admin');
+@endphp
+    <div style="padding: 1rem 2.5rem 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+        @if(!$isOwnProfile)
+        <a href="{{ route('admin.users.index') }}" class="btn-return-arrow" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-main); display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm); text-decoration: none;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='var(--shadow-sm)'; this.style.transform='translateY(0)';">
+            <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+        </a>
+        @else
+        <div style="width: 42px;"></div> {{-- Spacer to match alignment --}}
+        @endif
     </div>
-</div>
+
+    <div class="page-header profile-header-pad" style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: -0.5rem;">
+        <div>
+            <h1 class="page-title" style="font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2rem; color: var(--text-main); margin-bottom: 0.5rem;">
+                {{ $isOwnProfile ? 'My Profile' : ($user->name . "'s Profile") }}
+            </h1>
+            <p class="page-subtitle" style="color: var(--text-muted); font-size: 1rem;">
+                {{ $isOwnProfile ? 'Manage your personal information and security settings' : 'Manage account roles, permissions and security' }}
+            </p>
+        </div>
+    </div>
 
 <div class="toast-container" id="toastContainer">
     @if(session('success'))
@@ -470,7 +492,9 @@
             <form action="{{ route('profile.avatar') }}" method="POST" enctype="multipart/form-data" id="avatarForm" style="padding: 0 1.5rem;">
             @csrf
             <div class="profile-avatar-wrapper" id="avatar-container">
-                @if($user->profile_picture)
+                @if($user->profile_picture_content)
+                    <img src="{{ route('display.user-avatar', ['id' => $user->id]) }}" alt="Profile Picture" class="profile-avatar" id="avatar-preview">
+                @elseif($user->profile_picture)
                     <img src="{{ asset($user->profile_picture) }}" alt="Profile Picture" class="profile-avatar" id="avatar-preview">
                 @else
                     <div class="profile-avatar-fallback" id="avatar-fallback">
@@ -479,10 +503,12 @@
                     <img src="" alt="Profile Picture" class="profile-avatar" id="avatar-preview" style="display: none;">
                 @endif
                 
+                @if($canEdit)
                 <label for="avatar-input" class="avatar-upload-btn" title="Change Profile Picture">
                     <i data-lucide="camera" style="width: 16px; height: 16px;"></i>
                 </label>
                 <input type="file" name="avatar" id="avatar-input" class="file-input-hidden" accept="image/*" onchange="previewAvatar(this)">
+                @endif
             </div>
 
             <h2 class="profile-name" style="font-size: 1.5rem; color: var(--text-main);">{{ $user->name }}</h2>
@@ -512,23 +538,57 @@
             <i data-lucide="history" style="width: 18px; color: var(--primary);"></i> Recent Activity
         </div>
         
-        <div style="max-height: 170px; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <div style="max-height: 550px; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
             @forelse($logs as $log)
-            <div style="border-left: 2px solid var(--primary); padding-left: 1rem; position: relative; flex-shrink: 0;">
-                <div style="position: absolute; left: -5px; top: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--primary);"></div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                    {{ $log->created_at->diffForHumans() }}
+            <div style="border-left: 2px solid {{ $log->action === 'delete' ? '#ef4444' : ($log->action === 'edit' || $log->action === 'upload' ? '#3b82f6' : 'var(--primary)') }}; padding-left: 1.25rem; position: relative; flex-shrink: 0;">
+                <div style="position: absolute; left: -6px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: {{ $log->action === 'delete' ? '#ef4444' : ($log->action === 'edit' || $log->action === 'upload' ? '#3b82f6' : 'var(--primary)') }}; border: 2px solid var(--bg-card);"></div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">
+                        {{ $log->created_at->diffForHumans() }}
+                    </span>
+                    <span style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.7;">
+                        {{ $log->created_at->format('M d, H:i') }}
+                    </span>
                 </div>
-                <div style="font-size: 0.8125rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
-                    Login Detected
+
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    @php
+                        $icon = match($log->action) {
+                            'login' => 'log-in',
+                            'view' => 'eye',
+                            'edit' => 'edit-3',
+                            'delete' => 'trash-2',
+                            'export' => 'download',
+                            'upload' => 'upload-cloud',
+                            'create' => 'user-plus',
+                            default => 'activity'
+                        };
+                        $color = match($log->action) {
+                            'delete' => '#ef4444',
+                            'edit', 'upload' => '#3b82f6',
+                            'login', 'create' => '#10b981',
+                            'export' => '#8b5cf6',
+                            default => 'var(--primary)'
+                        };
+                    @endphp
+                    <i data-lucide="{{ $icon }}" style="width: 14px; height: 14px; color: {{ $color }};"></i>
+                    <span style="font-size: 0.8125rem; font-weight: 700; color: var(--text-main); text-transform: capitalize;">
+                        {{ $log->action }} ({{ ucfirst($log->module) }})
+                    </span>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; opacity: 0.8; word-break: break-all;">
-                    → IP: {{ $log->ip_address }} <br>
-                    <span style="font-size: 0.65rem;" title="{{ $log->user_agent }}">{{ Str::limit($log->user_agent, 100) }}</span>
+
+                <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; opacity: 0.9;">
+                    {{ $log->description ?: 'No detail provided' }}
+                    @if($log->ip_address)
+                    <div style="font-size: 0.65rem; opacity: 0.6; margin-top: 2px;">
+                        IP: {{ $log->ip_address }}
+                    </div>
+                    @endif
                 </div>
             </div>
             @empty
-            <div style="font-size: 0.8125rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No recent activity found.</div>
+            <div style="font-size: 0.8125rem; color: var(--text-muted); text-align: center; padding: 2rem 0;">No activity logs found.</div>
             @endforelse
         </div>
     </div>
@@ -555,7 +615,63 @@
             </div>
         </div>
 
-        <!-- Privacy & Security -->
+        @if(!$isOwnProfile && $viewer_role === 'admin')
+        <!-- Admin Management Section (Editing another user) -->
+        <div class="settings-card animate-slide-up delay-2" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="settings-header" style="flex-direction: row; align-items: center;">
+                <i data-lucide="settings-2"></i>
+                <h3 class="settings-title">Account Management</h3>
+            </div>
+            <div class="settings-body" style="padding: 1.5rem 2rem;">
+                <form action="{{ route('admin.users.update-from-profile', $user->id) }}" method="POST">
+                    @csrf
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" name="name" value="{{ old('name', $user->name) }}" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" name="email" value="{{ old('email', $user->email) }}" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>New Password (Optional)</label>
+                            <input type="password" name="password" class="form-control" placeholder="Leave blank to keep current">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Role</label>
+                            <select name="role" id="profile_role" onchange="togglePermissionsProfile()" class="form-control" style="background: var(--bg-main);">
+                                <option value="staff" {{ $user->role === 'staff' ? 'selected' : '' }}>Staff (Limited Access)</option>
+                                <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Administrator (Full Access)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="permissions_section_profile" style="margin-top: 1rem; {{ $user->role === 'admin' ? 'display: none;' : '' }}">
+                        <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.75rem; text-transform: uppercase;">PERMISSIONS</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            @foreach($available_permissions as $key => $label)
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: 8px; font-size: 0.85rem; color: var(--text-main);">
+                                <input type="checkbox" name="permissions[]" value="{{ $key }}" 
+                                    {{ in_array($key, $user->permissions ?? []) ? 'checked' : '' }}
+                                    style="width: 16px; height: 16px; accent-color: var(--primary);">
+                                {{ $label }}
+                            </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem; justify-content: flex-end;">
+                        <button type="button" onclick="window.location.reload()" style="padding: 0.6rem 2rem; background: transparent; border: none; color: var(--text-main); font-weight: 600; cursor: pointer;">Cancel</button>
+                        <button type="submit" class="btn-update" style="padding: 0.6rem 2rem; border-radius: 8px;">
+                            <i data-lucide="save"></i> Update Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @elseif($isOwnProfile)
+        <!-- Privacy & Security (Self Viewing) -->
         <div class="settings-card animate-slide-up delay-2" style="flex: 1; display: flex; flex-direction: column;">
             <div class="settings-header" style="flex-direction: row; align-items: center;">
                 <i data-lucide="shield"></i>
@@ -573,7 +689,6 @@
                                 <input type="hidden" name="name" value="{{ $user->name }}">
                             </div>
                             @error('email')<span class="form-error">{{ $message }}</span>@enderror
-                            @error('name')<span class="form-error">{{ $message }}</span>@enderror
                         </div>
 
                         <!-- Password Section -->
@@ -593,6 +708,27 @@
                 </form>
             </div>
         </div>
+        @else
+        <!-- Information Section (Admin viewing someone else, but only if logic above fails for some reason or Fallback) -->
+        <div class="settings-card animate-slide-up delay-2" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="settings-header" style="flex-direction: row; align-items: center;">
+                <i data-lucide="info"></i>
+                <h3 class="settings-title">Account Information</h3>
+            </div>
+            <div class="settings-body" style="padding: 1.5rem 2rem;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <div class="form-control" style="background: var(--bg-card); cursor: default;">{{ $user->email }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Status</label>
+                        <div class="form-control" style="background: var(--bg-card); cursor: default; border-color: #10b981; color: #10b981; font-weight: 700;">ACTIVE</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 </div>
 
@@ -653,6 +789,16 @@
 
 @push('scripts')
 <script>
+    function togglePermissionsProfile() {
+        const role = document.getElementById('profile_role').value;
+        const section = document.getElementById('permissions_section_profile');
+        if (role === 'admin') {
+            section.style.display = 'none';
+        } else {
+            section.style.display = 'block';
+        }
+    }
+
     // ─── Chart Labels with full dates ────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('loginChart').getContext('2d');

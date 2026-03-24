@@ -63,7 +63,7 @@ class Employee extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'suffix', 'so_number',
+        'id', 'profile_picture', 'profile_picture_content', 'name', 'last_name', 'first_name', 'middle_name', 'suffix', 'so_number',
         'position', 'agency', 'email', 'phone',
         'date_joined', 'status', 'status_date', 'transfer_location',
         'address', 'date_of_birth', 'sex', 'civil_status', 'nationality', 'emergency_contact', 'emergency_phone',

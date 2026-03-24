@@ -15,6 +15,15 @@ class AdminUserController extends Controller
     public function index()
     {
         $users = User::all();
+        
+        // Fetch last login for each user from ActivityLog
+        foreach ($users as $user) {
+            $user->last_login_at = \App\Models\ActivityLog::where('user_id', $user->id)
+                ->where('action', 'login')
+                ->latest()
+                ->value('created_at');
+        }
+
         $available_permissions = [
             'view_employees' => 'View Employees',
             'edit_employees' => 'Edit Employees',
@@ -40,13 +49,15 @@ class AdminUserController extends Controller
             'permissions' => 'nullable|array'
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
             'permissions' => $validated['permissions'] ?? []
         ]);
+
+        \App\Models\ActivityLog::log('create', 'accounts', 'Created new system account for ' . $user->name);
 
         return redirect()->back()->with('success', 'User account created successfully.');
     }
@@ -79,6 +90,8 @@ class AdminUserController extends Controller
 
         $user->update($updateData);
 
+        \App\Models\ActivityLog::log('edit', 'accounts', 'Updated system account details for ' . $user->name);
+
         return redirect()->back()->with('success', 'User account updated successfully.');
     }
 
@@ -89,12 +102,15 @@ class AdminUserController extends Controller
     {
         $user = User::findOrFail($id);
         
-        // Prevent deleting self
-        if ($user->id === auth()->id()) {
+        // Prevent deleting self (using session since custom auth is used)
+        if ($user->id == session('auth_user_id')) {
             return redirect()->back()->with('error', 'You cannot delete your own account.');
         }
 
+        $userName = $user->name;
         $user->delete();
+
+        \App\Models\ActivityLog::log('delete', 'accounts', 'Deleted system account for ' . $userName);
 
         return redirect()->back()->with('success', 'User account deleted successfully.');
     }

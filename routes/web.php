@@ -6,6 +6,7 @@ use App\Http\Controllers\PortalController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\FileController;
 use App\Http\Middleware\AuthMiddleware;
 
 // ─── Auth Routes (public) ──────────────────────────────────────────────────
@@ -30,6 +31,7 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/add-employee', [EmployeeController::class, 'addEmployee'])->name('employees.add');
     Route::get('/masterlist', [EmployeeController::class, 'masterlist'])->name('employees.masterlist');
+    Route::get('/masterlist/json', [EmployeeController::class, 'allEmployeesJson'])->name('employees.export.json');
     Route::post('/masterlist/import', [EmployeeController::class, 'import'])->name('employees.import');
     Route::get('/employee-details', [EmployeeController::class, 'show'])->name('employees.show');
     Route::post('/employee-details/{id}/update', [EmployeeController::class, 'update'])->name('employees.details-update');
@@ -54,8 +56,16 @@ Route::middleware([AuthMiddleware::class])->group(function () {
 
     // Profile Management
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/accounts/{id}/profile', [ProfileController::class, 'show'])->name('admin.users.profile');
+    Route::post('/accounts/{id}/profile', [ProfileController::class, 'updateAdmin'])->name('admin.users.update-from-profile');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/check-password', [ProfileController::class, 'checkPassword'])->name('profile.check-password');
+
+    // File Display Routes
+    Route::get('/display-file/employee-avatar/{id}', [FileController::class, 'showEmployeeAvatar'])->name('display.employee-avatar');
+    Route::get('/display-file/user-avatar/{id}', [FileController::class, 'showUserAvatar'])->name('display.user-avatar');
+    Route::get('/display-file/document/{id}', [FileController::class, 'showDocument'])->name('display.document');
+    Route::get('/display-file/request-file/{id}', [FileController::class, 'showRequestFile'])->name('display.request-file');
 });

@@ -34,7 +34,7 @@
     </div>
 
     <!-- Action Bar -->
-    <div class="action-bar">
+    <div class="action-bar" style="position: relative; z-index: 10005;">
         <div class="search-container">
             <i data-lucide="search" class="search-icon"></i>
             <input 
@@ -44,13 +44,29 @@
                 placeholder="Search by name, position, or agency..."
                 value="{{ $search }}"
                 autocomplete="off"
+                oninput="liveSearch(this.value)"
             >
         </div>
-        <div class="button-group">
-            <button class="btn btn-outline" onclick="openImportModal()">
-                <i data-lucide="upload"></i>
-                Import
-            </button>
+        <div class="button-group" style="z-index: 10001; position: relative;">
+            <div class="export-dropdown">
+                <button class="btn btn-outline" style="border-color: #3b82f6; color: white; background: #3b82f6; transition: 0.2s;" onclick="toggleExportMenu(event)" title="Export">
+                    <i data-lucide="external-link" style="color: white; stroke-width: 2.5px;"></i>
+                </button>
+                <div id="exportMenu" class="export-menu">
+                    <button onclick="exportData('excel')">
+                        <i data-lucide="file-spreadsheet" style="color: #10b981;"></i>
+                        <span>Excel Spreadsheet (.xlsx)</span>
+                    </button>
+                    <button onclick="exportData('pdf')">
+                        <i data-lucide="file-text" style="color: #ef4444;"></i>
+                        <span>PDF Document (.pdf)</span>
+                    </button>
+                    <button onclick="exportData('docs')">
+                        <i data-lucide="file-code" style="color: #3b82f6;"></i>
+                        <span>Word Document (.doc)</span>
+                    </button>
+                </div>
+            </div>
             <button id="sortBtn" class="btn {{ $sort === 'position' ? 'btn-primary' : 'btn-outline' }}" onclick="toggleSort()">
                 <i data-lucide="{{ $sort === 'position' ? 'briefcase' : 'sort-asc' }}"></i>
                 Sort by {{ $sort === 'position' ? 'Position' : 'Name' }}
@@ -203,6 +219,52 @@
 
 @push('styles')
 <style>
+    /* Export Dropdown */
+    .export-dropdown { position: relative; display: inline-block; z-index: 10002; }
+    .export-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 0.5rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+        width: 240px;
+        z-index: 10003;
+        display: none;
+        overflow: hidden;
+        padding: 0.5rem;
+    }
+    .export-menu.active { display: block; animation: dropdown-anim 0.2s ease-out; }
+    @keyframes dropdown-anim {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .export-menu button {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: 0.2s;
+        font-family: inherit;
+        font-size: 0.825rem;
+        font-weight: 600;
+        color: #475569;
+        text-align: left;
+    }
+    .export-menu button:hover { background: #f1f5f9; color: #1e293b; }
+    .export-menu i { width: 18px; height: 18px; }
+    
+    body[data-theme="dark"] .export-menu { background: #1e293b; border-color: #334155; }
+    body[data-theme="dark"] .export-menu button { color: #94a3b8; }
+    body[data-theme="dark"] .export-menu button:hover { background: #334155; color: #f8fafc; }
+
     /* Modal Styles */
     .modal { 
         display: none; 
@@ -360,23 +422,67 @@
     }
     
     .animate-up {
-        animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-        animation-delay: var(--delay);
+        animation: none !important;
+    }
+
+    /* Instantly kill any transitions on cards to remove perceived lag */
+    .master-item-card, .master-item-card * {
+        transition: none !important;
+        animation: none !important;
+        transform: none !important;
+    }
+
+    /* Forcefully remove animations during live search area */
+    #tableContainer, #tableContainer * {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
     }
 </style>
 @endpush
 
 @push('scripts')
+<!-- Load libraries at top for better availability -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script>
-    let searchTimeout = null;
     let currentSort = '{{ $sort }}';
 
-    document.getElementById('searchInput').addEventListener('input', function() {
+    function liveSearch(query) {
+        query = query.toLowerCase().trim();
+        const cards = document.querySelectorAll('.master-item-card');
+        const emptyState = document.querySelector('.empty-state');
+        let visibleCount = 0;
+
+        // FASTEST possible client-side filtering
+        for (let i = 0; i < cards.length; i++) {
+            const isMatch = cards[i].textContent.toLowerCase().includes(query);
+            cards[i].style.display = isMatch ? 'flex' : 'none';
+            if(isMatch) visibleCount++;
+        }
+
+        if (emptyState) {
+            emptyState.style.display = (visibleCount === 0) ? 'flex' : 'none';
+        }
+
+        // Super-charged automatic deep search (150ms)
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
             fetchData();
-        }, 300);
+        }, 150);
+    }
+
+    // Still allow Enter key to trigger a deep search immediately
+    document.getElementById('searchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            clearTimeout(searchTimeout);
+            fetchData();
+        }
     });
+
+    let searchTimeout = null;
 
     function toggleSort() {
         currentSort = currentSort === 'name' ? 'position' : 'name';
@@ -473,6 +579,7 @@
         const statusModal = document.getElementById('statusModal');
         const importModal = document.getElementById('importModal');
         const successModal = document.getElementById('successModal');
+        const exportMenu = document.getElementById('exportMenu');
         
         if (event.target == statusModal) {
             closeStatusModal();
@@ -483,6 +590,9 @@
         if (event.target == successModal) {
             closeSuccessModal();
         }
+        if (exportMenu && !exportMenu.contains(event.target)) {
+            exportMenu.classList.remove('active');
+        }
     }
 
     function closeSuccessModal() {
@@ -492,5 +602,175 @@
 
         // attach initial links
         attachPaginationLinks();
+
+    // Export Logic
+    function toggleExportMenu(e) {
+        e.stopPropagation();
+        document.getElementById('exportMenu').classList.toggle('active');
+    }
+
+    async function exportData(format) {
+        document.getElementById('exportMenu').classList.remove('active');
+        
+        try {
+            const response = await fetch('{{ route("employees.export.json") }}');
+            if (!response.ok) throw new Error('Status ' + response.status);
+            const data = await response.json();
+            
+            if (format === 'excel') {
+                if (typeof ExcelJS === 'undefined') {
+                    alert('Excel library is still loading or failed to load. Please try again in a second.');
+                    return;
+                }
+                exportExcel(data);
+            } else if (format === 'pdf') {
+                exportPDF(data);
+            } else if (format === 'docs') {
+                exportDocs(data);
+            }
+        } catch (err) {
+            console.error('Export failed:', err);
+            alert('Failed to export data: ' + err.message);
+        }
+    }
+
+    async function exportExcel(data) {
+        if (typeof ExcelJS === 'undefined') return;
+        
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Active Employees');
+
+        // Add headers
+        const headerRow = sheet.addRow(['Full Name', 'Position', 'Agency']);
+
+        // Style headers
+        headerRow.eachCell((cell) => {
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF10B981' } // Green background
+            };
+            cell.font = {
+                name: 'Cambria',
+                color: { argb: 'FFFFFFFF' }, // White text
+                bold: true,
+                size: 11
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.border = {
+                top: {style:'thin'},
+                left: {style:'thin'},
+                bottom: {style:'thin'},
+                right: {style:'thin'}
+            };
+        });
+
+        // Add employee data
+        data.forEach(emp => {
+            const row = sheet.addRow([emp.name, emp.position, emp.agency]);
+            row.eachCell((cell) => {
+                cell.font = { name: 'Cambria', size: 11 };
+            });
+        });
+
+        // Set column widths
+        sheet.getColumn(1).width = 45; // Name
+        sheet.getColumn(2).width = 40; // Position
+        sheet.getColumn(3).width = 50; // Agency
+
+        // Add filters to headers
+        sheet.autoFilter = 'A1:C1';
+
+        // Generate and save file
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/webdriver.ms-excel' });
+        saveAs(blob, `Masterlist_Active_Employees_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    function exportPDF(data) {
+        if (typeof jspdf === 'undefined') return;
+        const { jsPDF } = jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); // landscape
+        
+        // Use Times (Serif) as closest standard font to Cambria in jsPDF
+        doc.setFont('times', 'bold');
+        doc.setFontSize(22);
+        const pageWidth = doc.internal.pageSize.getWidth();
+        doc.text('201 Masterlist', pageWidth / 2, 20, { align: 'center' });
+
+        const tableHeaders = [['FULL NAME', 'POSITION', 'AGENCY']];
+        const tableBody = data.map(e => [
+            e.name, 
+            e.position, 
+            e.agency
+        ]);
+
+        doc.autoTable({
+            head: tableHeaders,
+            body: tableBody,
+            startY: 30,
+            theme: 'striped',
+            headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' }, // #10B981 Green
+            styles: { fontSize: 9, cellPadding: 2, font: 'times' }, // Reduced padding & size for smaller height
+            columnStyles: {
+                0: { cellWidth: 80 }, // Much wider Name column
+                1: { cellWidth: 'auto' },
+                2: { cellWidth: 'auto' }
+            }
+        });
+
+        doc.save(`Masterlist_Active_Employees_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    function exportDocs(data) {
+        // We'll use a data blob with HTML format which Word opens perfectly as a table
+        let html = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            <head><meta charset='utf-8'><title>201 Masterlist</title>
+            <style>
+                table { border-collapse: collapse; width: 100%; font-family: "Cambria", serif; }
+                th { background: #10B981; color: white; padding: 6px 12px; border: 1px solid #059669; text-align: left; }
+                td { padding: 4px 12px; border: 1px solid #cbd5e1; font-family: "Cambria", serif; font-size: 11pt; }
+                h1 { font-family: "Cambria", serif; color: #1e293b; text-align: center; font-size: 24pt; margin-bottom: 20pt; }
+            </style>
+            </head>
+            <body>
+            <h1>201 Masterlist</h1>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Position</th>
+                        <th>Agency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(emp => `
+                        <tr>
+                            <td>${emp.name}</td>
+                            <td>${emp.position}</td>
+                            <td>${emp.agency}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Masterlist_Active_Employees_${new Date().toISOString().split('T')[0]}.doc`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Initialize scripts (libraries loaded at top of push)
+    (async () => {
+        console.log('Export libraries initializing...');
+    })();
 </script>
 @endpush

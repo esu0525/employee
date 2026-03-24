@@ -529,9 +529,107 @@
         }
     </style>
     @stack('styles')
+    <style>
+        /* Modern Confirmation Modal */
+        .confirm-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            z-index: 11000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .confirm-modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .confirm-modal-card {
+            background: var(--bg-card, #ffffff);
+            width: 320px;
+            padding: 2.5rem 2rem;
+            border-radius: 32px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            transform: translateY(20px) scale(0.9);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid var(--border, #f1f5f9);
+        }
+        .confirm-modal-overlay.active .confirm-modal-card {
+            transform: translateY(0) scale(1);
+        }
+        .confirm-modal-icon {
+            width: 64px;
+            height: 64px;
+            background: #fef2f2;
+            color: #ef4444;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .confirm-modal-card h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            color: var(--text-main, #1e293b);
+        }
+        .confirm-modal-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted, #64748b);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .confirm-modal-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        .btn-confirm-cancel, .btn-confirm-proceed {
+            flex: 1;
+            padding: 0.9rem;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-confirm-cancel { 
+            background: var(--bg-main, #f1f5f9); 
+            color: var(--text-muted, #64748b); 
+        }
+        .btn-confirm-cancel:hover { background: #e2e8f0; color: #475569; transform: translateY(-1px); }
+        .btn-confirm-proceed { 
+            background: #ef4444; 
+            color: white; 
+            box-shadow: 0 8px 20px -6px rgba(239, 68, 68, 0.5);
+        }
+        .btn-confirm-proceed:hover { 
+            background: #dc2626; 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -6px rgba(239, 68, 68, 0.6);
+        }
+
+        body[data-theme="dark"] .confirm-modal-card { background: #1e293b; border-color: #334155; }
+        body[data-theme="dark"] .confirm-modal-card h3 { color: #f8fafc; }
+        body[data-theme="dark"] .btn-confirm-cancel { background: #334155; color: #94a3b8; }
+    </style>
+    @stack('styles')
 </head>
 <body>
-    <div id="app-container" class="app-container {{ Route::is('admin.users.index') ? 'account-mgmt-page' : '' }}">
+    <div id="app-container" class="app-container">
         <!-- Mobile menu button -->
         <button id="mobile-menu-btn" class="mobile-menu-btn">
             <i data-lucide="menu"></i>
@@ -540,6 +638,17 @@
         <!-- Sidebar -->
         <aside id="sidebar" class="sidebar">. 
             <div class="sidebar-content">
+                @php
+                    $currentUser = \App\Models\User::find(session('auth_user_id'));
+                    $userPerms = $currentUser ? ($currentUser->permissions ?? []) : [];
+                    $isAdmin = $currentUser && $currentUser->role === 'admin';
+                    
+                    $canViewMasterlist = $isAdmin || in_array('view_employees', $userPerms);
+                    $canAddEmployee = $isAdmin || in_array('edit_employees', $userPerms);
+                    $canManageRequests = $isAdmin || in_array('manage_requests', $userPerms);
+                    $canManageAccounts = $isAdmin || in_array('manage_accounts', $userPerms);
+                    $canViewArchive = $isAdmin || in_array('delete_employees', $userPerms);
+                @endphp
                 <!-- Header -->
                 <div class="sidebar-header">
                     <div class="sidebar-logo">
@@ -562,6 +671,7 @@
                                 <span>Dashboard</span>
                             </a>
                         </li>
+                        @if($canViewMasterlist || $canAddEmployee)
                         <li>
                             <a href="#" class="nav-link {{ Route::is('employees.masterlist') || Route::is('employees.add') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'active' : '' }}" onclick="toggleSubnav(event)">
                                 <i data-lucide="users"></i>
@@ -569,80 +679,87 @@
                                 <i data-lucide="chevron-down" class="subnav-arrow {{ Route::is('employees.masterlist') || Route::is('employees.add') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'rotate' : '' }}" style="margin-left: auto; width: 14px; height: 14px; transition: transform 0.3s;"></i>
                             </a>
                             <ul class="subnav" id="masterlistSubnav" style="{{ Route::is('employees.masterlist') || Route::is('employees.add') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'display: block;' : 'display: none;' }}">
+                                @if($canViewMasterlist)
                                 <li>
                                     <a href="{{ route('employees.masterlist') }}" class="subnav-link {{ Route::is('employees.masterlist') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'active' : '' }}">
                                         <i data-lucide="chevron-right"></i>
                                         Masterlist
                                     </a>
                                 </li>
+                                @endif
+                                @if($canAddEmployee)
                                 <li>
                                     <a href="{{ route('employees.add') }}" class="subnav-link {{ Route::is('employees.add') ? 'active' : '' }}">
                                         <i data-lucide="chevron-right"></i>
                                         Add Employee
                                     </a>
                                 </li>
+                                @endif
                             </ul>
                         </li>
+                        @endif
+                        @if($canViewArchive)
                         <li>
                             <a href="{{ route('employees.archive') }}" class="nav-link {{ Route::is('employees.archive') || (isset($isArchived) && $isArchived) ? 'active' : '' }}">
                                 <i data-lucide="archive"></i>
                                 <span>Archive</span>
                             </a>
                         </li>
+                        @endif
+                        @if($canManageRequests)
                         <li>
-                            <a href="{{ route('employees.requests') }}" class="nav-link {{ str_contains(Route::currentRouteName(), 'requests') || str_contains(Route::currentRouteName(), 'approved') ? 'active' : '' }}">
-                                <i data-lucide="file-text"></i>
-                                <span>Request List</span>
+                            <a href="{{ route('employees.requests') }}" class="nav-link {{ Route::is('employees.requests') || Route::is('employees.approved-list') ? 'active' : '' }}">
+                                <i data-lucide="file-stack"></i>
+                                <span>Request Center</span>
                             </a>
-                            @if(str_contains(Route::currentRouteName(), 'requests') || str_contains(Route::currentRouteName(), 'approved'))
-                            <ul class="subnav">
-                                <li>
-                                    <a href="{{ route('employees.requests') }}" class="subnav-link {{ Route::is('employees.requests') ? 'active' : '' }}">
-                                        <i data-lucide="chevron-right"></i>
-                                        Pending Requests
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{{ route('employees.approved-list') }}" class="subnav-link {{ Route::is('employees.approved-list') ? 'active' : '' }}">
-                                        <i data-lucide="chevron-right"></i>
-                                        Approved List
-                                    </a>
-                                </li>
-                            </ul>
-                            @endif
                         </li>
+                        @endif
+                        @if($canManageAccounts)
                         <li>
                             <a href="{{ route('admin.users.index') }}" class="nav-link {{ str_contains(Route::currentRouteName(), 'admin.users') ? 'active' : '' }}">
                                 <i data-lucide="shield-alert"></i>
                                 <span>Account Management</span>
                             </a>
                         </li>
+                        @endif
+
+                        {{-- My Profile for Staff Only --}}
+                        @if(!$isAdmin)
+                        <li>
+                            <a href="{{ route('profile.edit') }}" class="nav-link {{ Route::is('profile.edit') ? 'active' : '' }}">
+                                <i data-lucide="user-circle"></i>
+                                <span>My Profile</span>
+                            </a>
+                        </li>
+                        @endif
                     </ul>
                 </nav>
 
                 <!-- Sidebar Footer -->
                 <div class="sidebar-footer">
                     <div class="sidebar-user">
-                        <a href="{{ route('profile.edit') }}" class="user-info" style="text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                            <div class="user-avatar-premium" style="overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center;">
-                                @if(session('welcome_avatar'))
+                        <div class="user-info" style="cursor: default;">
+                            <div class="user-avatar-premium" style="overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.1); flex-shrink: 0;">
+                                @if($currentUser && $currentUser->profile_picture_content)
+                                    <img src="{{ route('display.user-avatar', ['id' => $currentUser->id]) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                                @elseif(session('welcome_avatar'))
                                     <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
                                 @else
-                                    {{ strtoupper(substr(session('auth_user_name', 'A'), 0, 1)) }}
+                                    <span style="font-weight: 700; color: white;">{{ strtoupper(substr(session('auth_user_name', 'A'), 0, 1)) }}</span>
                                 @endif
                             </div>
                             <div class="user-details">
                                 <span class="user-name">{{ session('auth_user_name', 'Administrator') }}</span>
-                                <span class="user-role">{{ session('auth_user_role', 'Super Admin') }}</span>
+                                <span class="user-role">{{ session('auth_user_role') ? ucfirst(session('auth_user_role')) : 'Super Admin' }}</span>
                             </div>
-                        </a>
-                        <a href="{{ route('logout') }}" class="btn-logout" title="Logout">
-                            <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+                        </div>
+                        <a href="{{ route('logout') }}" class="btn-logout" title="Logout" style="color: rgba(255,255,255,0.6); hover: color: #ef4444; transition: all 0.2s;">
+                            <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
                         </a>
                     </div>
-                    <div class="sidebar-footer-content">
-                        <p class="footer-text">© 2026 Admin Portal</p>
-                        <span class="version-tag">v2.1</span>
+                    <div class="sidebar-footer-content" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between;">
+                        <p class="footer-text" style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin: 0;">© 2026 Admin Portal</p>
+                        <span class="version-tag" style="font-size: 0.65rem; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 2px 8px; border-radius: 6px; font-weight: 700;">v2.1</span>
                     </div>
                 </div>
             </div>
@@ -651,8 +768,23 @@
         <!-- Overlay for mobile -->
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-        <!-- Main content -->
-        <main class="main-content">
+    <!-- Modern Confirmation Modal -->
+    <div id="confirmModal" class="confirm-modal-overlay">
+        <div class="confirm-modal-card">
+            <div id="confirmIconBox" class="confirm-modal-icon">
+                <i data-lucide="help-circle" style="width: 32px; height: 32px;"></i>
+            </div>
+            <h3 id="confirmModalTitle">Are you sure?</h3>
+            <p id="confirmModalMessage">This action cannot be undone.</p>
+            <div class="confirm-modal-actions">
+                <button type="button" class="btn-confirm-cancel" id="confirmModalCancel">Cancel</button>
+                <button type="button" class="btn-confirm-proceed" id="confirmModalProceed">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="main-content">
             <!-- Top Header -->
             <header class="top-header">
                 <div class="header-left">
@@ -674,7 +806,9 @@
                     <!-- User Profile -->
                     <a href="{{ route('profile.edit') }}" class="header-user-profile">
                         <div class="header-user-avatar">
-                            @if(session('welcome_avatar'))
+                            @if($currentUser && $currentUser->profile_picture_content)
+                                <img src="{{ route('display.user-avatar', ['id' => $currentUser->id]) }}" alt="Profile">
+                            @elseif(session('welcome_avatar'))
                                 <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile">
                             @else
                                 {{ strtoupper(substr(session('auth_user_name', 'A'), 0, 1)) }}
@@ -705,7 +839,9 @@
             <div class="welcome-right">
                 <div class="welcome-user-container">
                     <div class="welcome-avatar-circle">
-                        @if(session('welcome_avatar'))
+                        @if($currentUser && $currentUser->profile_picture_content)
+                            <img src="{{ route('display.user-avatar', ['id' => $currentUser->id]) }}" alt="Profile">
+                        @elseif(session('welcome_avatar'))
                             <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile">
                         @else
                             {{ strtoupper(substr(session('welcome_name', 'U'), 0, 1)) }}
@@ -887,7 +1023,7 @@
             // 1. Title Case Formatting (Big First Letter, Small Following)
             // Target text inputs and textareas, but skip specific non-title fields
             const isText = (e.target.tagName === 'INPUT' && (e.target.type === 'text' || !e.target.type)) || e.target.tagName === 'TEXTAREA';
-            const skipFields = ['email', 'password', 'id', 'username', 'so_no', 'so_number'];
+            const skipFields = ['email', 'password', 'id', 'username', 'so_no', 'so_number', 'agency', 'position'];
             
             if (isText && !skipFields.includes(e.target.name) && !skipFields.includes(e.target.id)) {
                 const cursorStart = e.target.selectionStart;
@@ -928,6 +1064,83 @@
                 setTimeout(() => toast.remove(), 400);
             }
         }
+
+        // Modern Confirmation Helper
+        window.confirmAction = function(options = {}) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmModal');
+                const title = document.getElementById('confirmModalTitle');
+                const msg = document.getElementById('confirmModalMessage');
+                const cancelBtn = document.getElementById('confirmModalCancel');
+                const proceedBtn = document.getElementById('confirmModalProceed');
+                const iconBox = document.getElementById('confirmIconBox');
+
+                title.innerText = options.title || 'Are you sure?';
+                msg.innerText = options.message || 'This action cannot be undone.';
+                proceedBtn.innerText = options.confirmText || 'Confirm';
+                cancelBtn.innerText = options.cancelText || 'Cancel';
+                
+                // Customize based on type
+                if(options.type === 'danger') {
+                    iconBox.style.background = '#fef2f2';
+                    iconBox.style.color = '#ef4444';
+                    iconBox.style.animation = 'pulse-red 2s infinite';
+                    proceedBtn.style.background = '#ef4444';
+                    proceedBtn.style.boxShadow = '0 8px 20px -6px rgba(239, 68, 68, 0.5)';
+                    iconBox.innerHTML = '<i data-lucide="alert-triangle" style="width: 32px; height: 32px;"></i>';
+                } else {
+                    iconBox.style.background = '#eff6ff';
+                    iconBox.style.color = '#3b82f6';
+                    iconBox.style.animation = 'none';
+                    proceedBtn.style.background = '#3b82f6';
+                    proceedBtn.style.boxShadow = '0 8px 20px -6px rgba(59, 130, 246, 0.5)';
+                    iconBox.innerHTML = '<i data-lucide="help-circle" style="width: 32px; height: 32px;"></i>';
+                }
+                
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+
+                modal.style.display = 'flex';
+                // Slight delay for transition
+                setTimeout(() => modal.classList.add('active'), 10);
+
+                const handleProceed = () => {
+                    cleanup();
+                    resolve(true);
+                };
+                const handleCancel = () => {
+                    cleanup();
+                    resolve(false);
+                };
+                const handleKeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleProceed();
+                    } else if (e.key === 'Escape') {
+                        handleCancel();
+                    }
+                };
+                const handleBackdropClick = (e) => {
+                    if (e.target === modal) {
+                        handleCancel();
+                    }
+                };
+                const cleanup = () => {
+                    modal.classList.remove('active');
+                    setTimeout(() => modal.style.display = 'none', 300);
+                    proceedBtn.removeEventListener('click', handleProceed);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    document.removeEventListener('keydown', handleKeydown);
+                    modal.removeEventListener('click', handleBackdropClick);
+                };
+
+                proceedBtn.addEventListener('click', handleProceed);
+                cancelBtn.addEventListener('click', handleCancel);
+                document.addEventListener('keydown', handleKeydown);
+                modal.addEventListener('click', handleBackdropClick);
+            });
+        };
     </script>
     @stack('scripts')
 </body>

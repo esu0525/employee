@@ -39,7 +39,7 @@
         <!-- Card Header Overlay -->
         <div style="height: 8px; background: linear-gradient(90deg, #4f46e5, #7c3aed);"></div>
         
-        <form action="{{ route('portal.submit') }}" method="POST" enctype="multipart/form-data" style="padding: 3.5rem;">
+        <form id="portalRequestForm" action="{{ route('portal.submit') }}" method="POST" enctype="multipart/form-data" style="padding: 3.5rem;">
             @csrf
             
             <!-- Section: Personal Information -->
@@ -164,7 +164,7 @@
                             <input type="file" name="requirements_file" required class="portal-input" style="background: white; border: 1px solid #c7d2fe; padding-top: 0.625rem; padding-bottom: 0.625rem;">
                             <p style="font-size: 0.75rem; font-weight: 600; color: #6366f1; margin: 0.75rem 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
                                 <i data-lucide="info" style="width: 14px; height: 14px;"></i>
-                                Accepted formats: PDF, JPG, PNG (Max: 10MB)
+                                Accepted formats: PDF, JPG, PNG (Max: 500MB)
                             </p>
                         </div>
                     </div>
@@ -179,6 +179,34 @@
                 </button>
             </div>
         </form>
+    </div>
+
+    <!-- Upload Progress Modal (Portal) -->
+    <div id="uploadProgressModal" style="position: fixed; inset: 0; z-index: 10000; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;">
+        <div style="background: white; width: 100%; max-width: 480px; padding: 3rem; border-radius: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15); text-align: center; margin: 1.5rem;">
+            <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #4f46e5;">
+                <i data-lucide="cloud-upload" style="width: 40px; height: 40px;"></i>
+            </div>
+            <h3 id="uploadStatusTitle" style="font-family: 'Outfit'; font-size: 1.75rem; font-weight: 900; color: #1e293b; margin-bottom: 0.75rem;">Submitting Request</h3>
+            <p id="uploadStatusText" style="color: #64748b; font-size: 1rem; line-height: 1.6; margin-bottom: 2.5rem;">Please wait while we securely upload your supportive documents...</p>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.875rem; font-weight: 800; color: #1e293b; margin-bottom: 0.75rem;">
+                    <span id="progressText">0% Complete</span>
+                    <span id="progressRate">0 KB/s</span>
+                </div>
+                <div style="width: 100%; height: 14px; background: #f1f5f9; border-radius: 100px; overflow: hidden; border: 1px solid #e2e8f0;">
+                    <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4f46e5, #7c3aed); border-radius: 100px; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                </div>
+            </div>
+            
+            <div style="padding: 1rem; background: #fff1f2; border-radius: 14px; border: 1px solid #ffe4e6; display: flex; align-items: center; gap: 0.75rem; justify-content: center;">
+                <i data-lucide="shield-alert" style="width: 18px; height: 18px; color: #e11d48;"></i>
+                <p style="font-size: 0.8125rem; color: #e11d48; font-weight: 700; margin: 0;">Do not close your browser until complete.</p>
+            </div>
+        </div>
+    </div>
+
     </div>
     @endif
 </div>
@@ -202,5 +230,72 @@
             box.style.transform = 'translateY(-2px)';
         }
     }
+
+    // Portal Form Submission with Progress
+    document.getElementById('portalRequestForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
+        const formData = new FormData(form);
+        const modal = document.getElementById('uploadProgressModal');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const statusText = document.getElementById('uploadStatusText');
+        const progressRate = document.getElementById('progressRate');
+        
+        modal.style.display = 'flex';
+        let startTime = Date.now();
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressText.textContent = percent + '% Complete';
+                
+                // Calculate upload rate
+                const duration = (Date.now() - startTime) / 1000;
+                if (duration > 0) {
+                    const kbps = (e.loaded / 1024 / duration).toFixed(1);
+                    progressRate.textContent = kbps + ' KB/s';
+                }
+                
+                if (percent === 100) {
+                    statusText.textContent = 'Processing request... Please don\'t leave.';
+                }
+            }
+        };
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                progressBar.style.width = '100%';
+                progressText.textContent = '100% Complete';
+                document.getElementById('uploadStatusTitle').textContent = 'Submission Success!';
+                statusText.textContent = 'Your request has been filed successfully.';
+                // Redirect or reload
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                let errorMsg = 'An error occurred during submission.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMsg = response.message || errorMsg;
+                } catch(err) {}
+                alert('Submission Failed: ' + errorMsg);
+                modal.style.display = 'none';
+            }
+        };
+        
+        xhr.onerror = function() {
+            alert('A network error occurred.');
+            modal.style.display = 'none';
+        };
+        
+        xhr.send(formData);
+    });
 </script>
 @endsection

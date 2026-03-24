@@ -40,6 +40,10 @@ class EmployeeController extends Controller
             ];
         }
 
+        $my_pending_requests = EmployeeRequest::where('user_id', session('auth_user_id'))
+            ->where('status', 'pending')
+            ->count();
+
         $status_stats = [
             'active' => $total_active,
             'resign' => Employee::where('status', 'resign')->count(),
@@ -52,6 +56,7 @@ class EmployeeController extends Controller
             'total_employees',
             'total_active',
             'pending_requests',
+            'my_pending_requests',
             'recent_requests',
             'history_count',
             'recent_activity',
@@ -122,6 +127,8 @@ class EmployeeController extends Controller
             return view('partials.masterlist-table', compact('employees', 'sort'))->render();
         }
 
+        \App\Models\ActivityLog::log('view', 'masterlist', 'Accessed the employee masterlist');
+
         return view('masterlist', compact(
             'employees', 
             'search', 
@@ -129,6 +136,18 @@ class EmployeeController extends Controller
             'total_active', 
             'newly_joined'
         ));
+    }
+
+    public function allEmployeesJson(Request $request)
+    {
+        $employees = Employee::where('status', 'active')
+            ->orderBy('last_name', 'asc')
+            ->orderBy('first_name', 'asc')
+            ->get(['id', 'name', 'position', 'agency', 'sex', 'date_joined']);
+
+        \App\Models\ActivityLog::log('export', 'masterlist', 'Exported masterlist data (JSON fetch)');
+            
+        return response()->json($employees);
     }
 
     public function import(Request $request): RedirectResponse
@@ -354,6 +373,8 @@ class EmployeeController extends Controller
         $doc_count = $documents->count();
         $isArchived = ($employee->status !== 'active');
 
+        \App\Models\ActivityLog::log('view', 'masterlist', 'Viewed details for employee ' . $employee->name);
+
         return view('employee-details', compact('employee', 'documents', 'doc_count', 'isArchived'));
     }
 
@@ -416,21 +437,28 @@ class EmployeeController extends Controller
     public function requests(Request $request): View
     {
         $search = $request->query('search', '');
-        $status_filter = 'all';
-
-        // Only show pending requests — approved ones go to the Approved List
-        $query = EmployeeRequest::where('status', 'pending');
-
+        
+        // Pending Requests
+        $pendingQuery = EmployeeRequest::where('status', 'pending');
         if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
+            $pendingQuery->where(function ($q) use ($search) {
                 $q->where('employee_name', 'like', "%{$search}%")
                     ->orWhere('request_type', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('id', 'like', "%{$search}%");
             });
         }
+        $requests = $pendingQuery->orderBy('request_date', 'desc')->get();
 
-        $requests = $query->orderBy('request_date', 'desc')->get();
+        // Approved Requests
+        $approvedQuery = EmployeeRequest::where('status', 'approved');
+        if (!empty($search)) {
+            $approvedQuery->where(function ($q) use ($search) {
+                $q->where('employee_name', 'like', "%{$search}%")
+                    ->orWhere('request_type', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+        $approved_requests = $approvedQuery->orderBy('updated_at', 'desc')->get();
 
         $all_requests = EmployeeRequest::count();
         $pending_count = EmployeeRequest::where('status', 'pending')->count();
@@ -440,13 +468,13 @@ class EmployeeController extends Controller
         $employees = Employee::where('status', 'active')->orderBy('name', 'asc')->get();
 
         return view('requests', compact(
-            'requests', 'search', 'status_filter',
+            'requests', 'approved_requests', 'search',
             'all_requests', 'pending_count', 'approved_count', 'rejected_count',
             'employees'
         ));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -466,7 +494,7 @@ class EmployeeController extends Controller
             'profile_picture' => 'nullable',
             'cropped_image' => 'nullable|string',
             'doc_items.*.classification' => 'required|string|max:100',
-            'doc_items.*.files.*' => 'nullable|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:10240',
+            'doc_items.*.files.*' => 'nullable|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:512000',
         ]);
 
         // Generate ID (Numeric-first sorting)
@@ -486,23 +514,28 @@ class EmployeeController extends Controller
                 $imgData = substr($imgData, strpos($imgData, ',') + 1);
             }
             $imgData = str_replace(' ', '+', $imgData);
+            $decoded = base64_decode($imgData);
             $filename = time() . '_profile.jpg';
-            $path = public_path('uploads/avatars/' . $filename);
             
+            // Still save to disk if needed, but primary is BLOB
+            $path = public_path('uploads/avatars/' . $filename);
             if (!file_exists(public_path('uploads/avatars'))) {
                 mkdir(public_path('uploads/avatars'), 0777, true);
             }
-            
-            file_put_contents($path, base64_decode($imgData));
+            file_put_contents($path, $decoded);
             $data['profile_picture'] = 'uploads/avatars/' . $filename;
+            $data['profile_picture_content'] = $decoded; 
         } elseif ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('uploads/avatars'), $filename);
             $data['profile_picture'] = 'uploads/avatars/' . $filename;
+            $data['profile_picture_content'] = file_get_contents(public_path('uploads/avatars/' . $filename));
         }
 
         $employee = Employee::create($data);
+
+        \App\Models\ActivityLog::log('create', 'masterlist', 'Created new employee record: ' . $employee->name);
 
         if ($request->has('doc_items')) {
             foreach ($request->doc_items as $index => $item) {
@@ -511,15 +544,25 @@ class EmployeeController extends Controller
                     $files = $request->file("doc_items.{$index}.files");
                     foreach ($files as $fileIndex => $file) {
                         $filename = time() . "_{$index}_{$fileIndex}_" . $file->getClientOriginalName();
+                        $binaryContent = file_get_contents($file->getRealPath());
                         $file->move(public_path('uploads'), $filename);
                         $employee->documents()->create([
                             'document_name' => $file->getClientOriginalName(),
                             'file_path' => 'uploads/' . $filename,
+                            'file_content' => $binaryContent,
                             'category' => $category
                         ]);
                     }
                 }
             }
+        }
+
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => "Employee {$data['name']} has been successfully saved!",
+                'status' => 'success',
+                'redirect' => route('employees.add')
+            ]);
         }
 
         return redirect()->route('employees.add')->with('success_message', "Employee {$data['name']} has been successfully saved!");
@@ -554,23 +597,26 @@ class EmployeeController extends Controller
             'status_specify' => $request->status_specify,
         ]);
 
+        \App\Models\ActivityLog::log('edit', 'archive', 'Moved employee ' . $employee->name . ' to ' . strtoupper($request->status) . ' list');
+
         return redirect()->route('employees.masterlist')->with('success_modal', [
             'title' => 'Status Updated!',
             'message' => "Employee has been successfully moved to " . ucfirst($request->status) . " list."
         ]);
     }
 
-    public function upload(Request $request, $id): RedirectResponse
+    public function upload(Request $request, $id)
     {
         $employee = Employee::findOrFail($id);
 
         if ($employee->status !== 'active') {
+            if ($request->ajax()) return response()->json(['message' => 'Documents cannot be uploaded for inactive employees.'], 403);
             return back()->with('error_message', 'Documents cannot be uploaded for inactive or archive employees.');
         }
 
         $request->validate([
             'category' => 'nullable|string|max:50',
-            'documents.*' => 'required|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:102400',
+            'documents.*' => 'required|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:512000',
         ]);
 
         if ($request->hasFile('documents')) {
@@ -580,22 +626,34 @@ class EmployeeController extends Controller
 
             foreach ($files as $file) {
                 $filename = time() . '_' . $upload_count . '_' . $file->getClientOriginalName();
+                $binaryContent = file_get_contents($file->getRealPath());
                 $file->move(public_path('uploads'), $filename);
 
                 $employee->documents()->create([
                     'document_name' => $file->getClientOriginalName(),
                     'file_path' => 'uploads/' . $filename,
+                    'file_content' => $binaryContent,
                     'category' => $category
                 ]);
+                
+                \App\Models\ActivityLog::log('upload', 'masterlist', 'Uploaded document: ' . $file->getClientOriginalName() . ' for ' . $employee->name);
+                
                 $upload_count++;
             }
 
             if ($upload_count > 0) {
+                if ($request->ajax()) {
+                    return response()->json([
+                        'message' => "$upload_count document(s) uploaded successfully to $category",
+                        'status' => 'success'
+                    ]);
+                }
                 return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
                     ->with('success_message', "$upload_count document(s) uploaded successfully to $category");
             }
         }
 
+        if ($request->ajax()) return response()->json(['message' => 'No valid documents uploaded.'], 400);
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
             ->with('error_message', 'No valid documents uploaded');
     }
@@ -615,7 +673,11 @@ class EmployeeController extends Controller
             File::delete($file_path);
         }
 
+        $doc_name = $doc->document_name;
+        $emp_name = $employee ? $employee->name : 'Unknown';
         $doc->delete();
+
+        \App\Models\ActivityLog::log('delete', 'masterlist', 'Deleted document: ' . $doc_name . ' for ' . $emp_name);
 
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
             ->with('success_message', 'Document deleted successfully');
@@ -641,9 +703,26 @@ class EmployeeController extends Controller
             'employee_id' => 'required|string|exists:employees,id',
             'request_type' => 'required|string|max:100',
             'description' => 'nullable|string|max:500',
+            'purpose' => 'required|string|max:255',
+            'requirements_file' => 'nullable|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:10240',
         ]);
 
         $employee = Employee::findOrFail($data['employee_id']);
+        $purpose = $data['purpose'];
+
+        $requirements_file = null;
+        $requirements_file_content = null;
+        if ($request->hasFile('requirements_file')) {
+            $file = $request->file('requirements_file');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $requirements_file_content = file_get_contents($file->getRealPath());
+            
+            if (!file_exists(public_path('uploads/requirements'))) {
+                mkdir(public_path('uploads/requirements'), 0777, true);
+            }
+            $file->move(public_path('uploads/requirements'), $filename);
+            $requirements_file = 'uploads/requirements/' . $filename;
+        }
 
         EmployeeRequest::create([
             'employee_id' => $employee->id,
@@ -652,9 +731,10 @@ class EmployeeController extends Controller
             'request_type' => $data['request_type'],
             'request_date' => now()->toDateString(),
             'status' => 'pending',
-            'description' => $data['description'] ?? '',
+            'description' => "Filed via Dashboard. Purpose: $purpose",
+            'requirements_file' => $requirements_file,
+            'requirements_file_content' => $requirements_file_content
         ]);
-
         return redirect()->route('employees.requests')->with('success_message', 'Document request submitted successfully!');
     }
 
@@ -709,7 +789,22 @@ class EmployeeController extends Controller
             unset($data['suffix']);
         }
 
+        $changedFields = [];
+        foreach ($data as $key => $value) {
+            if (isset($employee->$key) && $employee->$key != $value) {
+                $field = str_replace('_', ' ', $key);
+                $changedFields[] = ucwords($field);
+            }
+        }
+        
         $employee->update($data);
+
+        $desc = 'Updated information for employee ' . $employee->name;
+        if (!empty($changedFields)) {
+            $desc .= ' (Edited: ' . implode(', ', array_slice($changedFields, 0, 3)) . (count($changedFields) > 3 ? '...' : '') . ')';
+        }
+
+        \App\Models\ActivityLog::log('edit', 'masterlist', $desc);
 
         $tab = $request->input('active_tab', 'personal');
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => $tab])
@@ -731,6 +826,7 @@ class EmployeeController extends Controller
                 $imgData = substr($imgData, strpos($imgData, ',') + 1);
             }
             $imgData = str_replace(' ', '+', $imgData);
+            $decoded = base64_decode($imgData);
             $filename = time() . '_profile.jpg';
             $path = public_path('uploads/avatars/' . $filename);
             
@@ -738,18 +834,20 @@ class EmployeeController extends Controller
                 mkdir(public_path('uploads/avatars'), 0777, true);
             }
             
-            file_put_contents($path, base64_decode($imgData));
+            file_put_contents($path, $decoded);
             
             if ($employee->profile_picture && file_exists(public_path($employee->profile_picture))) {
                 @unlink(public_path($employee->profile_picture));
             }
 
             $employee->update([
-                'profile_picture' => 'uploads/avatars/' . $filename
+                'profile_picture' => 'uploads/avatars/' . $filename,
+                'profile_picture_content' => $decoded
             ]);
         } elseif ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $file->getClientOriginalName();
+            $binaryContent = file_get_contents($file->getRealPath());
             $file->move(public_path('uploads/avatars'), $filename);
 
             if ($employee->profile_picture && file_exists(public_path($employee->profile_picture))) {
@@ -757,7 +855,8 @@ class EmployeeController extends Controller
             }
 
             $employee->update([
-                'profile_picture' => 'uploads/avatars/' . $filename
+                'profile_picture' => 'uploads/avatars/' . $filename,
+                'profile_picture_content' => $binaryContent
             ]);
         }
 

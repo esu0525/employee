@@ -14,6 +14,12 @@
             } else {
                 $displayName = $employee->name;
             }
+
+            // Fetch Current User Permissions
+            $currentUser = \App\Models\User::find(session('auth_user_id'));
+            $userPerms = $currentUser ? ($currentUser->permissions ?? []) : [];
+            $isAdmin = $currentUser && $currentUser->role === 'admin';
+            $canDelete = $isAdmin || in_array('delete_employees', $userPerms);
         @endphp
 
         <div class="master-item-card" onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'">
@@ -21,7 +27,9 @@
                 <div class="master-avatar-3layer">
                     <div class="master-avatar-ring">
                         <div class="master-avatar-inner">
-                            @if($employee->profile_picture)
+                            @if($employee->profile_picture_content)
+                                <img src="{{ route('display.employee-avatar', ['id' => $employee->id]) }}" alt="{{ $employee->name }}">
+                            @elseif($employee->profile_picture)
                                 <img src="{{ asset($employee->profile_picture) }}" alt="{{ $employee->name }}">
                             @else
                                 <div class="master-avatar-initials">
@@ -38,12 +46,14 @@
             </div>
             
             <div class="master-card-right">
+                @if($canDelete)
                 <button type="button" class="btn-update-status" 
                         onclick="event.stopPropagation(); openStatusModal('{{ $employee->id }}', '{{ $displayName }}', '{{ $employee->status }}')" 
                         title="Update Status">
                     <i data-lucide="refresh-cw"></i>
                     <span>Status</span>
                 </button>
+                @endif
                 <i data-lucide="chevron-right" class="master-action-arrow"></i>
             </div>
         </div>
@@ -58,7 +68,7 @@
 </div>
 
 {{-- Modern Pagination Footer --}}
-<div class="pagination-footer animate-up" style="--delay: 0.1s; margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 1rem 1.5rem; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);">
+<div class="pagination-footer" style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 1rem 1.5rem; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);">
     <div class="pagination-info" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
         Showing <span style="color: var(--primary);">{{ $employees->firstItem() ?? 0 }}</span> - <span style="color: var(--primary);">{{ $employees->lastItem() ?? 0 }}</span> of <span style="color: var(--text-main);">{{ $employees->total() }}</span>
     </div>

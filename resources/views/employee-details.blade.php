@@ -20,6 +20,15 @@
                 @php
                     $isArchived = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']);
                     
+                    // Fetch Current User Permissions
+                    $currentUser = \App\Models\User::find(session('auth_user_id'));
+                    $userPerms = $currentUser ? ($currentUser->permissions ?? []) : [];
+                    $isAdmin = $currentUser && $currentUser->role === 'admin';
+                    
+                    $canEdit = $isAdmin || in_array('edit_employees', $userPerms);
+                    $canManageDocs = $isAdmin || in_array('manage_documents', $userPerms);
+                    $canDelete = $isAdmin || in_array('delete_employees', $userPerms);
+
                     // Construct Full Name with FULL Middle Name for Detail View
                     $fullNameDisplay = $employee->last_name . ', ' . $employee->first_name;
                     if ($employee->middle_name) {
@@ -46,7 +55,9 @@
                     <div class="avatar-ring-outer">
                         <div class="avatar-ring-inner">
                             <div class="avatar-photo-box">
-                                @if($employee->profile_picture)
+                                @if($employee->profile_picture_content)
+                                    <img src="{{ route('display.employee-avatar', ['id' => $employee->id]) }}" alt="Profile" id="mainAvatarImage">
+                                @elseif($employee->profile_picture)
                                     <img src="{{ asset($employee->profile_picture) }}" alt="Profile" id="mainAvatarImage">
                                 @else
                                     <div class="avatar-initials">
@@ -57,9 +68,11 @@
                         </div>
                     </div>
                 </div>
+                @if($canEdit)
                 <button class="avatar-camera-btn" onclick="document.getElementById('avatarInput').click()" title="Change Photo">
                     <i data-lucide="camera" style="width: 18px;"></i>
                 </button>
+                @endif
                 <form id="avatarForm" action="{{ route('employees.update-avatar', ['id' => $employee->id]) }}" method="POST" enctype="multipart/form-data" style="display: none;">
                     @csrf
                     <input type="hidden" name="cropped_image" id="croppedImageData">
@@ -115,9 +128,11 @@
                     <div class="card-premium info-card">
                         <div class="card-header-modern">
                             <h3><i data-lucide="user-check" style="color: #3b82f6;"></i> Identity Details</h3>
+                            @if($canEdit)
                             <button class="btn-edit-icon" onclick="openEditModal('personal')">
                                 <i data-lucide="pencil"></i>
                             </button>
+                            @endif
                         </div>
                         <div class="info-grid-modern">
                             <div class="info-group"><label>Full Name</label><span>{{ $fullNameDisplay }}</span></div>
@@ -150,9 +165,11 @@
                 <div class="card-premium info-card" style="width: 100%; margin: 0 auto;">
                     <div class="card-header-modern">
                         <h3><i data-lucide="briefcase" style="color: #3b82f6; width: 20px; height: 20px;"></i> Employment Information</h3>
+                        @if($canEdit)
                         <button class="btn-edit-icon" onclick="openEditModal('work')">
                             <i data-lucide="pencil"></i>
                         </button>
+                        @endif
                     </div>
                     <div class="info-grid-modern">
                         <div class="info-group">
@@ -185,10 +202,9 @@
                                 <h4>Scanned Files</h4>
                                 <p>{{ $doc_count }} total items</p>
                             </div>
-                            @if($employee->status === 'active')
+                            @if($employee->status === 'active' && $canManageDocs)
                             <button class="btn-mini-import" onclick="triggerImport()" title="Import PDF">
                                 <i data-lucide="plus"></i>
-                                <span>Import</span>
                             </button>
                             @endif
                         </div>
@@ -223,18 +239,18 @@
                                 <h5 class="section-title"><i data-lucide="upload-cloud" style="width: 14px; color: #3b82f6;"></i> Uploaded Files</h5>
                                 @forelse($generalDocs as $doc)
                                 <div class="mini-doc-item" id="doc-item-{{ $doc->id }}" 
-                                     data-url="{{ asset($doc->file_path) }}" 
+                                     data-url="{{ route('display.document', ['id' => $doc->id]) }}" 
                                      data-name="{{ $doc->document_name }}" 
-                                     onclick="previewDocById('{{ $doc->id }}', '{{ asset($doc->file_path) }}', '{{ $doc->document_name }}')">
+                                     onclick="previewDocById('{{ $doc->id }}', '{{ route('display.document', ['id' => $doc->id]) }}', '{{ $doc->document_name }}')">
                                     <div class="mini-doc-icon"><i data-lucide="file-text"></i></div>
                                     <div class="mini-doc-info">
                                         <span class="name">{{ $doc->document_name }}</span>
                                         <span class="date">Modified {{ $doc->created_at->format('M d, Y') }}</span>
                                     </div>
-                                    @if($employee->status === 'active')
+                                    @if($employee->status === 'active' && $canManageDocs)
                                     <form action="{{ route('employees.delete-doc', ['id' => $doc->id]) }}" method="POST" onclick="event.stopPropagation()">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="mini-btn-delete" title="Delete" onclick="return confirm('Delete this document?')">
+                                        <button type="submit" class="mini-btn-delete" title="Delete" onclick="confirmDeleteDocument(event, this)">
                                             <i data-lucide="trash-2"></i>
                                         </button>
                                     </form>
@@ -270,7 +286,7 @@
                                         <span class="cat-count">({{ $classifiedDocs->has($cat) ? $classifiedDocs->get($cat)->count() : 0 }})</span>
                                     </div>
                                     <div class="category-actions">
-                                        @if($employee->status === 'active')
+                                        @if($employee->status === 'active' && $canManageDocs)
                                         <button class="btn-upload-small" onclick="event.stopPropagation(); triggerCategoryUpload('{{ $cat }}')" title="Upload to {{ $cat }}">
                                             <i data-lucide="plus"></i>
                                         </button>
@@ -282,9 +298,9 @@
                                     @if($classifiedDocs->has($cat))
                                         @foreach($classifiedDocs->get($cat) as $doc)
                                         <div class="mini-doc-item" id="doc-item-{{ $doc->id }}" 
-                                             data-url="{{ asset($doc->file_path) }}" 
+                                             data-url="{{ route('display.document', ['id' => $doc->id]) }}" 
                                              data-name="{{ $doc->document_name }}" 
-                                             onclick="previewDocById('{{ $doc->id }}', '{{ asset($doc->file_path) }}', '{{ $doc->document_name }}')">
+                                             onclick="previewDocById('{{ $doc->id }}', '{{ route('display.document', ['id' => $doc->id]) }}', '{{ $doc->document_name }}')">
                                             <div class="mini-doc-icon"><i data-lucide="file-text"></i></div>
                                             <div class="mini-doc-info">
                                                 <span class="name">{{ $doc->document_name }}</span>
@@ -293,7 +309,7 @@
                                             @if($employee->status === 'active')
                                             <form action="{{ route('employees.delete-doc', ['id' => $doc->id]) }}" method="POST" onclick="event.stopPropagation()">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" class="mini-btn-delete" title="Delete" onclick="return confirm('Delete this document?')">
+                                                <button type="submit" class="mini-btn-delete" title="Delete" onclick="confirmDeleteDocument(event, this)">
                                                     <i data-lucide="trash-2"></i>
                                                 </button>
                                             </form>
@@ -443,6 +459,29 @@
         <button style="position: absolute; top: -40px; right: 0; background: none; border: none; color: white; cursor: pointer;">
             <i data-lucide="x" style="width: 32px; height: 32px;"></i>
         </button>
+    </div>
+</div>
+
+<!-- Upload Progress Modal -->
+<div id="uploadProgressModal" class="modal-modern" style="z-index: 10100; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center;">
+    <div class="modal-content-modern animate-scale-up" style="max-width: 450px; text-align: center; padding: 2.5rem;">
+        <div class="upload-icon-wrapper" style="width: 80px; height: 80px; background: var(--erp-bg); border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: var(--erp-primary);">
+            <i data-lucide="cloud-upload" style="width: 40px; height: 40px;" id="statusIcon"></i>
+        </div>
+        <h3 id="uploadStatusTitle" style="font-family: 'Outfit'; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Uploading Documents</h3>
+        <p id="uploadStatusText" style="color: var(--erp-muted); font-size: 0.95rem; margin-bottom: 2rem;">Please wait while we process your files...</p>
+        
+        <div class="progress-box" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: var(--erp-text); margin-bottom: 0.6rem;">
+                <span id="progressText">0% Complete</span>
+                <span id="progressFiles">0/0 Files</span>
+            </div>
+            <div style="width: 100%; height: 12px; background: var(--erp-bg); border-radius: 10px; overflow: hidden; border: 1px solid var(--erp-border);">
+                <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 10px; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+            </div>
+        </div>
+        
+        <p style="font-size: 0.8rem; color: #ef4444; font-weight: 600;" id="uploadAlert">Do not close or refresh this page.</p>
     </div>
 </div>
 
@@ -1230,40 +1269,81 @@
         if (!input.files || input.files.length === 0) return;
         
         const files = input.files;
-        let totalSize = 0;
-        const maxSize = 500 * 1024 * 1024; // 500MB (matching our new php.ini)
+        const employeeId = '{{ $employee->id }}';
+        const category = document.getElementById('importCategory').value;
+        const formData = new FormData();
+        
+        formData.append('_token', '{{ csrf_token() }}');
+        formData.append('category', category);
         
         for (let i = 0; i < files.length; i++) {
-            totalSize += files[i].size;
-            
-            // Check individual file size (optional, e.g. 100MB) 
-            if (files[i].size > 100 * 1024 * 1024) {
-                alert(`File "${files[i].name}" is too large (max 100MB per file).`);
-                input.value = '';
-                return;
-            }
+            formData.append('documents[]', files[i]);
         }
+
+        // Show Progress Modal
+        const modal = document.getElementById('uploadProgressModal');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const progressFiles = document.getElementById('progressFiles');
+        const statusText = document.getElementById('uploadStatusText');
         
-        if (totalSize > maxSize) {
-            alert(`Total upload size is too large (${(totalSize/1024/1024).toFixed(1)}MB). Max limit is 500MB.`);
-            input.value = '';
-            return;
-        }
-
-        // Show a loading indicator
-        const toast = document.createElement('div');
-        toast.className = 'toast-modern animate-fade-in';
-        toast.innerHTML = `
-            <div class="toast-content" id="uploadingToast">
-                <i data-lucide="loader" class="animate-spin" style="color: #3b82f6;"></i>
-                <span>Uploading ${files.length} document(s)... <strong>Don't close the browser</strong></span>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        if(typeof lucide !== 'undefined') lucide.createIcons();
-
-        // Submit form
-        document.getElementById('importForm').submit();
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        progressFiles.textContent = `0/${files.length} Files`;
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `{{ url('/employee-details/upload') }}/${employeeId}`, true);
+        
+        // Progress tracking
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressText.textContent = percent + '% Complete';
+                
+                // Estimate files based on bytes
+                const filesUploaded = Math.floor((e.loaded / e.total) * files.length);
+                progressFiles.textContent = `${filesUploaded}/${files.length} Files`;
+                
+                if (percent === 100) {
+                    statusText.textContent = 'Processing files in database...';
+                    document.getElementById('uploadAlert').textContent = 'Finalizing... Please wait.';
+                    progressFiles.textContent = `${files.length}/${files.length} Files`;
+                }
+            }
+        };
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                progressBar.style.width = '100%';
+                progressText.textContent = '100% Complete';
+                progressFiles.textContent = `${files.length}/${files.length} Files`;
+                document.getElementById('uploadStatusTitle').textContent = 'Success!';
+                statusText.textContent = 'Documents uploaded successfully.';
+                document.getElementById('uploadAlert').style.color = '#10b981';
+                document.getElementById('uploadAlert').textContent = 'Refreshing page...';
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                let errorMsg = 'An error occurred during upload.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMsg = response.message || errorMsg;
+                } catch(e) {}
+                
+                alert('Upload Failed: ' + errorMsg);
+                modal.style.display = 'none';
+            }
+        };
+        
+        xhr.onerror = function() {
+            alert('A network error occurred.');
+            modal.style.display = 'none';
+        };
+        
+        xhr.send(formData);
     }
 
     function triggerCategoryUpload(cat) {
@@ -1280,73 +1360,123 @@
         const activeItem = document.getElementById('doc-item-' + id);
         if (activeItem) activeItem.classList.add('active');
 
-        // To prevent "Leave site?" prompt from the native PDF viewer's unsaved state, 
-        // we replace the iframe completely instead of just changing src.
+        // To prevent "Leave site?" prompt from the native PDF viewer's unsaved state
         const parent = frame.parentElement;
-        const newFrame = frame.cloneNode(false); // Clone without src
-        frame.onbeforeunload = null; // Clear any listeners
+        const newFrame = frame.cloneNode(false);
+        frame.onbeforeunload = null;
         frame.remove();
         parent.appendChild(newFrame);
-        frame = newFrame; // Keep reference updated
+        frame = newFrame;
 
-        // Viewer logic for images vs pdfs vs docs
-        const extension = url.split('.').pop().toLowerCase();
-        
-        // Reset
+        // More robust extension detection
+        let extension = 'unknown';
+        if (name && name.includes('.')) {
+            extension = name.split('.').pop().toLowerCase();
+        } else if (url && !url.includes('display-file') && url.includes('.')) {
+            extension = url.split('.').pop().toLowerCase();
+        }
+
+        // Reset UI
         noPreview.innerHTML = '';
         noPreview.style.display = 'none';
         frame.style.display = 'none';
-        frame.src = 'about:blank'; // Clear previous
+        frame.src = 'about:blank';
 
         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
             noPreview.innerHTML = `<img src="${url}" style="max-width: 90%; max-height: 90%; object-fit: contain; box-shadow: 0 20px 50px rgba(0,0,0,0.15); border-radius: 12px; border: 4px solid white;">`;
             noPreview.style.display = 'flex';
-        } else if (['docx'].includes(extension)) {
+        } else if (extension === 'docx') {
             noPreview.style.display = 'flex';
-            noPreview.innerHTML = '<div id="docx-container" style="width: 100%; height: 100%; overflow: auto; padding: 2rem; background: #f1f5f9;"></div>';
-            fetch(url)
-                .then(res => res.blob())
-                .then(blob => {
-                    docx.renderAsync(blob, document.getElementById("docx-container"))
-                        .then(x => console.log("docx: finished"));
-                });
-        } else if (['pdf'].includes(extension)) {
+            noPreview.innerHTML = `
+                <div id="docx-loader" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 10;">
+                    <div class="animate-spin" style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; margin-bottom: 1rem;"></div>
+                    <p style="font-family: 'Outfit'; font-weight: 600; color: #64748b;">Rendering Document...</p>
+                </div>
+                <div id="docx-container" style="width: 100%; height: 100%; overflow: auto; padding: 2rem; background: #525659; display: flex; justify-content: center;"></div>
+            `;
+            
+            fetch(url).then(res => res.blob()).then(blob => {
+                if (typeof docx !== 'undefined') {
+                    docx.renderAsync(blob, document.getElementById("docx-container")).then(() => {
+                        document.getElementById('docx-loader').style.display = 'none';
+                        // Apply styling to the rendered word doc to make it look premium
+                        const docxWrapper = document.querySelector('.docx-wrapper');
+                        if (docxWrapper) {
+                            docxWrapper.style.padding = '2rem';
+                            docxWrapper.style.background = 'transparent';
+                            const docxContent = docxWrapper.querySelector('.docx');
+                            if (docxContent) {
+                                docxContent.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                                docxContent.style.margin = '0 auto';
+                            }
+                        }
+                    });
+                } else {
+                    document.getElementById('docx-loader').innerHTML = '<p class="text-danger">docx-preview library not loaded.</p>';
+                }
+            }).catch(err => {
+                document.getElementById('docx-loader').innerHTML = '<p class="text-danger">Failed to load document content.</p>';
+            });
+        } else if (extension === 'pdf') {
             frame.src = url;
             frame.style.display = 'block';
         } else if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
             noPreview.style.display = 'flex';
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
             noPreview.innerHTML = `
-                <div style="text-align: center; width: 100%; height: 100%; display: flex; flex-direction: column;">
-                    <div style="padding: 1rem; background: #f8fafc; border-bottom: 1px solid #eef2f6; display: flex; justify-content: center; gap: 1rem;">
-                         <button onclick="window.open('https://docs.google.com/viewer?url=${encodeURIComponent(url)}', '_blank')" class="btn-save" style="font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                <div style="text-align: center; width: 100%; height: 100%; display: flex; flex-direction: column; background: #525659;">
+                    <div style="padding: 0.75rem; background: #323639; border-bottom: 1px solid #4a4d51; display: flex; justify-content: center; gap: 1rem; align-items: center;">
+                         <span style="color: white; font-size: 0.85rem; font-weight: 600; margin-right: auto; padding-left: 1rem;">${name}</span>
+                         <button onclick="window.open('https://docs.google.com/viewer?url=${encodeURIComponent(url)}', '_blank')" class="btn-save" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; background: #3b82f6;">
                             <i data-lucide="external-link"></i> Open in Google Viewer
                          </button>
-                         <a href="${url}" download class="btn-outline" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; text-decoration: none; display: flex; align-items: center; gap: 0.3rem;">
+                         <a href="${url}" download style="font-size: 0.75rem; padding: 0.4rem 0.8rem; text-decoration: none; display: flex; align-items: center; gap: 0.3rem; color: white !important; border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; background: rgba(255,255,255,0.05); transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
                             <i data-lucide="download"></i> Download
                          </a>
                     </div>
-                    <iframe src="https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true" style="flex: 1; width: 100%; border: none;"></iframe>
-                </div>
-            `;
-            if(typeof lucide !== 'undefined') lucide.createIcons();
-        } else {
-            let icon = 'file-text';
-            if(['xlsx', 'xls'].includes(extension)) icon = 'file-spreadsheet';
-            
-            noPreview.style.display = 'flex';
-            noPreview.innerHTML = `
-                <div style="text-align: center; padding: 3rem;">
-                    <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #3b82f6;">
-                        <i data-lucide="${icon}" style="width: 40px; height: 40px;"></i>
+                    ${isLocal ? `
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 2rem;">
+                         <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+                            <i data-lucide="shield-alert" style="width: 40px; height: 40px; color: #f59e0b;"></i>
+                         </div>
+                         <h3 style="font-family: 'Outfit'; margin-bottom: 0.5rem;">Local Preview Restricted</h3>
+                         <p style="color: #94a3b8; max-width: 400px; font-size: 0.9rem; line-height: 1.5;">
+                            Google Viewer cannot access files on <b>localhost</b>. This preview will work automatically once the system is hosted on a public server.
+                         </p>
+                         <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                            <a href="${url}" download class="btn-save" style="background: #3b82f6;">Download to View</a>
+                         </div>
                     </div>
-                    <h3 style="margin-bottom: 0.5rem; font-family: 'Outfit';">Preview not available for .${extension}</h3>
-                    <p style="color: #64748b; margin-bottom: 2rem;">Please download the file to view it on your device.</p>
-                    <a href="${url}" download class="btn-save" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
-                        <i data-lucide="download"></i> Download & Open File
-                    </a>
+                    ` : `
+                    <iframe src="https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true" style="flex: 1; width: 100%; border: none;"></iframe>
+                    `}
                 </div>
             `;
-            if(typeof lucide !== 'undefined') lucide.createIcons();
+            if(window.lucide) lucide.createIcons();
+        } else {
+            // Check if it's likely a PDF or Image by the route name if extension detection failed
+            if (url.includes('display-file')) {
+                // We trust the browser to handle it if we're not sure, but for safety:
+                frame.src = url;
+                frame.style.display = 'block';
+            } else {
+                let icon = (['xlsx', 'xls'].includes(extension)) ? 'file-spreadsheet' : 'file-text';
+                noPreview.style.display = 'flex';
+                noPreview.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; background: #525659; color: white; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #3b82f6;">
+                            <i data-lucide="${icon}" style="width: 40px; height: 40px;"></i>
+                        </div>
+                        <h3 style="margin-bottom: 0.5rem; font-family: 'Outfit';">Preview not available for .${extension}</h3>
+                        <p style="color: #94a3b8; margin-bottom: 2rem;">Please download the file to view it on your device.</p>
+                        <a href="${url}" download class="btn-save" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; color: white !important; background: #3b82f6;">
+                            <i data-lucide="download"></i> Download & Open File
+                        </a>
+                    </div>
+                `;
+                if(window.lucide) lucide.createIcons();
+            }
         }
         
         controls.style.display = 'flex';
@@ -1439,6 +1569,23 @@
 
     function openEditModal(type) { document.getElementById(type + 'EditModal').classList.add('active'); }
     function closeEditModal(type) { document.getElementById(type + 'EditModal').classList.remove('active'); }
+
+    async function confirmDeleteDocument(event, button) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const confirmed = await window.confirmAction({
+            title: 'Delete Document?',
+            message: 'Are you sure you want to delete this document? This action cannot be undone.',
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            type: 'danger'
+        });
+        
+        if (confirmed) {
+            button.closest('form').submit();
+        }
+    }
 
     window.onclick = function(event) {
         if (event.target.classList.contains('modal-modern')) event.target.classList.remove('active');

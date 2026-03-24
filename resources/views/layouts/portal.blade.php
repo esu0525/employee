@@ -210,8 +210,11 @@
     </style>
 </head>
 <body>
+    @if(!request()->has('compact'))
     <div class="bg-ornament"></div>
+    @endif
     
+    @if(!request()->has('compact'))
     <nav class="portal-navbar">
         <a href="{{ route('portal.index') }}" class="portal-logo">
             <div class="logo-icon">
@@ -230,6 +233,7 @@
             </button>
         </div>
     </nav>
+    @endif
 
     <!-- Security PIN Gate Modal -->
     <div id="pinGateModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); z-index: 9999; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
@@ -269,10 +273,11 @@
         }
     </style>
 
-    <main class="portal-container">
+    <main class="portal-container" style="{{ request()->has('compact') ? 'padding: 0; max-width: 100%; min-height: 0;' : '' }}">
         @yield('content')
     </main>
 
+    @if(!request()->has('compact'))
     <footer class="footer-portal">
         <div style="margin-bottom: 1.5rem; opacity: 0.7;">
             <img src="{{ asset('images/Department_of_Education_(DepEd).svg.png') }}" alt="DepEd" style="height: 40px; filter: grayscale(1);">
@@ -280,6 +285,7 @@
         <p>&copy; {{ date('Y') }} Schools Division Office - Quezon City. All Rights Reserved.</p>
         <p style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.6;">Personnel Information & Records Management System (201 System)</p>
     </footer>
+    @endif
 
     <script>
         lucide.createIcons();

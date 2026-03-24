@@ -6,9 +6,13 @@
 <div class="page-content">
     <!-- Hero Header -->
     <div class="dashboard-hero" style="margin-bottom: 2rem;">
+        @php
+            $currentUser = \App\Models\User::find(session('auth_user_id'));
+            $isAdmin = $currentUser && $currentUser->role === 'admin';
+        @endphp
         <div class="hero-content">
-            <h1 class="hero-title">Overview Dashboard</h1>
-            <p class="hero-subtitle light-theme-text-fix">Welcome to the Employee Management System command center.</p>
+            <h1 class="hero-title">{{ $isAdmin ? 'Overview Dashboard' : 'Employee Portal' }}</h1>
+            <p class="hero-subtitle light-theme-text-fix">{{ $isAdmin ? 'Welcome to the Employee Management System command center.' : 'Hello, ' . ($currentUser->name ?? 'User') . '! Welcome back to your workspace.' }}</p>
         </div>
         <div class="hero-date">
             <div class="date-box">
@@ -19,6 +23,7 @@
     </div>
 
     <!-- Summary Cards -->
+    @if($isAdmin)
     <div class="summary-cards-grid">
         <div class="summary-card card-primary animate-up" style="--delay: 0.1s;">
             <div class="card-icon-box">
@@ -52,12 +57,46 @@
             </div>
         </div>
     </div>
+    @else
+    <div class="summary-cards-grid">
+        <div class="summary-card card-primary animate-up" style="--delay: 0.1s;">
+            <div class="card-icon-box">
+                <i data-lucide="users"></i>
+            </div>
+            <div class="card-stats">
+                <span class="stats-value">{{ $total_active }}</span>
+                <span class="stats-label">Active Records</span>
+            </div>
+        </div>
+
+        <div class="summary-card card-info animate-up" style="--delay: 0.2s;">
+            <div class="card-icon-box">
+                <i data-lucide="file-check-2"></i>
+            </div>
+            <div class="card-stats">
+                <span class="stats-value">{{ $my_pending_requests }}</span>
+                <span class="stats-label">My Pending Requests</span>
+            </div>
+        </div>
+
+        <div class="summary-card card-warning animate-up" style="--delay: 0.3s;">
+            <div class="card-icon-box">
+                <i data-lucide="contact"></i>
+            </div>
+            <div class="card-stats">
+                <span class="stats-value">ACTIVE</span>
+                <span class="stats-label">Account Status</span>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Main Grid -->
     <div class="dashboard-main-grid">
         <!-- Center Panel: Analytics & Recents -->
         <div class="dashboard-column wide">
             <!-- Recruitment Trend Section -->
+            @if($isAdmin)
             <div class="dashboard-section animate-up" style="--delay: 0.5s;">
                 <div class="section-header">
                     <h2 class="section-title">New Hire Analytics</h2>
@@ -66,6 +105,7 @@
                     <canvas id="recruitmentChart"></canvas>
                 </div>
             </div>
+            @endif
 
             <!-- Recent Requests -->
             <div class="dashboard-section animate-up" style="--delay: 0.6s;">
@@ -109,9 +149,13 @@
                         <i data-lucide="user-plus"></i>
                         <span>Add New</span>
                     </a>
+                    <a href="{{ route('portal.index') }}" class="action-btn">
+                        <i data-lucide="file-plus"></i>
+                        <span>File Request</span>
+                    </a>
                     <a href="{{ route('employees.archive') }}" class="action-btn">
                         <i data-lucide="archive"></i>
-                        <span>Archive</span>
+                        <span>Archive List</span>
                     </a>
                     <a href="{{ route('admin.users.index') }}" class="action-btn">
                         <i data-lucide="shield"></i>
@@ -121,6 +165,7 @@
             </div>
 
             <!-- Recent Activity (Status Changes) -->
+            @if($isAdmin)
             <div class="dashboard-section animate-up" style="--delay: 0.8s;">
                 <div class="section-header">
                     <h2 class="section-title">System Activity</h2>
@@ -141,6 +186,19 @@
                     @endforelse
                 </div>
             </div>
+            @endif
+            @if(!$isAdmin)
+            <div class="dashboard-section animate-up" style="--delay: 0.9s;">
+                <div class="section-header">
+                    <h2 class="section-title">My Tasks</h2>
+                </div>
+                <div class="empty-mini" style="background: rgba(var(--primary-rgb), 0.05);">
+                    <i data-lucide="check-circle" style="width: 32px; height: 32px; color: var(--primary); margin-bottom: 1rem;"></i>
+                    <p style="font-weight: 700;">You're all caught up!</p>
+                    <p style="font-size: 0.8rem; opacity: 0.7;">Keep up the great work.</p>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -433,47 +491,49 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Recruitment Trend Chart
-    const ctx = document.getElementById('recruitmentChart').getContext('2d');
-    
-    const recruitmentStats = {!! json_encode($recruitment_stats) !!};
-    const labels = recruitmentStats.map(s => s.month);
-    const data = recruitmentStats.map(s => s.count);
+    const chartElement = document.getElementById('recruitmentChart');
+    if (chartElement) {
+        const ctx = chartElement.getContext('2d');
+        const recruitmentStats = {!! json_encode($recruitment_stats) !!};
+        const labels = recruitmentStats.map(s => s.month);
+        const data = recruitmentStats.map(s => s.count);
 
-    const isDark = document.body.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#94a3b8' : '#64748b';
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#94a3b8' : '#64748b';
 
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'New Hires',
-                data: data,
-                backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                borderRadius: 8,
-                borderSkipped: false,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'New Hires',
+                    data: data,
+                    backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    suggestedMax: 5,
-                    grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', drawBorder: false },
-                    ticks: { color: textColor, font: { weight: '600' }, stepSize: 1 }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: textColor, font: { weight: '700', size: 11 } }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 5,
+                        grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', drawBorder: false },
+                        ticks: { color: textColor, font: { weight: '600' }, stepSize: 1 }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { weight: '700', size: 11 } }
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 
     // Re-init lucide
     if (typeof lucide !== 'undefined') {

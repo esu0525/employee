@@ -185,12 +185,12 @@
                     <div class="add-emp-grid">
                         <div class="form-group" style="grid-column: 1 / -1;">
                             <label class="form-label" for="position">Current Position <span class="required-star">*</span></label>
-                            <input type="text" id="position" name="position" class="form-input {{ $errors->has('position') ? 'input-error' : '' }}" placeholder="e.g. Teacher I" required value="{{ old('position') }}">
+                            <input type="text" id="position" name="position" class="form-input {{ $errors->has('position') ? 'input-error' : '' }}" placeholder="e.g. Teacher I" required style="text-transform: none !important;" value="{{ old('position') }}">
                             @error('position')<span class="field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="agency">Agency <span class="required-star">*</span></label>
-                            <input type="text" id="agency" name="agency" class="form-input {{ $errors->has('agency') ? 'input-error' : '' }}" placeholder="e.g. SDO - Caloocan City" required value="{{ old('agency') }}">
+                            <input type="text" id="agency" name="agency" class="form-input {{ $errors->has('agency') ? 'input-error' : '' }}" placeholder="e.g. SDO - Caloocan City" required style="text-transform: none !important;" value="{{ old('agency') }}">
                             @error('agency')<span class="field-error">{{ $message }}</span>@enderror
                         </div>
                     </div>
@@ -274,6 +274,29 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Upload Progress Modal -->
+<div id="uploadProgressModal" class="modal-modern" style="z-index: 10100; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; position: fixed; inset: 0;">
+    <div class="modal-content-modern animate-scale-up" style="max-width: 450px; text-align: center; padding: 2.5rem; background: var(--bg-card, white); border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+        <div class="upload-icon-wrapper" style="width: 80px; height: 80px; background: var(--bg-main, #f8fafc); border-radius: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: var(--primary, #3b82f6);">
+            <i data-lucide="cloud-upload" style="width: 40px; height: 40px;" id="statusIcon"></i>
+        </div>
+        <h3 id="uploadStatusTitle" style="font-family: 'Outfit'; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-main, #0f172a);">Saving Employee Record</h3>
+        <p id="uploadStatusText" style="color: var(--text-muted, #64748b); font-size: 0.95rem; margin-bottom: 2rem;">Please wait while we process the files and generate the record...</p>
+        
+        <div class="progress-box" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 0.6rem;">
+                <span id="progressText">0% Complete</span>
+                <span id="progressRate">0 KB/s</span>
+            </div>
+            <div style="width: 100%; height: 12px; background: var(--bg-main, #f8fafc); border-radius: 10px; overflow: hidden; border: 1px solid var(--border-light, #e2e8f0);">
+                <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius: 10px; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+            </div>
+        </div>
+        
+        <p style="font-size: 0.8rem; color: #ef4444; font-weight: 600;" id="uploadAlert">Do not close or refresh this page.</p>
     </div>
 </div>
 
@@ -400,17 +423,6 @@
             grid-template-columns: 1fr 1fr;
         }
     }
-    @media (max-width: 640px) {
-        .add-emp-info-panel { 
-            grid-template-columns: 1fr; 
-        }
-    }
-
-    /* Main Card */
-    .add-emp-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-xl);
-        border: 2px solid #94a3b8; /* Darkened Outside Border */
         box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15); /* Stronger shadow to define shape */
         overflow: hidden;
     }
@@ -962,8 +974,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Sync name on load if old values exist
     syncFullName();
 
-    // Submit btn loading state
+    // AJAX Submission with Progress
     document.getElementById('addEmployeeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
         // Final sync of full name
         syncFullName();
         
@@ -974,18 +988,84 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const date = new Date(pickerVal);
                 if (!isNaN(date)) {
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    document.getElementById('date_of_birth').value = `${year}-${month}-${day}`;
+                    document.getElementById('date_of_birth').value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                 }
             } catch(err) {}
         }
 
-        const btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader" style="width:16px;height:16px;" class="animate-spin"></i> Saving...';
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        const form = this;
+        const formData = new FormData(form);
+        const submitBtn = document.getElementById('submitBtn');
+        const modal = document.getElementById('uploadProgressModal');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const statusText = document.getElementById('uploadStatusText');
+        const progressRateText = document.getElementById('progressRate');
+        
+        // Show progress UI
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i data-lucide="loader" style="width:16px;height:16px;" class="animate-spin"></i> Processing...';
+        modal.style.display = 'flex';
+        
+        let startTime = Date.now();
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressText.textContent = percent + '% Complete';
+                
+                // Calculate rate
+                const duration = (Date.now() - startTime) / 1000;
+                if (duration > 0) {
+                    const kbps = (e.loaded / 1024 / duration).toFixed(1);
+                    progressRateText.textContent = kbps + ' KB/s';
+                }
+                
+                if (percent === 100) {
+                    statusText.textContent = 'Processing in database... Almost there!';
+                }
+            }
+        };
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                progressBar.style.width = '100%';
+                progressText.textContent = '100% Complete';
+                document.getElementById('uploadStatusTitle').textContent = 'Registration Successful!';
+                statusText.textContent = 'Employee record has been saved.';
+                document.getElementById('uploadAlert').style.color = '#10b981';
+                document.getElementById('uploadAlert').textContent = 'Redirecting...';
+                
+                setTimeout(() => {
+                    const response = JSON.parse(xhr.responseText);
+                    window.location.href = response.redirect || '{{ route("employees.masterlist") }}';
+                }, 1500);
+            } else {
+                let errorMsg = 'Failed to save employee record.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMsg = response.message || errorMsg;
+                } catch(err) {}
+                alert('Error: ' + errorMsg);
+                modal.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Save Employee';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
+        
+        xhr.onerror = function() {
+            alert('A network error occurred.');
+            modal.style.display = 'none';
+            submitBtn.disabled = false;
+        };
+        
+        xhr.send(formData);
     });
 });
 </script>

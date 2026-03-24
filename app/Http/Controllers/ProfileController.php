@@ -19,25 +19,36 @@ class ProfileController extends Controller
     }
 
     /**
-     * Display the user's profile form.
+     * Display a specific user's logic (shared)
      */
-    public function edit()
+    private function prepareProfileData($user)
     {
-        $user = $this->getUser();
-        if (!$user) return redirect()->route('login');
+        if (!$user) return null;
 
-        // Fetch user login logs
-        $logs = \App\Models\LoginLog::where('user_id', $user->id)
+        $available_permissions = [
+            'view_employees' => 'View Employees',
+            'edit_employees' => 'Edit Employees',
+            'delete_employees' => 'Delete Employees',
+            'manage_documents' => 'Manage Documents',
+            'manage_requests' => 'Manage Requests',
+            'manage_accounts' => 'Manage Accounts'
+        ];
+
+        // Fetch user activity logs (logins, views, edits, deletes, etc.)
+        $logs = \App\Models\ActivityLog::where('user_id', $user->id)
                                     ->orderByDesc('created_at')
                                     ->limit(10)
                                     ->get();
                                     
-        // Get the total number of logins
-        $totalLogins = \App\Models\LoginLog::where('user_id', $user->id)->count();
+        // Get the total number of logins (specifically)
+        $totalLogins = \App\Models\ActivityLog::where('user_id', $user->id)
+                                             ->where('action', 'login')
+                                             ->count();
         
         // Logins per day for the last 7 days for the chart
-        $loginsPerDay = \App\Models\LoginLog::selectRaw('DATE(created_at) as date, count(*) as count')
+        $loginsPerDay = \App\Models\ActivityLog::selectRaw('DATE(created_at) as date, count(*) as count')
                                              ->where('user_id', $user->id)
+                                             ->where('action', 'login')
                                              ->whereRaw('created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)')
                                              ->groupBy('date')
                                              ->get()
@@ -48,12 +59,96 @@ class ProfileController extends Controller
         $chartFullDates = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i)->format('Y-m-d');
-            $chartLabels[]    = now()->subDays($i)->format('D');               // Mon, Tue…
-            $chartFullDates[] = now()->subDays($i)->format('D, M j');          // Mon, Mar 10
+            $chartLabels[]    = now()->subDays($i)->format('D');
+            $chartFullDates[] = now()->subDays($i)->format('D, M j');
             $chartData[]      = $loginsPerDay[$date] ?? 0;
         }
 
-        return view('profile.edit', compact('user', 'logs', 'totalLogins', 'chartLabels', 'chartFullDates', 'chartData'));
+        return compact('user', 'logs', 'totalLogins', 'chartLabels', 'chartFullDates', 'chartData', 'available_permissions');
+    }
+
+    /**
+     * Admin updating an account from the profile page
+     */
+    public function updateAdmin(Request $request, $id)
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser || $currentUser->role !== 'admin') {
+            return redirect()->route('dashboard');
+        }
+
+        $user = \App\Models\User::findOrFail($id);
+        
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'password' => 'nullable|string|min:8',
+            'role' => ['required', Rule::in(['admin', 'staff'])],
+            'permissions' => 'nullable|array'
+        ]);
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->role = $validated['role'];
+        $user->permissions = ($validated['role'] === 'admin') ? [] : ($validated['permissions'] ?? []);
+
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $changed = [];
+        if($user->isDirty('name')) $changed[] = 'Name';
+        if($user->isDirty('email')) $changed[] = 'Email';
+        if($user->isDirty('role')) $changed[] = 'Role';
+        if($user->isDirty('permissions')) $changed[] = 'Permissions';
+        if(!empty($validated['password'])) $changed[] = 'Password';
+
+        $user->save();
+
+        $desc = 'Administratively updated account details for ' . $user->name;
+        if(!empty($changed)) {
+            $desc .= ' (Edited: ' . implode(', ', $changed) . ')';
+        }
+
+        \App\Models\ActivityLog::log('edit', 'profile', $desc);
+
+        return redirect()->back()->with('success', 'User account updated successfully.');
+    }
+
+    /**
+     * Display the user's profile form.
+     */
+    public function edit()
+    {
+        $user = $this->getUser();
+        if (!$user) return redirect()->route('login');
+
+        $data = $this->prepareProfileData($user);
+
+        \App\Models\ActivityLog::log('edit', 'profile', 'Updated personal profile settings');
+
+        return view('profile.edit', $data);
+    }
+
+    /**
+     * View any user profile (Admin only)
+     */
+    public function show($id)
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser || $currentUser->role !== 'admin') {
+            return redirect()->route('dashboard');
+        }
+
+        $user = \App\Models\User::findOrFail($id);
+        $data = $this->prepareProfileData($user);
+        
+        // Pass a flag indicating we are viewing someone else
+        $data['isReadOnly'] = ($currentUser->id != $user->id);
+        
+        \App\Models\ActivityLog::log('view', 'profile', 'Viewed profile of ' . $user->name);
+
+        return view('profile.edit', $data);
     }
 
     /**
@@ -92,7 +187,8 @@ class ProfileController extends Controller
         ]);
         
         $file = $request->file('avatar');
-        $filename = time() . '_' . Str::slug($user->name) . '.' . $file->getClientOriginalExtension();
+        $filename = time() . '_' . \Illuminate\Support\Str::slug($user->name) . '.' . $file->getClientOriginalExtension();
+        $binaryContent = file_get_contents($file->getRealPath());
         
         // Move the file into public/assets/avatars
         $file->move(public_path('assets/avatars'), $filename);
@@ -103,6 +199,7 @@ class ProfileController extends Controller
         }
         
         $user->profile_picture = 'assets/avatars/' . $filename;
+        $user->profile_picture_content = $binaryContent;
         
         // Also update session avatar since app.blade.php uses it
         session(['welcome_avatar' => 'assets/avatars/' . $filename]);

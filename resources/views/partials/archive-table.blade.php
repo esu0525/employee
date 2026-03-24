@@ -21,8 +21,14 @@
                 <tr class="hover-row" onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'">
                     <td>
                         <div class="user-info-cell">
-                            <div class="user-avatar-small">
-                                {{ strtoupper(substr($employee->first_name, 0, 1)) }}{{ strtoupper(substr($employee->last_name, 0, 1)) }}
+                            <div class="user-avatar-small" style="overflow: hidden; padding: 0;">
+                                @if($employee->profile_picture_content)
+                                    <img src="{{ route('display.employee-avatar', ['id' => $employee->id]) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                                @elseif($employee->profile_picture)
+                                    <img src="{{ asset($employee->profile_picture) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                                @else
+                                    {{ strtoupper(substr($employee->first_name, 0, 1)) }}{{ strtoupper(substr($employee->last_name, 0, 1)) }}
+                                @endif
                             </div>
                             <div class="user-details">
                                 @php

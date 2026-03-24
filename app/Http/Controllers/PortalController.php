@@ -33,7 +33,7 @@ class PortalController extends Controller
             'doc_types' => 'required|array',
             'purpose' => 'required|string',
             'purpose_other' => 'required_if:purpose,OTHERS',
-            'requirements_file' => 'required|file|mimes:pdf,jpg,png,jpeg|max:10240',
+            'requirements_file' => 'required|file|mimes:pdf,jpg,png,jpeg|max:512000',
         ]);
 
         // Combine doc types
@@ -49,18 +49,21 @@ class PortalController extends Controller
 
         // Handle file upload
         $requirements_file = null;
+        $requirements_file_content = null;
         if ($request->hasFile('requirements_file')) {
             $file = $request->file('requirements_file');
             $filename = time() . '_' . $file->getClientOriginalName();
+            $requirements_file_content = file_get_contents($file->getRealPath());
             $file->move(public_path('uploads/requirements'), $filename);
             $requirements_file = 'uploads/requirements/' . $filename;
         }
 
-        // Try to find a matching employee ID if they exist, otherwise leave it empty or generic
+        // Try to find a matching employee ID if they exist, otherwise leave it empty (null)
         $employee = Employee::where('name', 'like', "%{$request->employee_name}%")->first();
-        $employee_id = $employee ? $employee->id : 'PORTAL_USER';
+        $employee_id = $employee ? $employee->id : null;
 
         EmployeeRequest::create([
+            'user_id' => session('auth_user_id'),
             'employee_id' => $employee_id,
             'employee_name' => $request->employee_name,
             'agency' => $request->agency,
@@ -70,8 +73,16 @@ class PortalController extends Controller
             'request_date' => now()->toDateString(),
             'status' => 'pending',
             'description' => "Filed via Portal. Purpose: $purpose",
-            'requirements_file' => $requirements_file
+            'requirements_file' => $requirements_file,
+            'requirements_file_content' => $requirements_file_content
         ]);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => 'Your request has been filed successfully and is now pending for approval.',
+                'status' => 'success'
+            ]);
+        }
 
         return back()->with('success_message', 'Your request has been filed successfully and is now pending for approval.');
     }

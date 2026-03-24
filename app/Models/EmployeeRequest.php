@@ -39,7 +39,7 @@ class EmployeeRequest extends Model
 
     protected $fillable = [
         'id', 'employee_id', 'employee_name', 'agency', 'request_type',
-        'num_copies', 'purpose', 'request_date', 'status', 'description', 'requirements_file'
+        'num_copies', 'purpose', 'request_date', 'status', 'description', 'requirements_file', 'requirements_file_content'
     ];
 
     protected $casts = [

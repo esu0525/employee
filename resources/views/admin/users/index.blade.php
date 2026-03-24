@@ -3,32 +3,17 @@
 @section('title', 'Account Management')
 
 @section('content')
-<style>
-    @media (max-width: 768px) {
-        .am-header {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        .am-header button {
-            width: 100%;
-            justify-content: center;
-        }
-        .am-table-wrapper {
-            overflow-x: auto;
-        }
-    }
-</style>
-<div class="page-header am-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-    <div>
-        <h1 class="page-title">Account Management</h1>
-        <p class="page-subtitle">Manage user accounts and access permissions</p>
+<div class="page-content">
+    <div class="page-header am-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1 class="page-title">Account Management</h1>
+            <p class="page-subtitle">Manage user accounts and access permissions</p>
+        </div>
+        <button onclick="openModal('createUserModal')" class="btn btn-primary">
+            <i data-lucide="user-plus" style="width: 20px; height: 20px;"></i>
+            Create New Account
+        </button>
     </div>
-    <button onclick="openModal('createUserModal')" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 600;">
-        <i data-lucide="user-plus" style="width: 20px; height: 20px;"></i>
-        Create New Account
-    </button>
-</div>
 
 @if(session('success'))
 <div style="background: #ecfdf5; color: #059669; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; border: 1px solid #d1fae5;">
@@ -44,79 +29,129 @@
 </div>
 @endif
 
-<div class="card am-table-wrapper" style="background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm);">
-    <div style="overflow-x: auto;">
-    <table style="width: 100%; min-width: 800px; border-collapse: collapse; text-align: left;">
-        <thead>
-            <tr style="background: var(--bg-main); border-bottom: 1px solid var(--border);">
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">User</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Role</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Permissions</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Created</th>
-                <th style="padding: 1rem 1.5rem; font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($users as $user)
-            <tr style="border-bottom: 1px solid var(--border-light); transition: background 0.2s;" onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='transparent'">
-                <td style="padding: 1rem 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <div style="width: 40px; height: 40px; background: {{ $user->role === 'admin' ? 'var(--primary-gradient)' : '#e2e8f0' }}; color: {{ $user->role === 'admin' ? 'white' : '#64748b' }}; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem;">
-                            {{ $user->initials() }}
-                        </div>
-                        <div>
-                            <p style="font-weight: 700; color: var(--text-main); margin: 0; font-size: 0.9375rem;">{{ $user->name }}</p>
-                            <p style="color: var(--text-muted); margin: 0; font-size: 0.8125rem;">{{ $user->email }}</p>
-                        </div>
+<style>
+    .am-column-headers {
+        display: flex; 
+        padding: 0.85rem 1.5rem; 
+        margin-bottom: 1rem; 
+        border-radius: 12px;
+        font-size: 0.75rem; 
+        font-weight: 800; 
+        text-transform: uppercase; 
+        letter-spacing: 0.1em;
+        background: #ffffff;
+        border: 2px solid #8292a9ff;
+        color: #374151;
+    }
+    body[data-theme="dark"] .am-column-headers {
+        background: #334155;
+        border-color: #ffffff;
+        color: #ffffff;
+    }
+    body[data-theme="night"] .am-column-headers {
+        background: #ffffff;
+        border-color: #4b5563;
+        color: #374151;
+    }
+</style>
+
+<!-- Column Headers -->
+<div class="am-column-headers" style="display: flex; align-items: center; padding: 0.75rem 1.5rem; margin-bottom: 0.5rem; font-family: Outfit; font-weight: 700; font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; background: #ffffff; border: 1px solid var(--border-light); border-radius: 12px; margin-left: 20px; margin-right: 20px; gap: 1rem; box-sizing: border-box;">
+    <div style="width: 240px; flex-shrink: 0;">User Detail</div>
+    <div style="width: 120px; flex-shrink: 0;">Role</div>
+    <div style="flex: 1; min-width: 200px;">Permissions</div>
+    <div style="width: 140px; flex-shrink: 0;">Last Logged In</div>
+    <div style="width: 100px; flex-shrink: 0;">Created</div>
+    <div style="width: 90px; text-align: right; flex-shrink: 0;">Actions</div>
+</div>
+
+<div class="master-list-grid" style="margin-top: 0.5rem; margin-left: 20px; margin-right: 20px;">
+    @foreach($users as $user)
+    <div class="master-item-card" style="cursor: default; display: flex; align-items: center; padding: 1.25rem 1.5rem; margin-bottom: 1rem; background: var(--bg-card); border-radius: 20px; border: 1px solid var(--border-light); transition: all 0.3s ease; gap: 1rem; box-sizing: border-box;">
+        <!-- User Detail -->
+        <div class="master-card-left" style="width: 240px; border: none; padding: 0; display: flex; align-items: center; gap: 1rem; flex-shrink: 0;">
+            <div class="master-avatar-3layer">
+                <div class="master-avatar-ring" style="width: 50px; height: 50px;">
+                    <div class="master-avatar-inner" style="background: {{ $user->role === 'admin' ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' : '#f1f5f9' }};">
+                        @if($user->profile_picture_content)
+                            <img src="{{ route('display.user-avatar', ['id' => $user->id]) }}" alt="{{ $user->name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        @else
+                            <div class="master-avatar-initials" style="color: {{ $user->role === 'admin' ? '#ffffff' : '#4f46e5' }}; font-weight: 800; font-size: 1.1rem;">
+                                {{ $user->initials() }}
+                            </div>
+                        @endif
                     </div>
-                </td>
-                <td style="padding: 1rem 1.5rem;">
-                    <span style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; 
-                        background: {{ $user->role === 'admin' ? 'var(--info-soft)' : 'var(--bg-main)' }}; 
-                        color: {{ $user->role === 'admin' ? 'var(--primary-light)' : 'var(--text-muted)' }};">
-                        <i data-lucide="{{ $user->role === 'admin' ? 'shield-check' : 'user' }}" style="width: 14px; height: 14px;"></i>
-                        {{ $user->role }}
-                    </span>
-                </td>
-                <td style="padding: 1rem 1.5rem;">
-                    @if($user->role === 'admin')
-                        <span style="color: #64748b; font-size: 0.8125rem; font-style: italic;">Full Access Level</span>
+                </div>
+            </div>
+            <div class="master-info" style="border: none; padding: 0;">
+                <span class="master-name" style="font-weight: 800; color: var(--text-main); font-size: 0.95rem;">{{ $user->name }}</span>
+                <span class="master-sub" style="font-size: 0.75rem; color: var(--text-muted);">{{ $user->email }}</span>
+            </div>
+        </div>
+
+        <!-- Role -->
+        <div style="width: 120px; flex-shrink: 0;">
+            <span class="badge {{ $user->role === 'admin' ? 'badge-transfer' : 'badge-others' }}" style="font-size: 0.65rem; padding: 0.35rem 0.85rem; border-radius: 999px; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 700;">
+                <i data-lucide="{{ $user->role === 'admin' ? 'shield-check' : 'user' }}" style="width: 12px; height: 12px;"></i>
+                {{ strtoupper($user->role) }}
+            </span>
+        </div>
+
+        <!-- Permissions -->
+        <div style="flex: 1; min-width: 200px;">
+            @if($user->role === 'admin')
+                <span style="color: #6366f1; font-size: 0.75rem; font-weight: 600; font-style: italic; opacity: 0.8;">Full Access Level</span>
+            @else
+                <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                    @if(empty($user->permissions))
+                        <span style="color: #94a3b8; font-size: 0.75rem; opacity: 0.6;">No permissions set</span>
                     @else
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
-                            @if(empty($user->permissions))
-                                <span style="color: #94a3b8; font-size: 0.8125rem;">No permissions set</span>
-                            @else
-                                @foreach($user->permissions as $perm)
-                                    <span style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted); padding: 0.125rem 0.5rem; border-radius: 6px; font-size: 0.6875rem; font-weight: 600;">
-                                        {{ $available_permissions[$perm] ?? $perm }}
-                                    </span>
-                                @endforeach
-                            @endif
-                        </div>
+                        @foreach($user->permissions as $perm)
+                            <span style="background: #fef9c3; border: 1px solid #fde047; color: #854d0e; padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.02em;">
+                                {{ $available_permissions[$perm] ?? $perm }}
+                            </span>
+                        @endforeach
                     @endif
-                </td>
-                <td style="padding: 1rem 1.5rem; color: var(--text-muted); font-size: 0.8125rem;">
-                    {{ $user->created_at->format('M d, Y') }}
-                </td>
-                <td style="padding: 1rem 1.5rem; text-align: right;">
-                    <button onclick="editUser({{ $user->toJson() }})" style="background: none; border: none; padding: 0.5rem; cursor: pointer; color: #64748b; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'">
-                        <i data-lucide="edit-3" style="width: 18px; height: 18px;"></i>
+                </div>
+            @endif
+        </div>
+
+        <!-- Last Logged In -->
+        <div style="width: 140px; font-size: 0.8rem; color: var(--text-main); font-weight: 600; flex-shrink: 0;">
+            @if($user->last_login_at)
+                <div style="display: flex; flex-direction: column;">
+                    <span>{{ \Carbon\Carbon::parse($user->last_login_at)->format('M d, Y') }}</span>
+                    <span style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.7;">{{ \Carbon\Carbon::parse($user->last_login_at)->format('H:i') }}</span>
+                </div>
+            @else
+                <span style="color: var(--text-muted); opacity: 0.5;">Never</span>
+            @endif
+        </div>
+
+        <!-- Created -->
+        <div style="width: 100px; color: var(--text-muted); font-size: 0.8rem; font-weight: 500; flex-shrink: 0;">
+            {{ $user->created_at->format('M d, Y') }}
+        </div>
+
+        <!-- Actions -->
+        <div class="master-card-right" style="width: 90px; text-align: right; border: none; padding: 0; flex-shrink: 0;">
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <a href="{{ route('admin.users.profile', $user->id) }}" class="btn btn-outline" style="padding: 0.5rem; min-width: 38px; height: 38px; border-radius: 12px; color: #3b82f6; border-color: #dbeafe; background: #eff6ff; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="Manage Account Profile">
+                    <i data-lucide="eye" style="width: 18px; height: 18px;"></i>
+                </a>
+                @if($user->id != session('auth_user_id'))
+                <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" style="display: inline-block;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button" onclick="confirmDeleteAccount(event, this)" class="btn btn-outline" style="padding: 0.5rem; min-width: 38px; height: 38px; border-radius: 12px; color: #ef4444; border-color: #fee2e2; background: #fef2f2; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                        <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
                     </button>
-                    @if($user->id !== auth()->id())
-                    <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('Are you sure you want to delete this account?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" style="background: none; border: none; padding: 0.5rem; cursor: pointer; color: #64748b; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'">
-                            <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
-                        </button>
-                    </form>
-                    @endif
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+                </form>
+                @endif
+            </div>
+        </div>
     </div>
+    @endforeach
 </div>
 
 <!-- Create User Modal -->
@@ -126,6 +161,21 @@
             <h3 style="font-family: 'Outfit', sans-serif; font-weight: 800; color: #1e293b; margin: 0;">Create New Account</h3>
             <button onclick="closeModal('createUserModal')" style="background: none; border: none; cursor: pointer; color: #94a3b8;"><i data-lucide="x"></i></button>
         </div>
+        
+        @if($errors->any())
+        <div style="margin: 1.5rem 2rem 0; background: #fef2f2; color: #dc2626; padding: 1rem; border-radius: 12px; border: 1px solid #fecaca;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+                <span style="font-weight: 700;">Validation Error</span>
+            </div>
+            <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.85rem;">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+
         <form action="{{ route('admin.users.store') }}" method="POST" style="padding: 2rem;">
             @csrf
             <div class="form-group" style="margin-bottom: 1rem;">
@@ -139,6 +189,7 @@
             <div class="form-group" style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">PASSWORD</label>
                 <input type="password" name="password" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+                <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem;">Minimum 8 characters required</p>
             </div>
             <div class="form-group" style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">ACCOUNT ROLE</label>
@@ -245,9 +296,32 @@
         openModal('editUserModal');
     }
 
+    async function confirmDeleteAccount(event, button) {
+        event.preventDefault();
+        
+        const confirmed = await window.confirmAction({
+            title: 'Delete Account?',
+            message: 'Are you sure you want to delete this account? This action cannot be undone.',
+            confirmText: 'Delete Account',
+            cancelText: 'Cancel',
+            type: 'danger'
+        });
+        
+        if (confirmed) {
+            button.closest('form').submit();
+        }
+    }
+
     // Initialize lucide
     document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
+        
+        // Auto-open modal if there are errors
+        @if($errors->any())
+            openModal('createUserModal');
+        @endif
     });
 </script>
+    </div>
+</div>
 @endsection

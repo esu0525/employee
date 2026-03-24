@@ -193,11 +193,7 @@ class AuthController extends Controller
         session()->flash('show_welcome_modal', true);
 
         // Record the login log
-        \App\Models\LoginLog::create([
-            'user_id' => $user->id,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent()
-        ]);
+        \App\Models\ActivityLog::log('login', 'auth', 'User logged into the system');
 
         return response()->json([
             'success'  => true,

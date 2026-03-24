@@ -1,207 +1,314 @@
 @extends('layouts.portal')
 
-@section('title', 'Document Preview')
+@section('title', 'Document Request Form - Preview')
 
 @section('content')
-<div style="animation: fadeInUp 0.5s ease-out;">
-    <!-- Action Bar -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; background: white; padding: 1rem 1.5rem; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-        <a href="{{ route('employees.requests') }}" class="btn-portal-secondary">
-            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
-            Return to Management
-        </a>
-        <div style="display: flex; gap: 1rem;">
-            <button onclick="window.print()" class="btn-portal-primary" style="padding: 0.625rem 1.75rem; font-size: 0.875rem; border-radius: 12px;">
-                <i data-lucide="printer" style="width: 18px; height: 18px;"></i>
-                Export / Print PDF
-            </button>
-        </div>
-    </div>
+    <div class="printable-paper-container"
+        style="animation: fadeInUp 0.5s ease-out; padding: 20px 0 150px 0; background: #f1f5f9; min-height: 100vh;">
+        <!-- Action Bar (Hidden in Print) -->
+        @if(!request()->has('compact'))
+            <div class="action-bar-no-print"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: white; padding: 1rem 1.5rem; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
 
-    <!-- Official Document Paper -->
-    <div style="background: white; padding: 60px; border-radius: 8px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; min-height: 1000px; position: relative;">
-        <!-- Official Header -->
-        <div style="text-align: center; margin-bottom: 40px; position: relative;">
-            <div style="position: absolute; left: 0; top: 0;">
-                <img src="{{ asset('images/Department_of_Education_(DepEd).svg.png') }}" style="width: 85px; height: auto;">
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="window.print()" class="btn-portal-primary"
+                        style="padding: 0.625rem 1.75rem; font-size: 0.875rem; border-radius: 12px;">
+                        <i data-lucide="printer" style="width: 18px; height: 18px;"></i>
+                        Export / Print Form
+                    </button>
+                </div>
             </div>
-            
-            <p style="font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.1em; color: #475569;">Republic of the Philippines</p>
-            <p style="font-size: 18px; font-weight: 800; margin: 2px 0; color: #1e293b; font-family: 'Outfit', sans-serif;">Department of Education</p>
-            <p style="font-size: 11px; margin: 0; text-transform: uppercase; color: #475569;">National Capital Region</p>
-            <p style="font-size: 11px; margin: 0; text-transform: uppercase; font-weight: 700; color: #1e293b;">Schools Division Office Quezon City</p>
-            
-            <div style="margin: 30px auto 20px; width: 100%; height: 2px; background: #1e293b;"></div>
-            
-            <p style="font-size: 13px; font-weight: 700; margin: 10px 0; color: #1e293b; text-transform: uppercase;">Human Resource Non-Teaching Personnel Unit</p>
-            <div style="margin-top: 15px;">
-                <span style="font-size: 20px; font-weight: 900; border: 3px solid #1e293b; padding: 12px 30px; display: inline-block; letter-spacing: 0.05em; font-family: 'Outfit', sans-serif;">DOCUMENT REQUEST FORM</span>
-            </div>
-        </div>
+        @endif
 
-        <!-- Info Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 50px; font-family: 'Inter', sans-serif;">
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div style="border-bottom: 1.5px solid #1e293b; padding-bottom: 4px;">
-                    <p style="font-size: 10px; font-weight: 800; color: #64748b; margin: 0; text-transform: uppercase;">Requesting Employee</p>
-                    <p style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 2px 0;">{{ $request->employee_name }}</p>
-                </div>
-                <div style="border-bottom: 1.5px solid #1e293b; padding-bottom: 4px;">
-                    <p style="font-size: 10px; font-weight: 800; color: #64748b; margin: 0; text-transform: uppercase;">Agency</p>
-                    <p style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 2px 0;">{{ $request->agency ?: 'SDO Quezon City' }}</p>
-                </div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div style="border-bottom: 1.5px solid #1e293b; padding-bottom: 4px;">
-                    <p style="font-size: 10px; font-weight: 800; color: #64748b; margin: 0; text-transform: uppercase;">Filing Date</p>
-                    <p style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 2px 0;">{{ $request->request_date->format('F d, Y') }}</p>
-                </div>
-                <div style="border-bottom: 1.5px solid #1e293b; padding-bottom: 4px;">
-                    <p style="font-size: 10px; font-weight: 800; color: #64748b; margin: 0; text-transform: uppercase;">Volume</p>
-                    <p style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 2px 0;">{{ $request->num_copies }} {{ Str::plural('Copy', $request->num_copies) }}</p>
-                </div>
-            </div>
-        </div>
+        <!-- Official Document Paper -->
+        <div class="printable-paper"
+            style="background: white; padding: 10mm 15mm; border-radius: 2px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; width: 210mm; min-height: 297mm; margin: 0 auto 50px auto; position: relative; box-sizing: border-box; font-family: 'Bookman Old Style', 'Bookman', serif; color: black; line-height: 1.4;">
 
-        <!-- Checklists -->
-        <div style="margin-top: 50px;">
-            <p style="font-size: 13px; font-weight: 900; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.05em;">Document/s Requested:</p>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 12px; font-size: 13px;">
-                @php
-                    $docs = [
-                        'Appointment, Oath of Office, Certificate of Assumption',
-                        'TOR and Diploma, Certification of Education',
-                        'PDS with Work Experience Sheet',
-                        'Service Record, Certificate of Employement',
-                        'Certificates',
-                        'IPCRF'
-                    ];
-                    $requested_types = explode(', ', $request->request_type);
-                    $other_val = '';
-                    foreach($requested_types as $type) {
-                        if (str_contains($type, '(')) {
-                            $other_val = substr($type, strpos($type, '(') + 1, -1);
-                        }
+            <!-- Header Section -->
+            <div style="text-align: center; margin-bottom: 5px;">
+                <img src="{{ asset('images/logos/kagawaran-logo.png') }}"
+                    style="width: 75px; height: auto; margin: -2px 0 0 0">
+                <p
+                    style="font-size: 11pt; margin: -5px 0 0 0; color: #000; font-family: 'Old English Text MT', serif; font-weight: bold; line-height: 1.1;">
+                    Republic of the Philippines</p>
+                <p
+                    style="font-size: 16.5pt; margin: 5px 0 0 0; color: #000; font-family: 'Old English Text MT', serif; font-weight: bold; line-height: 1.1;">
+                    Department of Education</p>
+                <p style="font-size: 10pt; margin: 0; color: #000; font-family: 'Calibri', sans-serif; font-weight: bold;">
+                    NATIONAL CAPITAL REGION</p>
+                <p
+                    style="font-size: 10pt; margin: -2px 0 0 0; color: #000; font-weight: bold; font-family: 'Calibri', sans-serif;">
+                    SCHOOLS DIVISION OFFICE QUEZON CITY</p>
+                <hr style="border: none; border-top: 1.5pt solid black; width: 93%; margin: 0 auto; margin-right: 32px;">
+            </div>
+
+            <!-- Title Section -->
+            <div style="text-align: center; margin: 40px 0 15px 0;">
+                <p style="font-size: 15pt; font-weight: bold; margin: 0; font-family: 'Bookman Old Style', serif;">
+                    HUMAN
+                    RESOURCE NON-TEACHING PERSONNEL UNIT</p>
+                <p style="font-size: 15pt; font-weight: bold; margin: 0; font-family: 'Bookman Old Style', serif;">
+                    DOCUMENT
+                    REQUEST FORM</p>
+            </div>
+
+            <!-- Form Fields -->
+            <div style="font-size: 11pt; margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <div style="flex: 1; margin-left: 20px;">
+                        <span>Number of Copies:</span>
+                        <span
+                            style="margin: 0; border-bottom: 1pt solid black; display: inline-block; min-width: 45px; padding-left: 5px; line-height: 0.8; padding-bottom: 1px;">{{ $request->num_copies }}</span>
+                    </div>
+                    <div style="flex: 1; text-align: right; margin-right: 50px;">
+                        <span>Date:</span>
+                        <span
+                            style="margin: 0; border-bottom: 0.5pt solid black; display: inline-block; min-width: 100px; text-align: left; padding-left: 5px; line-height: 0.8; padding-bottom: 1px;">{{ $request->request_date->format('F d, Y') }}</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; margin-left: 20px; align-items: flex-end; margin-bottom: 4px;">
+                    <span style="white-space: nowrap; line-height: 1;">Name:</span>
+                    <span
+                        style="border-bottom: 1pt solid black; flex-grow: 1; padding-left: 10px; padding-bottom: 1.5px; font-weight: bold; margin-right: 150px; line-height: 1; display: inline-block; margin-left: 5px;">{{ $request->employee_name }}</span>
+                </div>
+
+                <div style="margin: 0; display: flex; margin-left: 20px; align-items: flex-end; margin-bottom: 8px;">
+                    <span style="white-space: nowrap; line-height: 1;">School:</span>
+                    <span
+                        style="border-bottom: 1pt solid black; flex-grow: 1; padding-left: 10px; padding-bottom: 1.5px; margin-right: 150px; line-height: 1; display: inline-block; margin-left: 5px;">{{ $request->agency }}</span>
+                </div>
+
+                <div style="margin: 0; display: flex; margin-left: 20px; align-items: flex-end; margin-bottom: 4px;">
+                    <span style="white-space: nowrap;">Document/s Requested:</span>
+                </div>
+                <div style="margin: 0; display: flex; margin-left: 20px; align-items: flex-end; margin-bottom: 8px;">
+                    <span
+                        style="border-bottom: 1pt solid black; flex-grow: 1; padding-left: 10px; padding-bottom: 2px; margin-right: 150px; line-height: 1; display: inline-block;">{{ strtoupper($request->request_type) }}</span>
+                </div>
+
+
+                <div style="margin: 0; display: flex; margin-left: 20px; align-items: flex-end;">
+                    <span style="white-space: nowrap;">Purpose:</span>
+                    <span
+                        style="border-bottom: 1pt solid black; flex-grow: 1; padding-left: 10px; padding-bottom: 2px; margin-right: 150px; line-height: 1; display: inline-block; margin-left: 5px;">{{ strtoupper($request->purpose) }}</span>
+                </div>
+
+            </div>
+
+            <!-- Signatures Section -->
+            <div
+                style="margin-left: 20px; margin-top: 40px; display: flex; justify-content: space-between; font-size: 11pt;">
+                <div style="width: 45%;">
+                    <p style="font-weight: bold; margin-bottom: 25px; font-family: 'Bookman Old Style', serif;">
+                        Prepared By:</p>
+                    <div style="text-align: center; width: 180px;">
+                        <span contenteditable="true" class="editable-name"
+                            style="display: block; min-height: 20px; outline: none; margin-bottom: -2px; font-size: 11pt; color: gray;"
+                            onfocus="if(this.innerText.trim() === '(Click to edit)') { this.innerText = ''; this.style.color = 'black'; }"
+                            onblur="if(this.innerText.trim() === '') { this.innerText = '(Click to edit)'; this.style.color = 'gray'; }">(Click
+                            to
+                            edit)</span>
+                        <div style="border-bottom: 1pt solid black; width: 100%; margin-bottom: 4px;"></div>
+                        <p style="font-size: 11pt; margin: 0;">HR-NTPU Personnel</p>
+                    </div>
+                </div>
+                <div
+                    style="width: 48%; display: flex; flex-direction: column; align-items: flex-start; margin-left: -40px;">
+                    <p
+                        style="font-weight: bold; margin-bottom: 25px; font-family: 'Bookman Old Style', serif; margin-left: 12px;">
+                        Received By:</p>
+                    <div style="text-align: center; width: 280px;">
+                        <span style="display: block; min-height: 20px; margin-bottom: -2px;"></span>
+                        <div style="border-bottom: 1pt solid black; width: 240px; margin-bottom: 4px; margin-left: 23px;">
+                        </div>
+                        <p style="font-size: 11pt; margin-left: 2px;">Signature over printed name</p>
+                        <p style="font-size: 11pt; margin-left: -32px; width: 340px;">Requesting Person/Authorized
+                            Representative</p>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Approved By -->
+            <div style="margin-left: 20px; margin-top: 30px; font-size: 11pt;">
+                <p
+                    style="margin: -5px 0 0 0; font-weight: bold; margin-bottom: 30px; font-family: 'Bookman Old Style', serif;">
+                    Approved By:</p>
+                <div style="text-align: center; width: auto; display: inline-block; margin-left: 40px;">
+                    <p
+                        style="margin: 0; font-weight: bold; border-bottom: 1pt solid black; display: inline-block; min-width: 200px; font-size: 11pt; text-transform: uppercase; padding-bottom: 0; line-height: 1.1;">
+                        MICHELLE A. MAL-IN
+                    </p>
+                    <p style="font-size: 11pt;">Administrative Officer IV</p>
+                </div>
+            </div>
+
+            <!-- Requirements Section -->
+            <div style="margin-left: 20px; margin-top: 50px; font-size: 10.5pt; margin-bottom: 10px;">
+                <p style="font-weight: bold; font-family: 'Bookman Old Style', serif;">Requirements:</p>
+                <div style="margin-left: 25px; font-style: italic; padding-bottom: 2px;">
+                    <ol style="margin: 0; padding: 0; list-style-type: none;">
+                        <li style="margin-bottom: -2px;">1.&nbsp;&nbsp;Accomplished Request Form</li>
+                        <li style="margin-bottom: -2px;">2.&nbsp;&nbsp;Photocopy of Valid ID</li>
+                    </ol>
+                </div>
+                <p style="font-weight: bold; margin: 15px 0 0 0; font-family: 'Bookman Old Style', serif;">
+                    If authorized Representative:</p>
+                <div style="margin-left: 75px; font-style: italic; padding-bottom: 2px;">
+                    <ol style="margin-bottom: 5px; padding: 0; list-style-type: none;">
+                        <li style="margin-bottom: -2px;">a.&nbsp;&nbsp;Accomplished Request Form</li>
+                        <li style="margin-bottom: -2px;">b.&nbsp;&nbsp;Authorization Letter</li>
+                        <li style="margin-bottom: -2px;">c.&nbsp;&nbsp;I.D. of requesting party and authorized
+                            representative</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Footer Section -->
+            <div style="position: absolute; bottom: 18mm; left: 15mm; right: 15mm;">
+                <hr
+                    style="border: none; border-top: 1.5pt solid black; width: 93%; margin: 0 auto; margin-top: -22px; margin-bottom: 8px; margin-right: 32px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <!-- Footer Left Logos -->
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <img src="{{ asset('images/logos/SDO-Logo.png') }}"
+                            style="margin-left: -15px; width: 80px; height: auto;">
+                        <img src="{{ asset('images/logos/csc-logo.png') }}" style="width: 120px; height: auto;">
+                    </div>
+
+                    <!-- Footer Address Info (Left Aligned next to CSC) -->
+                    <div
+                        style="text-align: left; font-size: 9pt; flex-grow: 1; padding-left: 15px; font-family: 'Bookman Old Style', serif; white-space: nowrap;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 1px;">
+                            <i data-lucide="home" style="width: 12px; height: 12px; color: #000;"></i>
+                            <span style="display: inline-block; transform: translateY(-1px); margin-left: 10px;">Nueva Ecija
+                                St., Bago Bantay, Quezon City</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 1px;">
+                            <i data-lucide="phone" style="width: 12px; height: 12px; color: #000;"></i>
+                            <span style="display: inline-block; transform: translateY(-1px); margin-left: 15px;">8538-6900
+                                to 8538-6919</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 1px;">
+                            <i data-lucide="mail" style="width: 12px; height: 12px; color: #000;"></i>
+                            <span
+                                style="display: inline-block; transform: translateY(-1px); margin-left: 15px;">sdo.quezoncity@deped.gov.ph</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="globe" style="width: 12px; height: 12px; color: #000;"></i>
+                            <span
+                                style="display: inline-block; transform: translateY(-1px); text-decoration: underline; color: #0000EE; margin-left: 15px;">www.depedqc.ph</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer Right Logos -->
+                    <div style="display: flex; align-items: center; gap: 4px; margin-right: -25px;">
+                        <img src="{{ asset('images/logos/deped-wordmark.png') }}"
+                            style=" margin-top: 12px; width: 120px; height: auto;">
+                        <img src="{{ asset('images/logos/bagong-pilipinas-logo.png') }}" style="width: 75px; height: auto;">
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                // Initialize Lucide icons after they might have been hidden/shown
+                document.addEventListener('DOMContentLoaded', function () {
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
                     }
-                @endphp
-                @foreach($docs as $doc)
-                <div style="display: flex; align-items: flex-start; gap: 12px;">
-                    <div style="width: 18px; height: 18px; border: 2px solid #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; flex-shrink: 0; margin-top: 1px;">
-                        {{ in_array($doc, $requested_types) ? 'X' : '' }}
-                    </div>
-                    <span style="font-weight: 500; color: #1e293b;">{{ $doc }}</span>
-                </div>
-                @endforeach
-                <div style="display: flex; align-items: flex-start; gap: 12px;">
-                    <div style="width: 18px; height: 18px; border: 2px solid #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; flex-shrink: 0; margin-top: 1px;">
-                        {{ $other_val ? 'X' : '' }}
-                    </div>
-                    <div style="flex: 1; display: flex; align-items: baseline; gap: 10px;">
-                        <span style="font-weight: 500; color: #1e293b;">OTHERS (Specify):</span>
-                        <span style="border-bottom: 1px solid #1e293b; flex: 1; padding: 0 5px; min-height: 20px;">{{ $other_val }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+                });
+            </script>
 
-        <div style="margin-top: 50px;">
-            <p style="font-size: 13px; font-weight: 900; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.05em;">Purpose:</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px 30px; font-size: 13px;">
-                @php
-                    $purposes = ['GSIS LOAN', 'PAG-IBIG LOAN', 'BANK LOAN', 'EMPLOYMENT', 'RETIREMENT', 'TRAVEL ABROAD'];
-                    $is_other_purpose = !in_array($request->purpose, $purposes);
-                @endphp
-                @foreach($purposes as $p)
-                <div style="display: flex; align-items: flex-start; gap: 12px;">
-                    <div style="width: 18px; height: 18px; border: 2px solid #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; flex-shrink: 0;">
-                        {{ $request->purpose == $p ? 'X' : '' }}
-                    </div>
-                    <span style="font-weight: 500; color: #1e293b;">{{ $p }}</span>
-                </div>
-                @endforeach
-                <div style="display: flex; align-items: flex-start; gap: 12px; grid-column: 1 / -1; margin-top: 10px;">
-                    <div style="width: 18px; height: 18px; border: 2px solid #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; flex-shrink: 0;">
-                        {{ $is_other_purpose ? 'X' : '' }}
-                    </div>
-                    <div style="flex: 1; display: flex; align-items: baseline; gap: 10px;">
-                        <span style="font-weight: 500; color: #1e293b;">OTHER/S:</span>
-                        <span style="border-bottom: 1px solid #1e293b; flex: 1; padding: 0 5px; min-height: 20px;">{{ $is_other_purpose ? $request->purpose : '' }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <style>
+                /* Screen View */
+                @media screen {
+                    .printable-paper-container {
+                        padding: 2rem;
+                        background: #f1f5f9;
+                        display: flex;
+                        justify-content: center;
+                    }
+                }
 
-        <!-- Approval Section -->
-        <div style="margin-top: 80px; display: grid; grid-template-columns: 1fr 1fr; gap: 80px;">
-            <div>
-                <p style="font-size: 12px; font-weight: 900; color: #1e293b; margin-bottom: 40px; text-transform: uppercase;">Prepared By:</p>
-                <div style="text-align: center;">
-                    <p style="font-size: 14px; font-weight: 800; border-bottom: 2px solid #1e293b; padding-bottom: 5px; margin: 0;">HR-NTPU STAFF</p>
-                    <p style="font-size: 11px; color: #64748b; margin-top: 4px;">National Capital Region</p>
-                </div>
-            </div>
-            <div>
-                <p style="font-size: 12px; font-weight: 900; color: #1e293b; margin-bottom: 40px; text-transform: uppercase;">Received By:</p>
-                <div style="text-align: center;">
-                    <div style="border-bottom: 2px solid #1e293b; height: 21px; margin-bottom: 5px;"></div>
-                    <p style="font-size: 11px; font-weight: 700; color: #1e293b; margin: 0;">Signature over Printed Name</p>
-                    <p style="font-size: 10px; color: #64748b;">Requesting Party / Representative</p>
-                </div>
-            </div>
-        </div>
+                /* Print View */
+                @media print {
 
-        <div style="margin-top: 60px;">
-            <p style="font-size: 12px; font-weight: 900; color: #1e293b; margin-bottom: 40px; text-transform: uppercase;">Approved By:</p>
-            <div style="width: 280px; text-align: center;">
-                <p style="font-size: 15px; font-weight: 900; text-decoration: underline; margin: 0;">MICHELLE A. MAL-IN</p>
-                <p style="font-size: 12px; font-weight: 700; color: #1e293b;">Administrative Officer IV</p>
-            </div>
-        </div>
+                    /* I-hide ang layout elements gamit ang kanilang class/id */
+                    .portal-navbar,
+                    .sidebar-portal,
+                    .footer-portal,
+                    .action-bar-no-print,
+                    nav,
+                    header,
+                    footer {
+                        display: none !important;
+                    }
 
-        <!-- Official Footer/Notes -->
-        <div style="margin-top: 60px; padding: 25px; border: 1.5px solid #e2e8f0; border-radius: 4px; font-size: 11px; color: #475569; line-height: 1.8; background: #fdfdfd;">
-            <p style="font-weight: 900; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                <i data-lucide="info" style="width: 14px; height: 14px;"></i>
-                Document Filing Requirements:
-            </p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div>
-                    <p>1. Fully accomplished Request Form (Digital/Physical)</p>
-                    <p>2. Presentation of valid SDO / DepEd ID</p>
-                </div>
-                <div>
-                    <p><b>For Authorized Representatives:</b></p>
-                    <p>a. Authorization Letter (Signed by Requesting Party)</p>
-                    <p>b. Photocopy of both Requesting Party & Representative ID</p>
-                </div>
-            </div>
+                    /* I-reset ang body para hindi ito mag-shrink o mag-flex */
+                    body {
+                        background: white !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        width: 100% !important;
+                        display: block !important;
+                    }
+
+                    /* Remove any backgrounds and shadows */
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+
+                    /* Reset main containers for printing */
+                    main,
+                    article,
+                    .container-fluid,
+                    .content-wrapper {
+                        display: block !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: none !important;
+                    }
+
+                    /* I-center at i-full size ang papel */
+                    .printable-paper-container {
+                        display: block !important;
+                        width: 210mm !important;
+                        margin: 0 auto !important;
+                    }
+
+                    .printable-paper {
+                        width: 210mm !important;
+                        min-height: 297mm !important;
+                        padding: 10mm 15mm !important;
+                        /* Standard A4 padding */
+                        margin: 0 !important;
+                        background: white !important;
+                        position: relative !important;
+                        box-sizing: border-box !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        page-break-after: avoid;
+                    }
+
+                    /* Siguraduhin na ang absolute footer ay nasa dulo ng paper */
+                    .printable-paper div[style*="position: absolute; bottom: 15mm;"] {
+                        position: absolute !important;
+                        bottom: 10mm !important;
+                        /* Itaas nang kaunti para hindi maputol */
+                        left: 15mm !important;
+                        right: 15mm !important;
+                        width: calc(100% - 30mm) !important;
+                    }
+
+                    @page {
+                        size: A4;
+                        margin: 0 !important;
+                    }
+                }
+            </style>
         </div>
     </div>
-</div>
-
-<style>
-    @media print {
-        .portal-navbar, .btn-portal-secondary, .btn-portal-primary, header, nav, .action-bar {
-            display: none !important;
-        }
-        body {
-            background: white !important;
-            padding: 0 !important;
-        }
-        .portal-container {
-            max-width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        div[style*="background: white"] {
-            box-shadow: none !important;
-            border: none !important;
-            padding: 0 !important;
-        }
-        @page {
-            size: auto;
-            margin: 15mm;
-        }
-    }
-</style>
 @endsection
