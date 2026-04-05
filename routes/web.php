@@ -7,18 +7,38 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\AuditTrailController;
+use App\Http\Controllers\ArchiveReportController;
 use App\Http\Middleware\AuthMiddleware;
 
+// ─── Landing Page ──────────────────────────────────────────────────────────
+Route::get('/', function() {
+    return view('landing');
+})->name('landing');
+
+// ─── Static Pages ──────────────────────────────────────────────────────────
+Route::get('/legal/privacy', function() { return view('info', ['section' => 'privacy', 'title' => 'Privacy Policy']); })->name('legal.privacy');
+Route::get('/legal/terms', function() { return view('info', ['section' => 'terms', 'title' => 'Terms of Service']); })->name('legal.terms');
+Route::get('/legal/data-protection', function() { return view('info', ['section' => 'data_protection', 'title' => 'Data Protection']); })->name('legal.data-protection');
+Route::get('/support/contact', function() { return view('info', ['section' => 'contact', 'title' => 'Contact Us']); })->name('support.contact');
+Route::get('/support/faq', function() { return view('info', ['section' => 'faq', 'title' => 'Frequently Asked Questions']); })->name('support.faq');
+Route::get('/support/documentation', function() { return view('info', ['section' => 'documentation', 'title' => 'System Documentation']); })->name('support.documentation');
+
 // ─── Auth Routes (public) ──────────────────────────────────────────────────
-Route::get('/', [AuthController::class, 'showLogin'])->name('login');
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
-Route::post('/register', [AuthController::class, 'register'])->name('auth.register');
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // OTP
 Route::get('/otp', [AuthController::class, 'showOtp'])->name('auth.otp');
 Route::post('/otp/verify', [AuthController::class, 'verifyOtp'])->name('auth.otp.verify');
 Route::post('/otp/resend', [AuthController::class, 'resendOtp'])->name('auth.otp.resend');
+
+// Password Reset
+Route::get('/forgot-password', [AuthController::class, 'showForgotPasswordForm'])->name('password.request');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/reset-password/{token}', [AuthController::class, 'showResetPasswordForm'])->name('password.reset');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
 // ─── Public Portal Routes ──────────────────────────────────────────────────
 Route::get('/portal', [PortalController::class, 'index'])->name('portal.index');
@@ -39,7 +59,15 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::post('/add-employee', [EmployeeController::class, 'store'])->name('employees.store');
     Route::post('/employee/update-status/{id}', [EmployeeController::class, 'updateStatus'])->name('employees.update-status');
     Route::get('/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
+    Route::get('/archive/json', [EmployeeController::class, 'archiveEmployeesJson'])->name('employees.archive.export.json');
     Route::get('/history', function() { return redirect()->route('employees.archive'); });
+    
+    // Archive Reports
+    Route::get('/archive/reports', [ArchiveReportController::class, 'index'])->name('archive.reports.index');
+    Route::get('/archive/reports/{id}/download', [ArchiveReportController::class, 'download'])->name('archive.reports.download');
+    Route::post('/archive/reports', [ArchiveReportController::class, 'store'])->name('archive.reports.store');
+    Route::delete('/archive/reports/{id}', [ArchiveReportController::class, 'destroy'])->name('archive.reports.destroy');
+    Route::get('/archive/reported-employee-ids', [ArchiveReportController::class, 'reportedEmployeeIds'])->name('archive.reported-ids');
     Route::get('/requests', [EmployeeController::class, 'requests'])->name('employees.requests');
     Route::post('/employee-details/upload/{id}', [EmployeeController::class, 'upload'])->name('employees.upload');
     Route::delete('/employee-details/delete-doc/{id}', [EmployeeController::class, 'deleteDoc'])->name('employees.delete-doc');
@@ -51,6 +79,11 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     // Account Management
     Route::get('/accounts', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::post('/accounts', [AdminUserController::class, 'store'])->name('admin.users.store');
+    
+    // Audit Trail
+    Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('admin.audit-trail');
+    Route::get('/audit-trail/filter', [AuditTrailController::class, 'filter'])->name('admin.audit-trail.filter');
+    Route::post('/audit-trail/cleanup', [AuditTrailController::class, 'cleanup'])->name('admin.audit-trail.cleanup');
     Route::post('/accounts/{id}/update', [AdminUserController::class, 'update'])->name('admin.users.update');
     Route::delete('/accounts/{id}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
 
@@ -69,3 +102,6 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::get('/display-file/document/{id}', [FileController::class, 'showDocument'])->name('display.document');
     Route::get('/display-file/request-file/{id}', [FileController::class, 'showRequestFile'])->name('display.request-file');
 });
+
+Route::get('/profile/verify-email/{token}', [ProfileController::class, 'verifyEmail'])->name('profile.verify-email');
+

@@ -15,10 +15,23 @@ class ActivityLog extends Model
         'user_agent'
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public static function log($action, $module, $description = null)
     {
+        // Exclude "view" actions from being logged as per user request
+        if ($action === 'view') {
+            return null;
+        }
+
+        // Use standard auth ID if session is missing
+        $userId = session('auth_user_id') ?: (auth()->check() ? auth()->id() : null);
+
         return self::create([
-            'user_id' => session('auth_user_id'),
+            'user_id' => $userId,
             'action' => $action,
             'module' => $module,
             'description' => $description,
@@ -27,3 +40,4 @@ class ActivityLog extends Model
         ]);
     }
 }
+

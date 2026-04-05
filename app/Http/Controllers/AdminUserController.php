@@ -15,22 +15,16 @@ class AdminUserController extends Controller
     public function index()
     {
         $users = User::all();
-        
-        // Fetch last login for each user from ActivityLog
-        foreach ($users as $user) {
-            $user->last_login_at = \App\Models\ActivityLog::where('user_id', $user->id)
-                ->where('action', 'login')
-                ->latest()
-                ->value('created_at');
-        }
 
         $available_permissions = [
-            'view_employees' => 'View Employees',
-            'edit_employees' => 'Edit Employees',
-            'delete_employees' => 'Delete Employees',
+            'view_masterlist'  => 'View Masterlist',
+            'view_archive'     => 'View Archive',
+            'view_requests'    => 'View Requests Center',
+            'edit_masterlist'  => 'Edit Masterlist (Edit, Export, Status, Add)',
+            'edit_archive'     => 'Edit Archive (Edit, Export, Upload)',
+            'edit_requests'    => 'Manage Requests (Approve/Reject)',
             'manage_documents' => 'Manage Documents',
-            'manage_requests' => 'Manage Requests',
-            'manage_accounts' => 'Manage Accounts'
+            'manage_accounts'  => 'Manage Accounts'
         ];
         
         return view('admin.users.index', compact('users', 'available_permissions'));
@@ -45,7 +39,7 @@ class AdminUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => ['required', Rule::in(['admin', 'staff'])],
+            'role' => ['required', Rule::in(['admin', 'viewer', 'editor', 'coordinator'])],
             'permissions' => 'nullable|array'
         ]);
 
@@ -54,7 +48,7 @@ class AdminUserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
-            'permissions' => $validated['permissions'] ?? []
+            'permissions' => in_array($validated['role'], ['admin', 'coordinator']) ? [] : ($validated['permissions'] ?? [])
         ]);
 
         \App\Models\ActivityLog::log('create', 'accounts', 'Created new system account for ' . $user->name);
@@ -73,7 +67,7 @@ class AdminUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => ['required', Rule::in(['admin', 'staff'])],
+            'role' => ['required', Rule::in(['admin', 'viewer', 'editor', 'coordinator'])],
             'permissions' => 'nullable|array'
         ]);
 
@@ -81,7 +75,7 @@ class AdminUserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'role' => $validated['role'],
-            'permissions' => $validated['permissions'] ?? []
+            'permissions' => in_array($validated['role'], ['admin', 'coordinator']) ? [] : ($validated['permissions'] ?? [])
         ];
 
         if (!empty($validated['password'])) {

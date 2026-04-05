@@ -12,7 +12,7 @@
         @endphp
         <div class="hero-content">
             <h1 class="hero-title">{{ $isAdmin ? 'Overview Dashboard' : 'Employee Portal' }}</h1>
-            <p class="hero-subtitle light-theme-text-fix">{{ $isAdmin ? 'Welcome to the Employee Management System command center.' : 'Hello, ' . ($currentUser->name ?? 'User') . '! Welcome back to your workspace.' }}</p>
+            <p class="hero-subtitle light-theme-text-fix">{{ $isAdmin ? 'Welcome to the 201 System command center.' : 'Hello, ' . ($currentUser->name ?? 'User') . '! Welcome back to your workspace.' }}</p>
         </div>
         <div class="hero-date">
             <div class="date-box">
@@ -91,22 +91,15 @@
     </div>
     @endif
 
-    <!-- Main Grid -->
-    <div class="dashboard-main-grid">
-        <!-- Center Panel: Analytics & Recents -->
-        <div class="dashboard-column wide">
-            <!-- Recruitment Trend Section -->
-            @if($isAdmin)
-            <div class="dashboard-section animate-up" style="--delay: 0.5s;">
-                <div class="section-header">
-                    <h2 class="section-title">New Hire Analytics</h2>
-                </div>
-                <div class="chart-container-premium">
-                    <canvas id="recruitmentChart"></canvas>
-                </div>
-            </div>
-            @endif
+    @php
+        $hasRequestsAccess = $currentUser && $currentUser->hasPermission('view_requests');
+    @endphp
 
+    <!-- Main Layout Grid -->
+    <div class="dashboard-grid-main">
+        <!-- Row 1: Recent Requests & System Activity -->
+        <div class="dashboard-grid-row">
+            @if($hasRequestsAccess)
             <!-- Recent Requests -->
             <div class="dashboard-section animate-up" style="--delay: 0.6s;">
                 <div class="section-header">
@@ -135,70 +128,104 @@
                     @endforelse
                 </div>
             </div>
+            @endif
+
+            @if($isAdmin)
+            <!-- Recent Activity (Status Changes) -->
+            <div class="dashboard-section animate-up" style="--delay: 0.8s;">
+                <div class="section-header">
+                    <h2 class="section-title">System Activity</h2>
+                </div>
+                <div class="activity-timeline-wrapper" style="max-height: 380px; overflow-y: auto; padding-right: 10px; scrollbar-width: thin; scrollbar-color: var(--primary) transparent;">
+                    <div class="activity-timeline">
+                        @forelse($recent_activity as $act)
+                            <div class="timeline-item">
+                                <div class="timeline-point point-{{ $act->status }}"></div>
+                                <div class="timeline-content">
+                                    <p class="activity-text"><strong>{{ $act->name }}</strong> was updated to <span class="text-{{ $act->status }}">{{ $act->status }}</span></p>
+                                    <span class="activity-time">{{ \Carbon\Carbon::parse($act->status_date)->format('M d, Y | h:i A') }}</span>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="empty-mini">
+                                <p>No recent activity</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
 
-        <!-- Sidebar Panel: Activity & Quick Actions -->
-        <div class="dashboard-column narrow">
+        <!-- Row 2: Quick Actions & My Tasks -->
+        <div class="dashboard-grid-row">
             <!-- Quick Actions -->
             <div class="dashboard-section animate-up" style="--delay: 0.7s;">
                 <div class="section-header">
                     <h2 class="section-title">Quick Actions</h2>
                 </div>
+                @php
+                    $canAdd   = $currentUser && $currentUser->hasPermission('edit_masterlist');
+                    $canArchi = $currentUser && $currentUser->hasPermission('view_archive');
+                    $canAcc   = $currentUser && $currentUser->hasPermission('manage_accounts');
+                @endphp
                 <div class="quick-actions-grid">
+                    @if($canAdd)
                     <a href="{{ route('employees.add') }}" class="action-btn">
                         <i data-lucide="user-plus"></i>
                         <span>Add New</span>
                     </a>
+                    @endif
                     <a href="{{ route('portal.index') }}" class="action-btn">
                         <i data-lucide="file-plus"></i>
                         <span>File Request</span>
                     </a>
+                    @if($canArchi)
                     <a href="{{ route('employees.archive') }}" class="action-btn">
                         <i data-lucide="archive"></i>
                         <span>Archive List</span>
                     </a>
+                    @endif
+                    @if($canAcc)
                     <a href="{{ route('admin.users.index') }}" class="action-btn">
                         <i data-lucide="shield"></i>
                         <span>Accounts</span>
                     </a>
+                    @endif
                 </div>
             </div>
 
-            <!-- Recent Activity (Status Changes) -->
-            @if($isAdmin)
-            <div class="dashboard-section animate-up" style="--delay: 0.8s;">
-                <div class="section-header">
-                    <h2 class="section-title">System Activity</h2>
-                </div>
-                <div class="activity-timeline">
-                    @forelse($recent_activity as $act)
-                        <div class="timeline-item">
-                            <div class="timeline-point point-{{ $act->status }}"></div>
-                            <div class="timeline-content">
-                                <p class="activity-text"><strong>{{ $act->name }}</strong> was updated to <span class="text-{{ $act->status }}">{{ $act->status }}</span></p>
-                                <span class="activity-time">{{ \Carbon\Carbon::parse($act->status_date)->format('M d, Y') }}</span>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="empty-mini">
-                            <p>No recent activity</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-            @endif
-            @if(!$isAdmin)
-            <div class="dashboard-section animate-up" style="--delay: 0.9s;">
+            <!-- My Tasks -->
+            <div class="dashboard-section animate-up" style="--delay: 0.9s;" id="taskSection" data-user-id="{{ session('auth_user_id') }}">
                 <div class="section-header">
                     <h2 class="section-title">My Tasks</h2>
+                    <span class="badge badge-info" id="taskCount" style="display:none;">0 Tasks</span>
                 </div>
-                <div class="empty-mini" style="background: rgba(var(--primary-rgb), 0.05);">
-                    <i data-lucide="check-circle" style="width: 32px; height: 32px; color: var(--primary); margin-bottom: 1rem;"></i>
-                    <p style="font-weight: 700;">You're all caught up!</p>
-                    <p style="font-size: 0.8rem; opacity: 0.7;">Keep up the great work.</p>
+                
+                <!-- Task List Container -->
+                <div id="taskList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0.5rem; max-height: 240px; overflow-y: auto; padding-right: 5px; scrollbar-width: thin; scrollbar-color: var(--primary) transparent;">
+                    <!-- Tasks will be injected here -->
+                </div>
+
+                <!-- Horizontal Empty State -->
+                <div id="allCaughtUp" class="empty-mini" style="background: rgba(var(--primary-rgb), 0.05); display: flex; align-items: center; gap: 1.25rem; padding: 1.5rem; border-radius: 18px;">
+                    <i data-lucide="check-circle" style="width: 38px; height: 38px; color: var(--primary); flex-shrink: 0;"></i>
+                    <div style="text-align: left;">
+                        <p style="font-weight: 700; margin-bottom: 2px;">You're all caught up!</p>
+                        <p style="font-size: 0.8rem; opacity: 0.7;">Keep up the great work.</p>
+                    </div>
+                </div>
+
+                <!-- Add Task Input -->
+                <div class="task-input-box" style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                    <input type="text" id="taskInput" class="form-input" placeholder="Add a quick task (e.g. Upload file)" style="flex: 1; padding: 0.75rem 1rem; font-size: 0.9rem;">
+                    <button id="addTaskBtn" class="btn-primary" style="padding: 0 1.25rem; border-radius: 12px;">
+                        <i data-lucide="plus" style="width: 20px;"></i>
+                    </button>
                 </div>
             </div>
-            @endif
+
+
         </div>
     </div>
 </div>
@@ -308,14 +335,26 @@
     .stats-value { font-size: 1.75rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif; line-height: 1.1; }
     .stats-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 
-    /* Layout Grids */
-    .dashboard-main-grid {
-        display: grid;
-        grid-template-columns: 1fr 340px;
+    /* Layout Grids - New 2-Column Row System */
+    .dashboard-grid-main {
+        display: flex;
+        flex-direction: column;
         gap: 2rem;
+        margin-top: 1rem;
     }
 
-    .dashboard-column { display: flex; flex-direction: column; gap: 2rem; }
+    .dashboard-grid-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+        align-items: stretch;
+    }
+
+    .dashboard-grid-row > .dashboard-section {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
 
     .dashboard-section {
         background: var(--bg-card);
@@ -323,7 +362,15 @@
         border: 1px solid var(--border);
         padding: 2rem;
         box-shadow: var(--shadow-sm);
+        flex: 1;
     }
+
+    @media (max-width: 1200px) {
+        .dashboard-grid-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
 
     .section-header {
         display: flex;
@@ -379,7 +426,7 @@
     .item-avatar-small {
         width: 2.75rem;
         height: 2.75rem;
-        border-radius: 14px;
+        border-radius: 50%;
         background: var(--primary-gradient);
         color: white;
         display: flex;
@@ -431,21 +478,21 @@
     .action-btn i { width: 1.5rem; height: 1.5rem; }
 
     /* Timeline */
-    .activity-timeline { display: flex; flex-direction: column; gap: 1.5rem; position: relative; padding-left: 1rem; }
+    .activity-timeline { display: flex; flex-direction: column; gap: 1.75rem; position: relative; padding-left: 1.5rem; padding-top: 0.5rem; }
     .activity-timeline::before {
         content: '';
         position: absolute;
-        left: 3px;
-        top: 5px;
+        left: 4px;
+        top: 10px;
         bottom: 5px;
         width: 2px;
         background: var(--border);
     }
 
-    .timeline-item { display: flex; gap: 1rem; position: relative; }
+    .timeline-item { display: flex; gap: 1.25rem; position: relative; }
     .timeline-point {
-        width: 8px; height: 8px; border-radius: 50%; background: var(--border);
-        position: absolute; left: -14px; top: 6px; z-index: 1;
+        width: 10px; height: 10px; border-radius: 50%; background: var(--border);
+        position: absolute; left: -19px; top: 6px; z-index: 1;
         box-shadow: 0 0 0 4px var(--bg-card);
     }
 
@@ -454,12 +501,18 @@
     .point-transfer { background: #0ea5e9; }
     .point-active { background: #10b981; }
 
-    .activity-text { font-size: 0.875rem; color: var(--text-main); margin-bottom: 2px; line-height: 1.4; }
-    .activity-time { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .activity-text { font-size: 0.9375rem; color: var(--text-main); margin-bottom: 2px; line-height: 1.5; font-weight: 500; }
+    .activity-time { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; opacity: 0.8; }
 
     .text-resign { color: #ef4444; font-weight: 700; }
     .text-retired { color: #f59e0b; font-weight: 700; }
     .text-transfer { color: #0ea5e9; font-weight: 700; }
+    .text-active { color: #10b981; font-weight: 700; }
+
+    /* Custom scrollbar for activity */
+    .activity-timeline-wrapper::-webkit-scrollbar { width: 4px; }
+    .activity-timeline-wrapper::-webkit-scrollbar-track { background: transparent; }
+    .activity-timeline-wrapper::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; opacity: 0.3; }
 
     /* Animations */
     .animate-up {
@@ -484,61 +537,14 @@
         .dashboard-column.narrow { flex-direction: column; }
         .summary-cards-grid { grid-template-columns: 1fr 1fr; }
     }
+
+    /* Task Scrollbar Fix */
+    #taskList::-webkit-scrollbar { width: 4px; }
+    #taskList::-webkit-scrollbar-track { background: transparent; }
+    #taskList::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; opacity: 0.3; }
 </style>
 @endpush
 
 @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Recruitment Trend Chart
-    const chartElement = document.getElementById('recruitmentChart');
-    if (chartElement) {
-        const ctx = chartElement.getContext('2d');
-        const recruitmentStats = {!! json_encode($recruitment_stats) !!};
-        const labels = recruitmentStats.map(s => s.month);
-        const data = recruitmentStats.map(s => s.count);
-
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const textColor = isDark ? '#94a3b8' : '#64748b';
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'New Hires',
-                    data: data,
-                    backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                    borderRadius: 8,
-                    borderSkipped: false,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        suggestedMax: 5,
-                        grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', drawBorder: false },
-                        ticks: { color: textColor, font: { weight: '600' }, stepSize: 1 }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: textColor, font: { weight: '700', size: 11 } }
-                    }
-                }
-            }
-        });
-    }
-
-    // Re-init lucide
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-});
-</script>
+<script src="{{ asset('assets/js/dashboard.js') }}"></script>
 @endpush

@@ -34,7 +34,7 @@
     </div>
 
     <!-- Action Bar -->
-    <div class="action-bar" style="position: relative; z-index: 10005;">
+    <div class="action-bar" style="position: relative; z-index: 5;" data-initial-sort="{{ $sort }}" data-export-url="{{ route("employees.export.json") }}">
         <div class="search-container">
             <i data-lucide="search" class="search-icon"></i>
             <input 
@@ -47,7 +47,13 @@
                 oninput="liveSearch(this.value)"
             >
         </div>
-        <div class="button-group" style="z-index: 10001; position: relative;">
+        @php
+            $currentUser = \App\Models\User::find(session('auth_user_id'));
+            $canEditMasterlist = $currentUser && $currentUser->hasPermission('edit_masterlist');
+            $canExportMasterlist = $currentUser && $currentUser->hasPermission('export_masterlist');
+        @endphp
+        <div class="button-group" style="z-index: 1; position: relative;">
+            @if($canExportMasterlist)
             <div class="export-dropdown">
                 <button class="btn btn-outline" style="border-color: #3b82f6; color: white; background: #3b82f6; transition: 0.2s;" onclick="toggleExportMenu(event)" title="Export">
                     <i data-lucide="external-link" style="color: white; stroke-width: 2.5px;"></i>
@@ -67,6 +73,9 @@
                     </button>
                 </div>
             </div>
+            @endif
+
+
             <button id="sortBtn" class="btn {{ $sort === 'position' ? 'btn-primary' : 'btn-outline' }}" onclick="toggleSort()">
                 <i data-lucide="{{ $sort === 'position' ? 'briefcase' : 'sort-asc' }}"></i>
                 Sort by {{ $sort === 'position' ? 'Position' : 'Name' }}
@@ -74,37 +83,6 @@
         </div>
     </div>
 
-    <!-- Import Modal -->
-    <div id="importModal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <form id="importForm" method="POST" action="{{ route('employees.import') }}" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-header">
-                    <h2 class="modal-title">Import Masterlist</h2>
-                    <button type="button" class="icon-btn" onclick="closeImportModal()">
-                        <i data-lucide="x"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info" style="background: #e0f2fe; color: #0369a1; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-size: 0.8125rem;">
-                        <p style="font-weight: 600; margin-bottom: 0.5rem;">CSV Format Instructions:</p>
-                        <ul style="margin-left: 1.25rem;">
-                            <li>File must be in <strong>.csv</strong> format</li>
-                            <li>Columns: <strong>last_name, first_name, middle_name, position, agency</strong></li>
-                        </ul>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Select CSV File</label>
-                        <input type="file" name="csv_file" class="form-input" accept=".csv" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline" onclick="closeImportModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Start Import</button>
-                </div>
-            </form>
-        </div>
-    </div>
 
     <!-- Status Update Modal -->
     <div id="statusModal" class="modal">
@@ -124,6 +102,7 @@
                     <div class="form-group">
                         <label class="form-label">New Status</label>
                         <select name="status" id="statusSelect" class="form-input" required onchange="handleStatusFields()">
+                            <option value="" disabled selected>Select Status</option>
                             <option value="transfer">Transfer</option>
                             <option value="retired">Retirement</option>
                             <option value="resign">Resignation</option>
@@ -143,12 +122,7 @@
                         </div>
                     </div>
 
-                    <div id="retirementFields" style="display: none;">
-                        <div class="form-group">
-                            <label class="form-label">Retirement Under (e.g. 8291/8292)</label>
-                            <input type="text" name="retirement_under" class="form-input" placeholder="RA 8291 / RA 1616">
-                        </div>
-                    </div>
+
 
                     <div id="othersFields" style="display: none;">
                         <div class="form-group">
@@ -208,6 +182,25 @@
         </div>
         <button class="toast-mini-close" onclick="closeToast()"><i data-lucide="x"></i></button>
     </div>
+    </div>
+    @endif
+
+    <!-- Error Toast (Validation Failures) -->
+    @if($errors->any())
+    <div class="modern-toast-mini active error-toast" id="errorToast" style="background: #fee2e2; border-color: #fca5a5; color: #991b1b;">
+        <div class="toast-mini-icon" style="background: #fecaca; color: #ef4444;">
+            <i data-lucide="alert-circle"></i>
+        </div>
+        <div class="toast-mini-content">
+            <span class="toast-mini-title" style="color: #7f1d1d;">Update Failed</span>
+            <span class="toast-mini-msg" style="color: #991b1b;">{{ $errors->first() }}</span>
+        </div>
+        <button class="toast-mini-close" onclick="this.parentElement.classList.remove('active')" style="color: #ef4444;"><i data-lucide="x"></i></button>
+    </div>
+    <script>setTimeout(() => document.getElementById('errorToast')?.classList.remove('active'), 5000);</script>
+    <style>
+        .error-toast { border-left: 4px solid #ef4444; }
+    </style>
     @endif
 
     <!-- Table Container -->
@@ -220,7 +213,7 @@
 @push('styles')
 <style>
     /* Export Dropdown */
-    .export-dropdown { position: relative; display: inline-block; z-index: 10002; }
+    .export-dropdown { position: relative; display: inline-block; z-index: 10; }
     .export-menu {
         position: absolute;
         top: 100%;
@@ -231,7 +224,7 @@
         box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1);
         border: 1px solid #e2e8f0;
         width: 240px;
-        z-index: 10003;
+        z-index: 20;
         display: none;
         overflow: hidden;
         padding: 0.5rem;
@@ -271,12 +264,13 @@
         position: fixed; 
         inset: 0; 
         z-index: 2000; 
-        background: rgba(0, 0, 0, 0.7); /* Deep overlay with blur */
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: rgba(15, 23, 42, 0.4); /* Modern deep overlay */
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         align-items: center; 
         justify-content: center; 
         padding: 1.5rem; 
+        transition: all 0.3s;
     }
     .modal.active { display: flex; animation: fadeIn 0.3s ease-out; }
     
@@ -447,330 +441,5 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-<script>
-    let currentSort = '{{ $sort }}';
-
-    function liveSearch(query) {
-        query = query.toLowerCase().trim();
-        const cards = document.querySelectorAll('.master-item-card');
-        const emptyState = document.querySelector('.empty-state');
-        let visibleCount = 0;
-
-        // FASTEST possible client-side filtering
-        for (let i = 0; i < cards.length; i++) {
-            const isMatch = cards[i].textContent.toLowerCase().includes(query);
-            cards[i].style.display = isMatch ? 'flex' : 'none';
-            if(isMatch) visibleCount++;
-        }
-
-        if (emptyState) {
-            emptyState.style.display = (visibleCount === 0) ? 'flex' : 'none';
-        }
-
-        // Super-charged automatic deep search (150ms)
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            fetchData();
-        }, 150);
-    }
-
-    // Still allow Enter key to trigger a deep search immediately
-    document.getElementById('searchInput').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            clearTimeout(searchTimeout);
-            fetchData();
-        }
-    });
-
-    let searchTimeout = null;
-
-    function toggleSort() {
-        currentSort = currentSort === 'name' ? 'position' : 'name';
-        const sortBtn = document.getElementById('sortBtn');
-        
-        if (currentSort === 'position') {
-            sortBtn.className = 'btn btn-primary';
-            sortBtn.innerHTML = '<i data-lucide="briefcase"></i> Sort by Position';
-        } else {
-            sortBtn.className = 'btn btn-outline';
-            sortBtn.innerHTML = '<i data-lucide="sort-asc"></i> Sort by Name';
-        }
-        
-        lucide.createIcons();
-        fetchData();
-    }
-
-    function fetchData(page = 1) {
-        const search = document.getElementById('searchInput').value;
-        const url = new URL(window.location.href);
-        url.searchParams.set('search', search);
-        url.searchParams.set('sort', currentSort);
-        url.searchParams.set('page', page);
-
-        // Update URL without refreshing
-        window.history.pushState({}, '', url);
-
-        fetch(url, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.text())
-        .then(html => {
-            document.getElementById('tableContainer').innerHTML = html;
-            lucide.createIcons();
-            attachPaginationLinks();
-        });
-    }
-
-    function attachPaginationLinks() {
-        const links = document.querySelectorAll('.pagination-ajax');
-        links.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const page = this.getAttribute('data-page');
-                fetchData(page);
-            });
-        });
-    }
-
-    function openImportModal() {
-        document.getElementById('importModal').classList.add('active');
-        lucide.createIcons();
-    }
-
-    function closeImportModal() {
-        document.getElementById('importModal').classList.remove('active');
-    }
-
-    function openStatusModal(id, name, currentStatus) {
-        const modal = document.getElementById('statusModal');
-        const form = document.getElementById('statusForm');
-        const nameLabel = document.getElementById('statusEmployeeName');
-        
-        nameLabel.textContent = name;
-        form.action = `/employee/update-status/${id}`;
-        document.getElementById('statusSelect').value = currentStatus;
-        
-        handleStatusFields();
-        modal.classList.add('active');
-        lucide.createIcons();
-    }
-
-    function closeStatusModal() {
-        document.getElementById('statusModal').classList.remove('active');
-    }
-
-    function handleStatusFields() {
-        const status = document.getElementById('statusSelect').value;
-        const transferFields = document.getElementById('transferFields');
-        const retirementFields = document.getElementById('retirementFields');
-        const othersFields = document.getElementById('othersFields');
-        const commonFields = document.getElementById('commonHistoryFields');
-
-        transferFields.style.display = status === 'transfer' ? 'block' : 'none';
-        retirementFields.style.display = status === 'retired' ? 'block' : 'none';
-        othersFields.style.display = status === 'others' ? 'block' : 'none';
-        commonFields.style.display = (['transfer', 'retired', 'resign', 'others'].includes(status)) ? 'block' : 'none';
-    }
-
-    // Close modal on click outside
-    window.onclick = function(event) {
-        const statusModal = document.getElementById('statusModal');
-        const importModal = document.getElementById('importModal');
-        const successModal = document.getElementById('successModal');
-        const exportMenu = document.getElementById('exportMenu');
-        
-        if (event.target == statusModal) {
-            closeStatusModal();
-        }
-        if (event.target == importModal) {
-            closeImportModal();
-        }
-        if (event.target == successModal) {
-            closeSuccessModal();
-        }
-        if (exportMenu && !exportMenu.contains(event.target)) {
-            exportMenu.classList.remove('active');
-        }
-    }
-
-    function closeSuccessModal() {
-        const modal = document.getElementById('successModal');
-        if (modal) modal.classList.remove('active');
-    }
-
-        // attach initial links
-        attachPaginationLinks();
-
-    // Export Logic
-    function toggleExportMenu(e) {
-        e.stopPropagation();
-        document.getElementById('exportMenu').classList.toggle('active');
-    }
-
-    async function exportData(format) {
-        document.getElementById('exportMenu').classList.remove('active');
-        
-        try {
-            const response = await fetch('{{ route("employees.export.json") }}');
-            if (!response.ok) throw new Error('Status ' + response.status);
-            const data = await response.json();
-            
-            if (format === 'excel') {
-                if (typeof ExcelJS === 'undefined') {
-                    alert('Excel library is still loading or failed to load. Please try again in a second.');
-                    return;
-                }
-                exportExcel(data);
-            } else if (format === 'pdf') {
-                exportPDF(data);
-            } else if (format === 'docs') {
-                exportDocs(data);
-            }
-        } catch (err) {
-            console.error('Export failed:', err);
-            alert('Failed to export data: ' + err.message);
-        }
-    }
-
-    async function exportExcel(data) {
-        if (typeof ExcelJS === 'undefined') return;
-        
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Active Employees');
-
-        // Add headers
-        const headerRow = sheet.addRow(['Full Name', 'Position', 'Agency']);
-
-        // Style headers
-        headerRow.eachCell((cell) => {
-            cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FF10B981' } // Green background
-            };
-            cell.font = {
-                name: 'Cambria',
-                color: { argb: 'FFFFFFFF' }, // White text
-                bold: true,
-                size: 11
-            };
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-            cell.border = {
-                top: {style:'thin'},
-                left: {style:'thin'},
-                bottom: {style:'thin'},
-                right: {style:'thin'}
-            };
-        });
-
-        // Add employee data
-        data.forEach(emp => {
-            const row = sheet.addRow([emp.name, emp.position, emp.agency]);
-            row.eachCell((cell) => {
-                cell.font = { name: 'Cambria', size: 11 };
-            });
-        });
-
-        // Set column widths
-        sheet.getColumn(1).width = 45; // Name
-        sheet.getColumn(2).width = 40; // Position
-        sheet.getColumn(3).width = 50; // Agency
-
-        // Add filters to headers
-        sheet.autoFilter = 'A1:C1';
-
-        // Generate and save file
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/webdriver.ms-excel' });
-        saveAs(blob, `Masterlist_Active_Employees_${new Date().toISOString().split('T')[0]}.xlsx`);
-    }
-
-    function exportPDF(data) {
-        if (typeof jspdf === 'undefined') return;
-        const { jsPDF } = jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4'); // landscape
-        
-        // Use Times (Serif) as closest standard font to Cambria in jsPDF
-        doc.setFont('times', 'bold');
-        doc.setFontSize(22);
-        const pageWidth = doc.internal.pageSize.getWidth();
-        doc.text('201 Masterlist', pageWidth / 2, 20, { align: 'center' });
-
-        const tableHeaders = [['FULL NAME', 'POSITION', 'AGENCY']];
-        const tableBody = data.map(e => [
-            e.name, 
-            e.position, 
-            e.agency
-        ]);
-
-        doc.autoTable({
-            head: tableHeaders,
-            body: tableBody,
-            startY: 30,
-            theme: 'striped',
-            headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' }, // #10B981 Green
-            styles: { fontSize: 9, cellPadding: 2, font: 'times' }, // Reduced padding & size for smaller height
-            columnStyles: {
-                0: { cellWidth: 80 }, // Much wider Name column
-                1: { cellWidth: 'auto' },
-                2: { cellWidth: 'auto' }
-            }
-        });
-
-        doc.save(`Masterlist_Active_Employees_${new Date().toISOString().split('T')[0]}.pdf`);
-    }
-
-    function exportDocs(data) {
-        // We'll use a data blob with HTML format which Word opens perfectly as a table
-        let html = `
-            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-            <head><meta charset='utf-8'><title>201 Masterlist</title>
-            <style>
-                table { border-collapse: collapse; width: 100%; font-family: "Cambria", serif; }
-                th { background: #10B981; color: white; padding: 6px 12px; border: 1px solid #059669; text-align: left; }
-                td { padding: 4px 12px; border: 1px solid #cbd5e1; font-family: "Cambria", serif; font-size: 11pt; }
-                h1 { font-family: "Cambria", serif; color: #1e293b; text-align: center; font-size: 24pt; margin-bottom: 20pt; }
-            </style>
-            </head>
-            <body>
-            <h1>201 Masterlist</h1>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Full Name</th>
-                        <th>Position</th>
-                        <th>Agency</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(emp => `
-                        <tr>
-                            <td>${emp.name}</td>
-                            <td>${emp.position}</td>
-                            <td>${emp.agency}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            </body>
-            </html>
-        `;
-
-        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Masterlist_Active_Employees_${new Date().toISOString().split('T')[0]}.doc`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    // Initialize scripts (libraries loaded at top of push)
-    (async () => {
-        console.log('Export libraries initializing...');
-    })();
-</script>
+<script src="{{ asset('assets/js/masterlist.js') }}"></script>
 @endpush

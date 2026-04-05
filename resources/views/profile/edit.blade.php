@@ -86,7 +86,7 @@
     height: 120px;
     margin: -60px auto 1.25rem;
     border-radius: 50%;
-    padding: 5px;
+    padding: 2.5px;
     background: var(--bg-card);
     z-index: 2;
 }
@@ -110,7 +110,7 @@
     justify-content: center;
     font-size: 4rem;
     font-weight: 800;
-    border: 4px solid var(--bg-card);
+    border: 2px solid var(--bg-card);
 }
 
 .avatar-upload-btn {
@@ -126,7 +126,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border: 4px solid var(--bg-card);
+    border: 2px solid var(--bg-card);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: var(--shadow-md);
 }
@@ -444,6 +444,10 @@
         <a href="{{ route('admin.users.index') }}" class="btn-return-arrow" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-main); display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm); text-decoration: none;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='var(--shadow-sm)'; this.style.transform='translateY(0)';">
             <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
         </a>
+        @elseif($viewer_role === 'admin')
+        <a href="{{ route('admin.users.index') }}" class="btn-return-arrow" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-main); display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm); text-decoration: none;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='var(--shadow-sm)'; this.style.transform='translateY(0)';">
+            <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+        </a>
         @else
         <div style="width: 42px;"></div> {{-- Spacer to match alignment --}}
         @endif
@@ -452,7 +456,7 @@
     <div class="page-header profile-header-pad" style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: -0.5rem;">
         <div>
             <h1 class="page-title" style="font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2rem; color: var(--text-main); margin-bottom: 0.5rem;">
-                {{ $isOwnProfile ? 'My Profile' : ($user->name . "'s Profile") }}
+                {{ $isOwnProfile ? 'My Profile' : (explode(' ', trim($user->name))[0] . "'s Profile") }}
             </h1>
             <p class="page-subtitle" style="color: var(--text-muted); font-size: 1rem;">
                 {{ $isOwnProfile ? 'Manage your personal information and security settings' : 'Manage account roles, permissions and security' }}
@@ -492,10 +496,8 @@
             <form action="{{ route('profile.avatar') }}" method="POST" enctype="multipart/form-data" id="avatarForm" style="padding: 0 1.5rem;">
             @csrf
             <div class="profile-avatar-wrapper" id="avatar-container">
-                @if($user->profile_picture_content)
-                    <img src="{{ route('display.user-avatar', ['id' => $user->id]) }}" alt="Profile Picture" class="profile-avatar" id="avatar-preview">
-                @elseif($user->profile_picture)
-                    <img src="{{ asset($user->profile_picture) }}" alt="Profile Picture" class="profile-avatar" id="avatar-preview">
+                @if($user->profile_picture && file_exists(public_path($user->profile_picture)))
+                    <img src="{{ asset($user->profile_picture) }}?v={{ $user->updated_at->timestamp ?? time() }}" alt="Profile Picture" class="profile-avatar" id="avatar-preview">
                 @else
                     <div class="profile-avatar-fallback" id="avatar-fallback">
                         {{ $user->initials() }}
@@ -513,7 +515,7 @@
 
             <h2 class="profile-name" style="font-size: 1.5rem; color: var(--text-main);">{{ $user->name }}</h2>
             <div class="profile-role" style="font-size: 0.875rem; padding: 0.2rem 0.75rem; background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);">
-                <i data-lucide="{{ $user->role === 'admin' ? 'shield-check' : 'user' }}" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                <i data-lucide="{{ in_array($user->role, ['admin', 'coordinator']) ? 'shield-check' : 'user' }}" style="width: 14px; height: 14px; color: var(--primary);"></i>
                 {{ ucfirst($user->role) }}
             </div>
             
@@ -548,7 +550,7 @@
                         {{ $log->created_at->diffForHumans() }}
                     </span>
                     <span style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.7;">
-                        {{ $log->created_at->format('M d, H:i') }}
+                        {{ $log->created_at->format('M d, h:i A') }}
                     </span>
                 </div>
 
@@ -606,7 +608,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;">
                     <span style="background: var(--success-soft); color: #10b981; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 700;">Online</span>
-                    <span style="background: var(--bg-main); color: var(--text-muted); padding: 0.25rem 0.75rem; border-radius: 9999px; border: 1px solid var(--border-light);">Last login: {{ $logs->first() ? $logs->first()->created_at->format('Y-m-d H:i:s') : 'N/A' }}</span>
+                    <span style="background: var(--bg-main); color: var(--text-muted); padding: 0.25rem 0.75rem; border-radius: 9999px; border: 1px solid var(--border-light);">Last login: {{ $logs->first() ? $logs->first()->created_at->format('M d, Y h:i:s A') : 'N/A' }}</span>
                     <span style="background: var(--bg-main); color: var(--text-muted); padding: 0.25rem 0.75rem; border-radius: 9999px; border: 1px solid var(--text-muted);">Total logins: {{ $totalLogins }}</span>
                 </div>
             </div>
@@ -640,8 +642,10 @@
                         </div>
                         <div class="form-group">
                             <label>Account Role</label>
-                            <select name="role" id="profile_role" onchange="togglePermissionsProfile()" class="form-control" style="background: var(--bg-main);">
-                                <option value="staff" {{ $user->role === 'staff' ? 'selected' : '' }}>Staff (Limited Access)</option>
+                            <select name="role" id="profile_role" onchange="togglePermissionsProfile(true)" class="form-control" style="background: var(--bg-main);">
+                                <option value="viewer" {{ $user->role === 'viewer' ? 'selected' : '' }}>Viewer (Read-only)</option>
+                                <option value="editor" {{ $user->role === 'editor' ? 'selected' : '' }}>Editor (Update Module)</option>
+                                <option value="coordinator" {{ $user->role === 'coordinator' ? 'selected' : '' }}>Coordinator (Semi-Admin)</option>
                                 <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Administrator (Full Access)</option>
                             </select>
                         </div>
@@ -651,9 +655,10 @@
                         <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.75rem; text-transform: uppercase;">PERMISSIONS</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                             @foreach($available_permissions as $key => $label)
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: 8px; font-size: 0.85rem; color: var(--text-main);">
+                            <label class="perm-label-profile" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: 8px; font-size: 0.85rem; color: var(--text-main);">
                                 <input type="checkbox" name="permissions[]" value="{{ $key }}" 
                                     {{ in_array($key, $user->permissions ?? []) ? 'checked' : '' }}
+                                    class="perm-checkbox-profile"
                                     style="width: 16px; height: 16px; accent-color: var(--primary);">
                                 {{ $label }}
                             </label>
@@ -681,12 +686,21 @@
                 <form action="{{ route('profile.update') }}" method="POST">
                     @csrf
                     <div class="privacy-grid">
-                        <!-- Email Section -->
+                        <!-- Name & Email Section -->
                         <div>
-                            <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Email</label>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Full Name</label>
+                                @if($viewer_role === 'admin')
+                                    <input type="text" name="name" value="{{ $user->name }}" class="form-control" style="padding: 0.6rem; border-radius: 6px;" required>
+                                @else
+                                    <input type="text" value="{{ $user->name }}" class="form-control" style="background: var(--bg-main); opacity: 0.6; cursor: not-allowed; padding: 0.6rem; border-radius: 6px;" readonly title="Account name can only be changed by an administrator.">
+                                    <input type="hidden" name="name" value="{{ $user->name }}">
+                                @endif
+                            </div>
+
+                            <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Email Address</label>
                             <div class="form-group" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0;">
                                 <input type="email" name="email" value="{{ old('email', $user->email) }}" class="form-control" style="flex: 1; padding: 0.6rem; border-radius: 6px;" required>
-                                <input type="hidden" name="name" value="{{ $user->name }}">
                             </div>
                             @error('email')<span class="form-error">{{ $message }}</span>@enderror
                         </div>
@@ -744,7 +758,7 @@
             <div class="form-group" style="position: relative;">
                 <label>Current Password</label>
                 <div style="position: relative; display: flex; align-items: center;">
-                    <input type="password" name="current_password" id="cur_pw" class="form-control" required style="padding-right: 2.5rem;" oninput="scheduleCurrentPwCheck()">
+                    <input type="password" name="current_password" id="cur_pw" class="form-control" required style="padding-right: 2.5rem;" oninput="scheduleCurrentPwCheck()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
                     <button type="button" onclick="togglePw('cur_pw', 'cur_eye'); event.stopPropagation();" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex;"><svg id="cur_eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"></circle></svg></button>
                 </div>
                 <div id="cur_pw_indicator" class="pw-indicator"></div>
@@ -752,7 +766,7 @@
             <div class="form-group" style="position: relative;">
                 <label>New Password</label>
                 <div style="position: relative; display: flex; align-items: center;">
-                    <input type="password" name="password" id="new_pw" class="form-control" required style="padding-right: 2.5rem;" oninput="checkPasswordMatch()">
+                    <input type="password" name="password" id="new_pw" class="form-control" required style="padding-right: 2.5rem;" oninput="checkPasswordMatch()" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
                     <button type="button" onclick="togglePw('new_pw', 'new_eye'); event.stopPropagation();" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex;"><svg id="new_eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"></circle></svg></button>
                 </div>
                 <div id="pw_error" class="pw-indicator"></div>
@@ -760,7 +774,7 @@
             <div class="form-group" style="position: relative;">
                 <label>Confirm Password</label>
                 <div style="position: relative; display: flex; align-items: center;">
-                    <input type="password" name="password_confirmation" id="conf_pw" class="form-control" required style="padding-right: 2.5rem;" oninput="checkPasswordMatch()">
+                    <input type="password" name="password_confirmation" id="conf_pw" class="form-control" required style="padding-right: 2.5rem;" oninput="checkPasswordMatch()" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
                     <button type="button" onclick="togglePw('conf_pw', 'conf_eye'); event.stopPropagation();" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex;"><svg id="conf_eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"></circle></svg></button>
                 </div>
                 <div id="match_indicator" class="pw-indicator"></div>
@@ -789,15 +803,45 @@
 
 @push('scripts')
 <script>
-    function togglePermissionsProfile() {
-        const role = document.getElementById('profile_role').value;
+    function togglePermissionsProfile(isManualChange = false) {
+        const roleEl = document.getElementById('profile_role');
+        if (!roleEl) return; // Not on an admin-editing page, skip safely
+        const role = roleEl.value;
         const section = document.getElementById('permissions_section_profile');
-        if (role === 'admin') {
+        if (!section) return;
+        if (role === 'admin' || role === 'coordinator') {
             section.style.display = 'none';
         } else {
             section.style.display = 'block';
+            const checkboxes = document.querySelectorAll('.perm-checkbox-profile');
+            checkboxes.forEach(cb => {
+                const label = cb.closest('.perm-label-profile');
+                const val = cb.value;
+                if (role === 'viewer') {
+                    // Show only view_* permissions
+                    if (val.startsWith('view_')) {
+                        label.style.display = 'flex';
+                        if (isManualChange) cb.checked = true;
+                    } else {
+                        label.style.display = 'none';
+                        cb.checked = false;
+                    }
+                } else if (role === 'editor') {
+                    // Show edit_* permissions and documents
+                    if (val.startsWith('edit_') || val === 'manage_documents') {
+                        label.style.display = 'flex';
+                        if (isManualChange) cb.checked = true;
+                    } else {
+                        label.style.display = 'none';
+                        cb.checked = false;
+                    }
+                }
+            });
         }
     }
+
+    // Call onload too to initialize checkboxes visibility
+    document.addEventListener('DOMContentLoaded', () => togglePermissionsProfile(false));
 
     // ─── Chart Labels with full dates ────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {

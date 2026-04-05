@@ -87,27 +87,23 @@ h4,
     background: radial-gradient(circle at top left, #f1f5f9, #e2e8f0);
 }
 
-/* Mobile Menu Button */
+/* Mobile Menu Button - Now visible on all screens in the header */
 .mobile-menu-btn {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 50;
-    padding: 0.75rem;
-    background: var(--glass);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
     cursor: pointer;
-    display: none;
-    color: var(--primary);
+    transition: var(--transition);
+    border-radius: var(--radius-md);
 }
 
-@media (max-width: 1023px) {
-    .mobile-menu-btn {
-        display: block;
-    }
+.mobile-menu-btn:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
 }
 
 /* Sidebar */
@@ -120,8 +116,178 @@ h4,
     background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
     color: white;
     box-shadow: var(--shadow-xl);
-    z-index: 40;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200; /* Increased to stay above sticky headers (like Archive action-bar) */
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    overflow-x: hidden;
+}
+
+/* Collapsed state for desktop (Gmail style) */
+@media (min-width: 1024px) {
+    .collapsed-sidebar .sidebar {
+        width: 5.5rem;
+        transform: translateX(0);
+    }
+    
+    .collapsed-sidebar .sidebar:hover {
+        width: 20rem;
+        box-shadow: 10px 0 25px rgba(0,0,0,0.1);
+    }
+
+    /* Hide text elements smoothly when collapsed and not hovered */
+    .collapsed-sidebar .sidebar:not(:hover) .logo-text-wrapper,
+    .collapsed-sidebar .sidebar:not(:hover) .nav-link span,
+    .collapsed-sidebar .sidebar:not(:hover) .subnav-arrow,
+    .collapsed-sidebar .sidebar:not(:hover) .user-details,
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-footer-content {
+        visibility: hidden;
+        opacity: 0;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+        position: absolute;
+        transition: opacity 0.2s, visibility 0.2s;
+        pointer-events: none;
+    }
+
+    /* Hide section labels (Main, Operations) completely when collapsed */
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-nav > ul > li > span {
+        display: none !important;
+    }
+
+    /* Hide section header list items entirely when collapsed */
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-nav ul li[style*="margin-left: -20px"] {
+        display: none !important;
+    }
+
+    /* Hide elements that interfere with centering */
+    .collapsed-sidebar .sidebar:not(:hover) .user-details,
+    .collapsed-sidebar .sidebar:not(:hover) .btn-logout,
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-footer-content {
+        display: none !important;
+    }
+
+    .collapsed-sidebar .sidebar:not(:hover) .subnav {
+        display: none !important;
+    }
+
+    /* Show elements smoothly on hover */
+    .collapsed-sidebar .sidebar:hover .logo-text-wrapper,
+    .collapsed-sidebar .sidebar:hover .nav-link span,
+    .collapsed-sidebar .sidebar:hover .subnav-arrow,
+    .collapsed-sidebar .sidebar:hover .sidebar-nav > ul > li > span,
+    .collapsed-sidebar .sidebar:hover .user-details,
+    .collapsed-sidebar .sidebar:hover .btn-logout,
+    .collapsed-sidebar .sidebar:hover .sidebar-footer-content {
+        visibility: visible;
+        opacity: 1;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        position: static;
+        display: flex !important;
+        transition: opacity 0.3s 0.2s, visibility 0.3s 0.2s;
+    }
+
+    /* Fix span display to inline when hovered */
+    .collapsed-sidebar .sidebar:hover .nav-link span {
+        display: inline !important;
+    }
+
+    /* Show section header items on hover */
+    .collapsed-sidebar .sidebar:hover .sidebar-nav ul li[style*="margin-left: -20px"] {
+        display: list-item !important;
+    }
+
+    /* Special case for footer content display */
+    .collapsed-sidebar .sidebar:hover .sidebar-footer-content {
+        display: flex !important;
+    }
+
+    /* Adjust logo to fit within collapsed sidebar */
+    .collapsed-sidebar .sidebar:not(:hover) .logo-circle {
+        transform: scale(0.6);
+        transform-origin: center center;
+        margin: 0 auto;
+    }
+    
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-header {
+        padding: 1.5rem 0;
+        display: flex;
+        justify-content: center;
+    }
+
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-logo {
+        justify-content: center;
+    }
+
+    /* Nav positioning when collapsed - ensure icons are centered and visible */
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-nav {
+        padding: 0 0.5rem;
+    }
+
+    .collapsed-sidebar .sidebar:not(:hover) .nav-link {
+        padding: 0.875rem 0;
+        justify-content: center;
+        gap: 0;
+        margin-bottom: 0.25rem;
+        border-radius: 12px;
+        position: relative;
+    }
+
+    /* Ensure icons are properly sized and visible when collapsed */
+    .collapsed-sidebar .sidebar:not(:hover) .nav-link i {
+        width: 1.375rem;
+        height: 1.375rem;
+        flex-shrink: 0;
+    }
+
+    /* Tooltip on hover for collapsed nav items */
+    .collapsed-sidebar .sidebar:not(:hover) .nav-link:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: calc(100% + 12px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: #1e1b4b;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        white-space: nowrap;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        pointer-events: none;
+    }
+
+    /* Profile user section - centered when collapsed */
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-footer {
+        padding: 1rem 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .collapsed-sidebar .sidebar:not(:hover) .sidebar-user {
+        margin: 0 auto;
+        padding: 0.625rem;
+        background: transparent;
+        border-color: transparent;
+        justify-content: center;
+        width: auto;
+    }
+
+    .collapsed-sidebar .sidebar:not(:hover) .user-info {
+        justify-content: center;
+        width: auto;
+        gap: 0;
+    }
+    
+    .collapsed-sidebar .sidebar:not(:hover) .user-avatar-premium {
+        transform: scale(1);
+        margin: 0 auto;
+    }
 }
 
 @media (max-width: 1023px) {
@@ -187,6 +353,7 @@ h4,
 .sidebar-nav {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0 1.25rem;
 }
 
@@ -369,6 +536,14 @@ h4,
     margin-left: 20rem;
     overflow-y: auto;
     scroll-behavior: smooth;
+    transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Expanded state when sidebar is collapsed on desktop */
+@media (min-width: 1024px) {
+    .collapsed-sidebar .main-content {
+        margin-left: 5.5rem;
+    }
 }
 
 @media (max-width: 1023px) {

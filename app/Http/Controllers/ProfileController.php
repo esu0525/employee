@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Models\User;
+use App\Models\EmailChangeVerification;
+use App\Mail\VerifyEmailChange;
+use Illuminate\Support\Facades\Mail;
 
 class ProfileController extends Controller
 {
@@ -26,12 +30,14 @@ class ProfileController extends Controller
         if (!$user) return null;
 
         $available_permissions = [
-            'view_employees' => 'View Employees',
-            'edit_employees' => 'Edit Employees',
-            'delete_employees' => 'Delete Employees',
+            'view_masterlist'  => 'View Masterlist',
+            'view_archive'     => 'View Archive',
+            'view_requests'    => 'View Requests Center',
+            'edit_masterlist'  => 'Edit Masterlist (Edit, Export, Status, Add)',
+            'edit_archive'     => 'Edit Archive (Edit, Export, Upload)',
+            'edit_requests'    => 'Manage Requests (Approve/Reject)',
             'manage_documents' => 'Manage Documents',
-            'manage_requests' => 'Manage Requests',
-            'manage_accounts' => 'Manage Accounts'
+            'manage_accounts'  => 'Manage Accounts'
         ];
 
         // Fetch user activity logs (logins, views, edits, deletes, etc.)
@@ -67,9 +73,6 @@ class ProfileController extends Controller
         return compact('user', 'logs', 'totalLogins', 'chartLabels', 'chartFullDates', 'chartData', 'available_permissions');
     }
 
-    /**
-     * Admin updating an account from the profile page
-     */
     public function updateAdmin(Request $request, $id)
     {
         $currentUser = $this->getUser();
@@ -77,40 +80,28 @@ class ProfileController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $user = \App\Models\User::findOrFail($id);
+        $user = User::findOrFail($id);
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => ['required', Rule::in(['admin', 'staff'])],
+            'role' => ['required', Rule::in(['admin', 'viewer', 'editor', 'coordinator'])],
             'permissions' => 'nullable|array'
         ]);
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->role = $validated['role'];
-        $user->permissions = ($validated['role'] === 'admin') ? [] : ($validated['permissions'] ?? []);
+        $user->permissions = in_array($validated['role'], ['admin', 'coordinator']) ? [] : ($validated['permissions'] ?? []);
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
 
-        $changed = [];
-        if($user->isDirty('name')) $changed[] = 'Name';
-        if($user->isDirty('email')) $changed[] = 'Email';
-        if($user->isDirty('role')) $changed[] = 'Role';
-        if($user->isDirty('permissions')) $changed[] = 'Permissions';
-        if(!empty($validated['password'])) $changed[] = 'Password';
+        \App\Models\ActivityLog::log('edit', 'profile', 'Administratively updated account details for ' . $user->name . ' (Direct update by Admin)');
 
         $user->save();
-
-        $desc = 'Administratively updated account details for ' . $user->name;
-        if(!empty($changed)) {
-            $desc .= ' (Edited: ' . implode(', ', $changed) . ')';
-        }
-
-        \App\Models\ActivityLog::log('edit', 'profile', $desc);
 
         return redirect()->back()->with('success', 'User account updated successfully.');
     }
@@ -151,27 +142,82 @@ class ProfileController extends Controller
         return view('profile.edit', $data);
     }
 
-    /**
-     * Update the user's profile information.
-     */
     public function update(Request $request)
     {
         $user = $this->getUser();
         if (!$user) return redirect()->route('login');
         
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
+        $rules = [
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-        ]);
-        
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
-        
-        session(['auth_user_name' => $user->name]);
-        
-        $user->save();
+        ];
 
-        return redirect()->back()->with('success', 'Profile updated successfully.');
+        if ($user->role === 'admin') {
+            $rules['name'] = 'required|string|max:255';
+        }
+
+        $request->validate($rules);
+
+        if ($user->role === 'admin' && $request->has('name')) {
+            $user->name = $request->name;
+            session(['auth_user_name' => $user->name]);
+        }
+
+        // Note: Regular users can no longer edit their Name as per requirements.
+        // It resides as readonly in UI and ignored here.
+
+        $newEmail = $request->email;
+
+        // If email is different, initiate verification
+        if ($newEmail !== $user->email) {
+            // Generate token
+            $token = Str::random(60);
+            
+            // Store verification request
+            EmailChangeVerification::create([
+                'user_id' => $user->id,
+                'old_email' => $user->email,
+                'new_email' => $newEmail,
+                'token' => $token,
+                'expires_at' => now()->addHours(24)
+            ]);
+
+            // Send Email
+            Mail::to($newEmail)->send(new VerifyEmailChange($user->name, $newEmail, $token));
+
+            \App\Models\ActivityLog::log('edit', 'profile', 'Initiated email address change from ' . $user->email . ' to ' . $newEmail);
+
+            return redirect()->back()->with('success', 'A verification email has been sent to ' . $newEmail . '. Please verify to complete the change.');
+        }
+        
+        return redirect()->back()->with('info', 'No changes were made.');
+    }
+
+    /**
+     * Verify the new email via token.
+     */
+    public function verifyEmail($token)
+    {
+        $verification = EmailChangeVerification::where('token', $token)->first();
+
+        if (!$verification || $verification->isExpired()) {
+            return redirect()->route('login')->with('error', 'Token is invalid or has expired.');
+        }
+
+        $user = User::find($verification->user_id);
+        if ($user) {
+            $oldEmail = $user->email;
+            $user->email = $verification->new_email;
+            $user->save();
+
+            \App\Models\ActivityLog::log('edit', 'profile', 'Verified new email address change from ' . $oldEmail . ' to ' . $user->email);
+
+            // Clean up all verifications for this user
+            EmailChangeVerification::where('user_id', $user->id)->delete();
+
+            return redirect()->route('profile.edit')->with('success', 'Email address has been successfully verified and updated.');
+        }
+
+        return redirect()->route('login')->with('error', 'User not found.');
     }
     
     /**
@@ -188,7 +234,6 @@ class ProfileController extends Controller
         
         $file = $request->file('avatar');
         $filename = time() . '_' . \Illuminate\Support\Str::slug($user->name) . '.' . $file->getClientOriginalExtension();
-        $binaryContent = file_get_contents($file->getRealPath());
         
         // Move the file into public/assets/avatars
         $file->move(public_path('assets/avatars'), $filename);
@@ -199,12 +244,13 @@ class ProfileController extends Controller
         }
         
         $user->profile_picture = 'assets/avatars/' . $filename;
-        $user->profile_picture_content = $binaryContent;
         
         // Also update session avatar since app.blade.php uses it
         session(['welcome_avatar' => 'assets/avatars/' . $filename]);
         
         $user->save();
+
+        \App\Models\ActivityLog::log('edit', 'profile', 'Updated personal profile picture');
 
         return redirect()->back()->with('success', 'Profile picture updated successfully.');
     }
@@ -234,6 +280,8 @@ class ProfileController extends Controller
 
         $user->password = Hash::make($request->password);
         $user->save();
+
+        \App\Models\ActivityLog::log('edit', 'profile', 'Updated personal account password');
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Password changed successfully.']);

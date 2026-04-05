@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Management System - @yield('title')</title>
+    <title>201 System - @yield('title')</title>
+    <link rel="icon" href="{{ asset('assets/images/HRNTP-logo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -112,7 +113,7 @@
             font-weight: 800;
             color: #4f46e5;
             box-shadow: 0 15px 35px rgba(79, 70, 229, 0.15);
-            border: 6px solid white;
+            border: 3px solid white;
             outline: 1px solid rgba(0,0,0,0.05);
             flex-shrink: 0;
             overflow: hidden;
@@ -481,6 +482,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            border-radius: 50%;
         }
 
         @media (max-width: 768px) {
@@ -525,6 +527,128 @@
             }
             .welcome-loader-box {
                 justify-content: center;
+            }
+        }
+        .sidebar-header-container {
+            padding: 2.5rem 1.5rem 2rem;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: var(--transition);
+        }
+
+        .logo-circle {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            overflow: hidden;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            padding: 2px;
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .logo-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+        }
+
+        .logo-text-wrapper {
+            text-align: left;
+            flex: 1;
+            min-width: 0;
+            opacity: 1;
+            transform: translateX(0);
+            transition: opacity 0.3s ease, transform 0.3s ease, width 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            color: white;
+            margin: 0;
+            line-height: 1.1;
+            display: block;
+        }
+
+        .logo-subtitle {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 4px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @media (min-width: 1024px) {
+            .collapsed-sidebar .sidebar:not(:hover) .logo-text-wrapper {
+                opacity: 0;
+                transform: translateX(-10px);
+                pointer-events: none;
+                width: 0;
+                display: none !important;
+            }
+            .collapsed-sidebar .sidebar:not(:hover) .sidebar-header-container {
+                padding: 1.5rem 0.5rem;
+                display: flex;
+                justify-content: center;
+            }
+            .collapsed-sidebar .sidebar:not(:hover) .sidebar-logo {
+                justify-content: center;
+                gap: 0;
+            }
+            .collapsed-sidebar .sidebar:not(:hover) .logo-circle {
+                width: 48px;
+                height: 48px;
+                transform: scale(0.85);
+            }
+        }
+
+        /* Mobile Close Button Style */
+        .mobile-close-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: absolute;
+            top: 2.25rem;
+            right: 1.5rem;
+            z-index: 100;
+        }
+
+        .mobile-close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 1023px) {
+            .mobile-close-btn {
+                display: flex;
             }
         }
     </style>
@@ -630,34 +754,35 @@
 </head>
 <body>
     <div id="app-container" class="app-container">
-        <!-- Mobile menu button -->
-        <button id="mobile-menu-btn" class="mobile-menu-btn">
-            <i data-lucide="menu"></i>
-        </button>
+        <script src="{{ asset('assets/js/fouc.js') }}"></script>
 
         <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar">. 
+        <aside id="sidebar" class="sidebar">
             <div class="sidebar-content">
                 @php
                     $currentUser = \App\Models\User::find(session('auth_user_id'));
-                    $userPerms = $currentUser ? ($currentUser->permissions ?? []) : [];
                     $isAdmin = $currentUser && $currentUser->role === 'admin';
                     
-                    $canViewMasterlist = $isAdmin || in_array('view_employees', $userPerms);
-                    $canAddEmployee = $isAdmin || in_array('edit_employees', $userPerms);
-                    $canManageRequests = $isAdmin || in_array('manage_requests', $userPerms);
-                    $canManageAccounts = $isAdmin || in_array('manage_accounts', $userPerms);
-                    $canViewArchive = $isAdmin || in_array('delete_employees', $userPerms);
+                    $canViewMasterlist = $currentUser && $currentUser->hasPermission('view_masterlist');
+                    $canAddEmployee    = $currentUser && $currentUser->hasPermission('edit_masterlist');
+                    $canManageRequests = $currentUser && $currentUser->hasPermission('view_requests');
+                    $canManageAccounts = $currentUser && $currentUser->hasPermission('manage_accounts');
+                    $canViewArchive    = $currentUser && $currentUser->hasPermission('view_archive');
                 @endphp
-                <!-- Header -->
-                <div class="sidebar-header">
+                <div class="sidebar-header sidebar-header-container">
+                    <!-- Mobile Close Button -->
+                    <button class="mobile-close-btn" onclick="document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('active');">
+                        <i data-lucide="x"></i>
+                    </button>
                     <div class="sidebar-logo">
-                        <div class="logo-icon">
-                            <i data-lucide="building-2"></i>
+                        <div class="logo-circle">
+                            <img src="{{ asset('images/logos/HRNTP-logo.jpg') }}" alt="HRNTP">
                         </div>
-                        <div>
-                            <h1 class="logo-title">Employee Portal</h1>
-                            <p class="logo-subtitle">Management System</p>
+                        <div class="logo-text-wrapper">
+                            <h1 class="logo-title">201 System</h1>
+                            <p class="logo-subtitle">
+                                Personnel Information & Records <br>Management System
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -665,13 +790,29 @@
                 <!-- Navigation -->
                 <nav class="sidebar-nav">
                     <ul>
+                        <li style="padding: 0 1.5rem; margin-bottom: 0.05rem; margin-left: -20px;">
+                            <span style="font-size: 1rem; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.15em;">Main</span>
+                        </li>
                         <li>
                             <a href="{{ route('dashboard') }}" class="nav-link {{ Route::is('dashboard') ? 'active' : '' }}">
                                 <i data-lucide="layout-dashboard"></i>
                                 <span>Dashboard</span>
                             </a>
                         </li>
+                        @if($isAdmin)
+                        <li>
+                            <a href="{{ route('admin.audit-trail') }}" class="nav-link {{ Route::is('admin.audit-trail') ? 'active' : '' }}">
+                                <i data-lucide="clipboard-list"></i>
+                                <span>Audit Trail</span>
+                            </a>
+                        </li>
+                        @endif
+                        @php $hasOperHeader = false; @endphp
                         @if($canViewMasterlist || $canAddEmployee)
+                        <li style="padding: 0 1.5rem; margin: 1.5rem 0 0.05rem; margin-left: -20px;">
+                            <span style="font-size: 1rem; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.15em;">Operations</span>
+                        </li>
+                        @php $hasOperHeader = true; @endphp
                         <li>
                             <a href="#" class="nav-link {{ Route::is('employees.masterlist') || Route::is('employees.add') || (Route::is('employees.show') && (!isset($isArchived) || !$isArchived)) ? 'active' : '' }}" onclick="toggleSubnav(event)">
                                 <i data-lucide="users"></i>
@@ -700,7 +841,7 @@
                         @endif
                         @if($canViewArchive)
                         <li>
-                            <a href="{{ route('employees.archive') }}" class="nav-link {{ Route::is('employees.archive') || (isset($isArchived) && $isArchived) ? 'active' : '' }}">
+                            <a href="{{ route('employees.archive') }}" class="nav-link {{ Route::is('employees.archive') || (isset($isArchived) && $isArchived) ? 'active' : '' }}" onclick="const lastUrl = localStorage.getItem('archiveLastUrl'); if(lastUrl && lastUrl.includes('/archive') && !window.location.href.includes('/archive')) { event.preventDefault(); window.location.href = lastUrl; }">
                                 <i data-lucide="archive"></i>
                                 <span>Archive</span>
                             </a>
@@ -738,22 +879,22 @@
                 <!-- Sidebar Footer -->
                 <div class="sidebar-footer">
                     <div class="sidebar-user">
-                        <div class="user-info" style="cursor: default;">
-                            <div class="user-avatar-premium" style="overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.1); flex-shrink: 0;">
-                                @if($currentUser && $currentUser->profile_picture_content)
-                                    <img src="{{ route('display.user-avatar', ['id' => $currentUser->id]) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                        <a href="{{ route('logout') }}" class="user-info" style="cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1;" title="Logout">
+                            <div class="user-avatar-premium" style="overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1); flex-shrink: 0;">
+                                @if($currentUser && $currentUser->profile_picture && file_exists(public_path($currentUser->profile_picture)))
+                                    <img src="{{ asset($currentUser->profile_picture) }}?v={{ $currentUser->updated_at->timestamp ?? time() }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                                 @elseif(session('welcome_avatar'))
-                                    <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                                 @else
                                     <span style="font-weight: 700; color: white;">{{ strtoupper(substr(session('auth_user_name', 'A'), 0, 1)) }}</span>
                                 @endif
                             </div>
                             <div class="user-details">
-                                <span class="user-name">{{ session('auth_user_name', 'Administrator') }}</span>
-                                <span class="user-role">{{ session('auth_user_role') ? ucfirst(session('auth_user_role')) : 'Super Admin' }}</span>
+                                <span class="user-name" style="color: white !important;">{{ session('auth_user_name', 'Administrator') }}</span>
+                                <span class="user-role">{{ ucfirst(session('auth_user_role', 'Admin')) }}</span>
                             </div>
-                        </div>
-                        <a href="{{ route('logout') }}" class="btn-logout" title="Logout" style="color: rgba(255,255,255,0.6); hover: color: #ef4444; transition: all 0.2s;">
+                        </a>
+                        <a href="{{ route('logout') }}" class="btn-logout" title="Logout" style="color: rgba(255,255,255,0.6); transition: all 0.2s;">
                             <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
                         </a>
                     </div>
@@ -788,7 +929,9 @@
             <!-- Top Header -->
             <header class="top-header">
                 <div class="header-left">
-                    <!-- Left side empty to push items to right -->
+                    <button id="mobile-menu-btn" class="mobile-menu-btn" style="display: flex; position: static; background: transparent; border: none; padding: 0.5rem; color: var(--text-main); cursor: pointer; transition: 0.2s;">
+                        <i data-lucide="menu" style="width: 24px; height: 24px;"></i>
+                    </button>
                 </div>
                 <div class="header-right">
                     <div class="theme-switcher" id="theme-switcher-container">
@@ -804,19 +947,19 @@
                     </div>
 
                     <!-- User Profile -->
-                    <a href="{{ route('profile.edit') }}" class="header-user-profile">
+                    <a href="{{ route('logout') }}" class="header-user-profile" title="Logout">
                         <div class="header-user-avatar">
-                            @if($currentUser && $currentUser->profile_picture_content)
-                                <img src="{{ route('display.user-avatar', ['id' => $currentUser->id]) }}" alt="Profile">
+                            @if($currentUser && $currentUser->profile_picture && file_exists(public_path($currentUser->profile_picture)))
+                                <img src="{{ asset($currentUser->profile_picture) }}?v={{ $currentUser->updated_at->timestamp ?? time() }}" alt="Profile" style="border-radius: 50%; object-fit: cover;">
                             @elseif(session('welcome_avatar'))
-                                <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile">
+                                <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile" style="border-radius: 50%; object-fit: cover;">
                             @else
                                 {{ strtoupper(substr(session('auth_user_name', 'A'), 0, 1)) }}
                             @endif
                         </div>
                         <div class="header-user-info">
                             <span class="header-user-name">{{ session('auth_user_name', 'Administrator') }}</span>
-                            <span class="header-user-position">{{ session('auth_user_role', 'Super Admin') }}</span>
+                            <span class="header-user-position">{{ ucfirst(session('auth_user_role', 'admin')) }}</span>
                         </div>
                     </a>
                 </div>
@@ -839,8 +982,8 @@
             <div class="welcome-right">
                 <div class="welcome-user-container">
                     <div class="welcome-avatar-circle">
-                        @if($currentUser && $currentUser->profile_picture_content)
-                            <img src="{{ route('display.user-avatar', ['id' => $currentUser->id]) }}" alt="Profile">
+                        @if($currentUser && $currentUser->profile_picture && file_exists(public_path($currentUser->profile_picture)))
+                            <img src="{{ asset($currentUser->profile_picture) }}?v={{ $currentUser->updated_at->timestamp ?? time() }}" alt="Profile">
                         @elseif(session('welcome_avatar'))
                             <img src="{{ asset(session('welcome_avatar')) }}" alt="Profile">
                         @else
@@ -878,270 +1021,7 @@
     </style>
     @endpush
 
-    <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
-
-        // Mobile menu toggle
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-
-        if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-                overlay.classList.toggle('active');
-            });
-        }
-
-        if (overlay) {
-            overlay.addEventListener('click', () => {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('active');
-            });
-        }
-
-        // Close sidebar when clicking nav link on mobile
-        const navLinks = document.querySelectorAll('.nav-link, .subnav-link');
-        navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 1024) {
-                    sidebar.classList.remove('open');
-                    overlay.classList.remove('active');
-                }
-            });
-        });
-
-        // Theme Management
-        function setTheme(theme, event) {
-            if (event) {
-                event.stopPropagation();
-            }
-            
-            const switcher = document.getElementById('theme-switcher-container');
-            
-            // For touch devices, it requires two taps: one to open, one to select.
-            // On touch devices, 'hover' doesn't exist natively, we just rely on click adding the 'open' class
-            if (event && event.type === 'click') {
-                if (window.innerWidth <= 1024 || window.matchMedia('(hover: none)').matches) {
-                    if (switcher && !switcher.classList.contains('open')) {
-                        switcher.classList.add('open');
-                        return; // Stop here, just open it
-                    }
-                }
-            }
-
-            // Update body attribute
-            document.body.setAttribute('data-theme', theme);
-            
-            // Save to local storage
-            localStorage.setItem('app-theme', theme);
-            
-            // Update buttons
-            document.querySelectorAll('.theme-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if(btn.getAttribute('data-theme-btn') === theme) {
-                    btn.classList.add('active');
-                }
-            });
-
-            // Auto close the switcher
-            if (switcher) {
-                document.activeElement?.blur(); 
-                switcher.classList.remove('open');
-            }
-        }
-
-        // Close theme switcher when clicking outside
-        document.addEventListener('click', function(event) {
-            const switcher = document.getElementById('theme-switcher-container');
-            if (switcher && switcher.classList.contains('open') && !switcher.contains(event.target)) {
-                switcher.classList.remove('open');
-            }
-        });
-
-        // Initialize Theme from Storage or Default to Light
-        const savedTheme = localStorage.getItem('app-theme') || 'light';
-        // Pass false or null for event so it sets immediately on load without requiring click
-        setTheme(savedTheme, null);
-
-        // Welcome Modal Functions
-        function closeWelcomeModal() {
-            const modal = document.getElementById('welcome-modal-overlay');
-            const app = document.getElementById('app-container');
-            
-            modal.style.opacity = '0';
-            modal.style.visibility = 'hidden';
-            document.body.classList.remove('modal-open');
-            
-            setTimeout(() => {
-                modal.remove();
-            }, 500);
-        }
-
-        function toggleSubnav(e) {
-            e.preventDefault();
-            const subnav = document.getElementById('masterlistSubnav');
-            const arrow = e.currentTarget.querySelector('.subnav-arrow');
-            
-            if (subnav.style.display === 'none') {
-                subnav.style.display = 'block';
-                arrow.style.transform = 'rotate(180deg)';
-            } else {
-                subnav.style.display = 'none';
-                arrow.style.transform = 'rotate(0deg)';
-            }
-        }
-
-        // Apply blur on load and set auto-close if modal exists
-        window.addEventListener('DOMContentLoaded', () => {
-            if (document.getElementById('welcome-modal-overlay')) {
-                document.body.classList.add('modal-open');
-                
-                // Auto close after 2 seconds
-                setTimeout(() => {
-                    closeWelcomeModal();
-                }, 2000);
-            }
-
-            // Auto-dismiss success toast if it exists
-            const toast = document.getElementById('successToast');
-            if (toast) {
-                setTimeout(() => {
-                    closeToast();
-                }, 4000);
-            }
-            
-            // Re-initialize icons just in case
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
-        });
-
-        // Global Formatting Script
-        document.addEventListener('input', function(e) {
-            // 1. Title Case Formatting (Big First Letter, Small Following)
-            // Target text inputs and textareas, but skip specific non-title fields
-            const isText = (e.target.tagName === 'INPUT' && (e.target.type === 'text' || !e.target.type)) || e.target.tagName === 'TEXTAREA';
-            const skipFields = ['email', 'password', 'id', 'username', 'so_no', 'so_number', 'agency', 'position'];
-            
-            if (isText && !skipFields.includes(e.target.name) && !skipFields.includes(e.target.id)) {
-                const cursorStart = e.target.selectionStart;
-                const cursorEnd = e.target.selectionEnd;
-                
-                let val = e.target.value;
-                if (val) {
-                    // Capitalize first letter of each word and lowercase the rest
-                    e.target.value = val.replace(/\w\S*/g, function(txt) {
-                        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-                    });
-                }
-                
-                // Restore cursor position
-                e.target.setSelectionRange(cursorStart, cursorEnd);
-            }
-
-            // 2. Phone Formatting ####-###-####
-            const isPhoneField = e.target.name?.includes('phone') || e.target.id?.includes('phone');
-            if (isPhoneField) {
-                let val = e.target.value.replace(/\D/g, '');
-                if (val.length > 11) val = val.substr(0, 11);
-                
-                let formatted = val;
-                if (val.length > 4 && val.length <= 7) {
-                    formatted = val.substr(0, 4) + '-' + val.substr(4);
-                } else if (val.length > 7) {
-                    formatted = val.substr(0, 4) + '-' + val.substr(4, 3) + '-' + val.substr(7);
-                }
-                e.target.value = formatted;
-            }
-        });
-
-        function closeToast() {
-            const toast = document.getElementById('successToast');
-            if (toast) {
-                toast.classList.remove('active');
-                setTimeout(() => toast.remove(), 400);
-            }
-        }
-
-        // Modern Confirmation Helper
-        window.confirmAction = function(options = {}) {
-            return new Promise((resolve) => {
-                const modal = document.getElementById('confirmModal');
-                const title = document.getElementById('confirmModalTitle');
-                const msg = document.getElementById('confirmModalMessage');
-                const cancelBtn = document.getElementById('confirmModalCancel');
-                const proceedBtn = document.getElementById('confirmModalProceed');
-                const iconBox = document.getElementById('confirmIconBox');
-
-                title.innerText = options.title || 'Are you sure?';
-                msg.innerText = options.message || 'This action cannot be undone.';
-                proceedBtn.innerText = options.confirmText || 'Confirm';
-                cancelBtn.innerText = options.cancelText || 'Cancel';
-                
-                // Customize based on type
-                if(options.type === 'danger') {
-                    iconBox.style.background = '#fef2f2';
-                    iconBox.style.color = '#ef4444';
-                    iconBox.style.animation = 'pulse-red 2s infinite';
-                    proceedBtn.style.background = '#ef4444';
-                    proceedBtn.style.boxShadow = '0 8px 20px -6px rgba(239, 68, 68, 0.5)';
-                    iconBox.innerHTML = '<i data-lucide="alert-triangle" style="width: 32px; height: 32px;"></i>';
-                } else {
-                    iconBox.style.background = '#eff6ff';
-                    iconBox.style.color = '#3b82f6';
-                    iconBox.style.animation = 'none';
-                    proceedBtn.style.background = '#3b82f6';
-                    proceedBtn.style.boxShadow = '0 8px 20px -6px rgba(59, 130, 246, 0.5)';
-                    iconBox.innerHTML = '<i data-lucide="help-circle" style="width: 32px; height: 32px;"></i>';
-                }
-                
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
-
-                modal.style.display = 'flex';
-                // Slight delay for transition
-                setTimeout(() => modal.classList.add('active'), 10);
-
-                const handleProceed = () => {
-                    cleanup();
-                    resolve(true);
-                };
-                const handleCancel = () => {
-                    cleanup();
-                    resolve(false);
-                };
-                const handleKeydown = (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleProceed();
-                    } else if (e.key === 'Escape') {
-                        handleCancel();
-                    }
-                };
-                const handleBackdropClick = (e) => {
-                    if (e.target === modal) {
-                        handleCancel();
-                    }
-                };
-                const cleanup = () => {
-                    modal.classList.remove('active');
-                    setTimeout(() => modal.style.display = 'none', 300);
-                    proceedBtn.removeEventListener('click', handleProceed);
-                    cancelBtn.removeEventListener('click', handleCancel);
-                    document.removeEventListener('keydown', handleKeydown);
-                    modal.removeEventListener('click', handleBackdropClick);
-                };
-
-                proceedBtn.addEventListener('click', handleProceed);
-                cancelBtn.addEventListener('click', handleCancel);
-                document.addEventListener('keydown', handleKeydown);
-                modal.addEventListener('click', handleBackdropClick);
-            });
-        };
-    </script>
+    <script src="{{ asset('assets/js/app.js') }}"></script>
     @stack('scripts')
 </body>
 </html>

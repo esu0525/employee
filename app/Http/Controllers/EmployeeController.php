@@ -140,12 +140,45 @@ class EmployeeController extends Controller
 
     public function allEmployeesJson(Request $request)
     {
-        $employees = Employee::where('status', 'active')
-            ->orderBy('last_name', 'asc')
-            ->orderBy('first_name', 'asc')
-            ->get(['id', 'name', 'position', 'agency', 'sex', 'date_joined']);
+        $search = $request->query('search', '');
+        $sort = $request->query('sort', 'name');
 
-        \App\Models\ActivityLog::log('export', 'masterlist', 'Exported masterlist data (JSON fetch)');
+        $query = Employee::where('status', 'active');
+
+        if (!empty($search)) {
+            $terms = explode(' ', $search);
+            $query->where(function ($q) use ($search, $terms) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('middle_name', 'like', "%{$search}%")
+                    ->orWhere('position', 'like', "%{$search}%")
+                    ->orWhere('agency', 'like', "%{$search}%");
+
+                if (count($terms) > 1) {
+                    $q->orWhere(function ($sq) use ($terms) {
+                        foreach ($terms as $term) {
+                            $sq->where(function($qq) use ($term) {
+                                $qq->where('first_name', 'like', "%{$term}%")
+                                   ->orWhere('last_name', 'like', "%{$term}%")
+                                   ->orWhere('middle_name', 'like', "%{$term}%")
+                                   ->orWhere('name', 'like', "%{$term}%");
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        if ($sort === 'position') {
+            $query->orderBy('position', 'asc')->orderBy('last_name', 'asc');
+        } else {
+            $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
+        }
+
+        $employees = $query->get(['id', 'name', 'position', 'agency', 'category', 'employment_status', 'salary_grade', 'level_of_position', 'sex', 'date_joined']);
+
+        \App\Models\ActivityLog::log('export', 'masterlist', 'Exported masterlist data (JSON fetch for client-side generation). Search: ' . ($search ?: 'None'));
             
         return response()->json($employees);
     }
@@ -373,20 +406,23 @@ class EmployeeController extends Controller
         $doc_count = $documents->count();
         $isArchived = ($employee->status !== 'active');
 
-        \App\Models\ActivityLog::log('view', 'masterlist', 'Viewed details for employee ' . $employee->name);
+        $module = $isArchived ? 'archive' : 'masterlist';
+        \App\Models\ActivityLog::log('view', $module, 'Viewed details for employee ' . $employee->name);
 
         return view('employee-details', compact('employee', 'documents', 'doc_count', 'isArchived'));
     }
 
-    public function archive(Request $request): View
+    public function archive(Request $request)
     {
         $search = $request->query('search', '');
         $filter_year = $request->query('year');
         $filter_month = $request->query('month');
         $filter_date = $request->query('date');
         
+        $sort = $request->query('sort', 'recent');
+
         // Base query for each status
-        $baseQuery = function($status) use ($search, $filter_year, $filter_month, $filter_date) {
+        $baseQuery = function($status, $pageName) use ($search, $filter_year, $filter_month, $filter_date, $sort) {
             $query = Employee::where('status', $status);
             
             if ($filter_year) $query->whereYear('effective_date', $filter_year);
@@ -415,50 +451,133 @@ class EmployeeController extends Controller
                     }
                 });
             }
-            return $query->orderBy('effective_date', 'desc')->orderBy('status_date', 'desc')->get();
+
+            if ($sort === 'name') {
+                $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
+            } elseif ($sort === 'sep_asc') {
+                $query->orderBy('effective_date', 'asc');
+            } elseif ($sort === 'archived_recent') {
+                $query->orderBy('updated_at', 'desc');
+            } elseif ($sort === 'archived_oldest') {
+                $query->orderBy('updated_at', 'asc');
+            } else { // 'sep_desc' or 'recent'
+                $query->orderBy('effective_date', 'desc');
+            }
+
+            return $query->get();
         };
 
-        $resign = $baseQuery('resign');
-        $retired = $baseQuery('retired');
-        $transfer = $baseQuery('transfer');
-        $others = $baseQuery('others');
+        $resign = $baseQuery('resign', 'resign_page');
+        $retired = $baseQuery('retired', 'retired_page');
+        $transfer = $baseQuery('transfer', 'transfer_page');
+        $others = $baseQuery('others', 'others_page');
 
         $resign_count = Employee::where('status', 'resign')->count();
         $retired_count = Employee::where('status', 'retired')->count();
         $transfer_count = Employee::where('status', 'transfer')->count();
         $others_count = Employee::where('status', 'others')->count();
 
+        $active_tab = $request->query('tab', 'resign');
+        
+        // Auto-locate search results across tabs
+        if (!empty($search)) {
+            $searchCounts = [
+                'resign' => $resign->count(),
+                'retired' => $retired->count(),
+                'transfer' => $transfer->count(),
+                'others' => $others->count(),
+            ];
+            
+            // If the user's current tab has no search results, intelligently switch them to the first tab that has their result
+            if (($searchCounts[$active_tab] ?? 0) === 0) {
+                foreach ($searchCounts as $tab => $count) {
+                    if ($count > 0) {
+                        $active_tab = $tab;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($request->ajax()) {
+            return view('partials.archive-panels', compact(
+                'resign', 'retired', 'transfer', 'others', 'search',
+                'resign_count', 'retired_count', 'transfer_count', 'others_count',
+                'active_tab'
+            ))->render();
+        }
+
+        \App\Models\ActivityLog::log('view', 'archive', 'Accessed the archive module');
+
         return view('archive', compact(
             'resign', 'retired', 'transfer', 'others', 'search',
-            'resign_count', 'retired_count', 'transfer_count', 'others_count'
+            'resign_count', 'retired_count', 'transfer_count', 'others_count',
+            'active_tab'
         ));
     }
 
-    public function requests(Request $request): View
+    public function archiveEmployeesJson(Request $request)
+    {
+        $year = $request->query('year');
+        $month = $request->query('month');
+        $tab = $request->query('tab'); // e.g. 'resign', 'retired', 'transfer', 'others'
+
+        $query = Employee::whereIn('status', ['resign', 'retired', 'transfer', 'others']);
+
+        if ($year && $year !== 'all') {
+            $query->whereYear('effective_date', $year);
+        }
+        if ($month && $month !== 'all') {
+            $query->whereMonth('effective_date', $month);
+        }
+        if ($tab && $tab !== 'all') {
+            $query->where('status', $tab);
+        }
+
+        $employees = $query->orderBy('effective_date', 'desc')
+            ->get(['id', 'name', 'position', 'agency', 'school', 'status', 'effective_date', 'status_specify', 'so_no', 'transfer_to', 'retirement_under', 'salary_grade', 'level_of_position', 'employment_status']);
+
+        \App\Models\ActivityLog::log('export', 'archive', 'Exported archive data (JSON fetch). Filters: Year=' . ($year ?: 'All') . ', Month=' . ($month ?: 'All') . ', Tab=' . ($tab ?: 'All'));
+            
+        return response()->json($employees);
+    }
+
+
+
+    public function requests(Request $request): View|\Illuminate\Http\Response
     {
         $search = $request->query('search', '');
+        $year = $request->query('year', '');
+        $active_tab = $request->query('tab', 'pending');
         
-        // Pending Requests
-        $pendingQuery = EmployeeRequest::where('status', 'pending');
-        if (!empty($search)) {
-            $pendingQuery->where(function ($q) use ($search) {
-                $q->where('employee_name', 'like', "%{$search}%")
-                    ->orWhere('request_type', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
-        $requests = $pendingQuery->orderBy('request_date', 'desc')->get();
+        // Setup base queries with search and optional year filter
+        $buildQuery = function ($status) use ($search, $year) {
+            $query = EmployeeRequest::where('status', $status);
+            
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('employee_name', 'like', "%{$search}%")
+                        ->orWhere('request_type', 'like', "%{$search}%")
+                        ->orWhere('id', 'like', "%{$search}%");
+                });
+            }
+            
+            if (!empty($year)) {
+                $query->whereYear('request_date', $year);
+            }
+            
+            return $query;
+        };
 
-        // Approved Requests
-        $approvedQuery = EmployeeRequest::where('status', 'approved');
-        if (!empty($search)) {
-            $approvedQuery->where(function ($q) use ($search) {
-                $q->where('employee_name', 'like', "%{$search}%")
-                    ->orWhere('request_type', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
-        $approved_requests = $approvedQuery->orderBy('updated_at', 'desc')->get();
+        // Execute queries with full collections for client-side pagination snappiness
+        $requests = $buildQuery('pending')->orderBy('request_date', 'desc')
+                                 ->orderBy('created_at', 'desc')
+                                 ->orderBy('id', 'desc')
+                                 ->get();
+    
+        $approved_requests = $buildQuery('approved')->orderBy('updated_at', 'desc')
+                                           ->orderBy('id', 'desc')
+                                           ->get();
 
         $all_requests = EmployeeRequest::count();
         $pending_count = EmployeeRequest::where('status', 'pending')->count();
@@ -467,11 +586,17 @@ class EmployeeController extends Controller
 
         $employees = Employee::where('status', 'active')->orderBy('name', 'asc')->get();
 
-        return view('requests', compact(
-            'requests', 'approved_requests', 'search',
+        $viewData = compact(
+            'requests', 'approved_requests', 'search', 'year', 'active_tab',
             'all_requests', 'pending_count', 'approved_count', 'rejected_count',
             'employees'
-        ));
+        );
+
+        if ($request->ajax()) {
+            return view('requests', $viewData);
+        }
+
+        return view('requests', $viewData);
     }
 
     public function store(Request $request)
@@ -484,6 +609,10 @@ class EmployeeController extends Controller
             'suffix' => 'nullable|string|max:50',
             'position' => 'required|string|max:100',
             'agency' => 'required|string|max:100',
+            'category' => 'required|string|in:National,City',
+            'employment_status' => 'required|string|in:Permanent,Contractual,Original',
+            'salary_grade' => 'nullable|string|max:50',
+            'level_of_position' => 'nullable|string|max:100',
             'so_number' => 'nullable|string|max:100',
             'date_of_birth' => 'required|date',
             'sex' => 'required|string|in:Male,Female',
@@ -524,13 +653,11 @@ class EmployeeController extends Controller
             }
             file_put_contents($path, $decoded);
             $data['profile_picture'] = 'uploads/avatars/' . $filename;
-            $data['profile_picture_content'] = $decoded; 
         } elseif ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('uploads/avatars'), $filename);
             $data['profile_picture'] = 'uploads/avatars/' . $filename;
-            $data['profile_picture_content'] = file_get_contents(public_path('uploads/avatars/' . $filename));
         }
 
         $employee = Employee::create($data);
@@ -544,12 +671,10 @@ class EmployeeController extends Controller
                     $files = $request->file("doc_items.{$index}.files");
                     foreach ($files as $fileIndex => $file) {
                         $filename = time() . "_{$index}_{$fileIndex}_" . $file->getClientOriginalName();
-                        $binaryContent = file_get_contents($file->getRealPath());
                         $file->move(public_path('uploads'), $filename);
                         $employee->documents()->create([
                             'document_name' => $file->getClientOriginalName(),
                             'file_path' => 'uploads/' . $filename,
-                            'file_content' => $binaryContent,
                             'category' => $category
                         ]);
                     }
@@ -573,19 +698,11 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
         $request->validate([
             'status' => 'required|string|in:transfer,retired,resign,others',
-            'so_no' => 'required_if:status,transfer|nullable|string|max:255',
-            'transfer_to' => 'required_if:status,transfer|nullable|string|max:255',
+            'so_no' => 'nullable|string|max:255',
+            'transfer_to' => 'nullable|string|max:255',
             'effective_date' => 'required|date',
-            'retirement_under' => 'required_if:status,retired|nullable|string|max:255',
-            'status_specify' => 'required_if:status,others|nullable|string|max:255',
+            'status_specify' => 'nullable|string|max:255',
         ]);
-
-        $retirementValue = $request->retirement_under;
-        if($request->status === 'retired' && !empty($retirementValue)) {
-            if(!str_contains(strtolower($retirementValue), 'retirement under')) {
-                $retirementValue = "Retirement under " . $retirementValue;
-            }
-        }
 
         $employee->update([
             'status' => $request->status,
@@ -593,8 +710,8 @@ class EmployeeController extends Controller
             'so_no' => $request->so_no,
             'transfer_to' => $request->transfer_to,
             'effective_date' => $request->effective_date,
-            'retirement_under' => $retirementValue,
             'status_specify' => $request->status_specify,
+            'retirement_under' => null, // Clear out any legacy data for this deprecated field
         ]);
 
         \App\Models\ActivityLog::log('edit', 'archive', 'Moved employee ' . $employee->name . ' to ' . strtoupper($request->status) . ' list');
@@ -609,11 +726,6 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
-        if ($employee->status !== 'active') {
-            if ($request->ajax()) return response()->json(['message' => 'Documents cannot be uploaded for inactive employees.'], 403);
-            return back()->with('error_message', 'Documents cannot be uploaded for inactive or archive employees.');
-        }
-
         $request->validate([
             'category' => 'nullable|string|max:50',
             'documents.*' => 'required|file|mimes:pdf,jpeg,png,jpg,docx,xlsx,doc|max:512000',
@@ -626,17 +738,16 @@ class EmployeeController extends Controller
 
             foreach ($files as $file) {
                 $filename = time() . '_' . $upload_count . '_' . $file->getClientOriginalName();
-                $binaryContent = file_get_contents($file->getRealPath());
                 $file->move(public_path('uploads'), $filename);
 
                 $employee->documents()->create([
                     'document_name' => $file->getClientOriginalName(),
                     'file_path' => 'uploads/' . $filename,
-                    'file_content' => $binaryContent,
                     'category' => $category
                 ]);
                 
-                \App\Models\ActivityLog::log('upload', 'masterlist', 'Uploaded document: ' . $file->getClientOriginalName() . ' for ' . $employee->name);
+                $module = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']) ? 'archive' : 'masterlist';
+                \App\Models\ActivityLog::log('upload', $module, 'Uploaded document: ' . $file->getClientOriginalName() . ' for ' . $employee->name);
                 
                 $upload_count++;
             }
@@ -663,10 +774,6 @@ class EmployeeController extends Controller
         $doc = EmployeeDocument::findOrFail($id);
         $employee = $doc->employee;
 
-        if ($employee && $employee->status !== 'active') {
-            return back()->with('error_message', 'Documents cannot be deleted for inactive or archive employees.');
-        }
-
         $file_path = public_path($doc->file_path);
 
         if (File::exists($file_path)) {
@@ -677,23 +784,35 @@ class EmployeeController extends Controller
         $emp_name = $employee ? $employee->name : 'Unknown';
         $doc->delete();
 
-        \App\Models\ActivityLog::log('delete', 'masterlist', 'Deleted document: ' . $doc_name . ' for ' . $emp_name);
+        $module = ($employee && in_array($employee->status, ['resign', 'retired', 'transfer', 'others'])) ? 'archive' : 'masterlist';
+        \App\Models\ActivityLog::log('delete', $module, 'Deleted document: ' . $doc_name . ' for ' . $emp_name);
 
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
             ->with('success_message', 'Document deleted successfully');
     }
 
-    public function approveRequest($id): RedirectResponse
+    public function approveRequest(Request $request, $id): RedirectResponse
     {
-        $request = EmployeeRequest::findOrFail($id);
-        $request->update(['status' => 'approved']);
-        return redirect()->route('employees.requests')->with('success_message', 'Request approved and moved to Approved List');
+        $req = EmployeeRequest::findOrFail($id);
+        $req->update([
+            'status' => 'approved',
+            'prepared_by' => $request->input('prepared_by')
+        ]);
+
+        \App\Models\ActivityLog::log('edit', 'requests', 'Approved document request for ' . $req->employee_name . ' (Requested: ' . $req->request_type . ')');
+
+        return redirect()->route('employees.requests')
+            ->with('success_message', 'Request approved and moved to Approved List')
+            ->with('new_approval', true);
     }
 
     public function rejectRequest($id): RedirectResponse
     {
         $request = EmployeeRequest::findOrFail($id);
         $request->update(['status' => 'rejected']);
+        
+        \App\Models\ActivityLog::log('edit', 'requests', 'Rejected document request for ' . $request->employee_name . ' (Requested: ' . $request->request_type . ')');
+
         return redirect()->route('employees.requests')->with('success_message', 'Request has been rejected');
     }
 
@@ -711,11 +830,9 @@ class EmployeeController extends Controller
         $purpose = $data['purpose'];
 
         $requirements_file = null;
-        $requirements_file_content = null;
         if ($request->hasFile('requirements_file')) {
             $file = $request->file('requirements_file');
             $filename = time() . '_' . $file->getClientOriginalName();
-            $requirements_file_content = file_get_contents($file->getRealPath());
             
             if (!file_exists(public_path('uploads/requirements'))) {
                 mkdir(public_path('uploads/requirements'), 0777, true);
@@ -733,8 +850,10 @@ class EmployeeController extends Controller
             'status' => 'pending',
             'description' => "Filed via Dashboard. Purpose: $purpose",
             'requirements_file' => $requirements_file,
-            'requirements_file_content' => $requirements_file_content
         ]);
+
+        \App\Models\ActivityLog::log('create', 'requests', 'Submitted document request for ' . $employee->name . ' (Requested: ' . $data['request_type'] . ')');
+
         return redirect()->route('employees.requests')->with('success_message', 'Document request submitted successfully!');
     }
 
@@ -769,12 +888,21 @@ class EmployeeController extends Controller
             'phone' => 'nullable|string|max:20',
             'position' => 'required|string|max:100',
             'agency' => 'required|string|max:100',
+            'category' => 'nullable|string|in:National,City',
+            'employment_status' => 'nullable|string|in:Permanent,Contractual,Original',
+            'salary_grade' => 'nullable|string|max:50',
+            'level_of_position' => 'nullable|string|max:100',
             'so_number' => 'nullable|string|max:100',
             'date_of_birth' => 'nullable|date',
             'sex' => 'nullable|string|in:Male,Female',
             'civil_status' => 'nullable|string|max:50',
             'nationality' => 'nullable|string|max:100',
             'address' => 'nullable|string|max:500',
+            'effective_date' => 'nullable|date',
+            'status' => 'nullable|string|in:active,resign,retired,transfer,others',
+            'so_no' => 'nullable|string|max:255',
+            'status_specify' => 'nullable|string|max:1000',
+            'transfer_to' => 'nullable|string|max:255',
         ]);
 
         if ($request->filled('first_name') && $request->filled('last_name')) {
@@ -804,7 +932,8 @@ class EmployeeController extends Controller
             $desc .= ' (Edited: ' . implode(', ', array_slice($changedFields, 0, 3)) . (count($changedFields) > 3 ? '...' : '') . ')';
         }
 
-        \App\Models\ActivityLog::log('edit', 'masterlist', $desc);
+        $module = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']) ? 'archive' : 'masterlist';
+        \App\Models\ActivityLog::log('edit', $module, $desc);
 
         $tab = $request->input('active_tab', 'personal');
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => $tab])
@@ -816,10 +945,11 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
 
         $request->validate([
-            'profile_picture' => 'nullable',
+            'profile_picture' => 'nullable|file|image|max:10240',
             'cropped_image' => 'nullable|string',
         ]);
 
+        $filename = null;
         if ($request->filled('cropped_image')) {
             $imgData = $request->input('cropped_image');
             if (preg_match('/^data:image\/(\w+);base64,/', $imgData, $type)) {
@@ -835,29 +965,27 @@ class EmployeeController extends Controller
             }
             
             file_put_contents($path, $decoded);
-            
-            if ($employee->profile_picture && file_exists(public_path($employee->profile_picture))) {
-                @unlink(public_path($employee->profile_picture));
-            }
-
-            $employee->update([
-                'profile_picture' => 'uploads/avatars/' . $filename,
-                'profile_picture_content' => $decoded
-            ]);
         } elseif ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $file->getClientOriginalName();
-            $binaryContent = file_get_contents($file->getRealPath());
+            if (!file_exists(public_path('uploads/avatars'))) {
+                mkdir(public_path('uploads/avatars'), 0777, true);
+            }
             $file->move(public_path('uploads/avatars'), $filename);
+        }
 
+        if ($filename) {
+            // Delete old file if exists
             if ($employee->profile_picture && file_exists(public_path($employee->profile_picture))) {
                 @unlink(public_path($employee->profile_picture));
             }
 
             $employee->update([
                 'profile_picture' => 'uploads/avatars/' . $filename,
-                'profile_picture_content' => $binaryContent
             ]);
+
+            $module = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']) ? 'archive' : 'masterlist';
+            \App\Models\ActivityLog::log('edit', $module, 'Updated profile picture for employee ' . $employee->name);
         }
 
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'personal'])

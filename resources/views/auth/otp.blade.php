@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OTP Verification - DepEd 201 System</title>
+    <title>OTP Verification - 201 System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -788,7 +788,12 @@
                 },
                 body: JSON.stringify({ otp: code }),
             })
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok && r.status !== 422 && r.status !== 401) {
+                    throw new Error('Server error');
+                }
+                return r.json();
+            })
             .then(data => {
                 setVerifyLoading(false);
 
@@ -796,7 +801,8 @@
                     boxes.forEach(b => b.classList.add('success'));
                     showStatus('✅ Verification successful! Redirecting…', 'success');
                     document.getElementById('verifyBtn').disabled = true;
-                    setTimeout(() => { window.location.href = data.redirect; }, 400);
+                    // Use replace to avoid back behavior
+                    setTimeout(() => { window.location.replace(data.redirect); }, 400);
                     clearInterval(timerInterval);
                     return;
                 }
@@ -872,6 +878,9 @@
             btn.disabled = true;
             btn.textContent = 'Sending…';
 
+            const controller = new AbortController();
+            const timeoutId  = setTimeout(() => controller.abort(), 35000); // 35s timeout
+
             fetch(RESEND_URL, {
                 method: 'POST',
                 headers: {
@@ -880,8 +889,13 @@
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({}),
+                signal: controller.signal
             })
-            .then(r => r.json())
+            .then(r => {
+                clearTimeout(timeoutId);
+                if (!r.ok) throw new Error('Network response was not ok');
+                return r.json();
+            })
             .then(data => {
                 if (data.success) {
                     showStatus('New OTP sent to your email!', 'success');
@@ -894,24 +908,34 @@
                     boxes[0].focus();
                 } else {
                     showStatus(data.message || 'Failed to resend OTP.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Resend OTP';
                 }
 
-                // 30-second cooldown for resend
-                resendCooldown = true;
-                let cd = 30;
-                const cdInterval = setInterval(() => {
-                    btn.textContent = `Resend OTP (${cd}s)`;
-                    cd--;
-                    if (cd < 0) {
-                        clearInterval(cdInterval);
-                        btn.textContent = 'Resend OTP';
-                        btn.disabled    = false;
-                        resendCooldown  = false;
-                    }
-                }, 1000);
+                // 30-second cooldown for resend success
+                if (data.success) {
+                    resendCooldown = true;
+                    let cd = 30;
+                    const cdInterval = setInterval(() => {
+                        btn.textContent = `Resend OTP (${cd}s)`;
+                        cd--;
+                        if (cd < 0) {
+                            clearInterval(cdInterval);
+                            btn.textContent = 'Resend OTP';
+                            btn.disabled    = false;
+                            resendCooldown  = false;
+                        }
+                    }, 1000);
+                }
             })
-            .catch(() => {
-                showStatus('Network error. Please try again.', 'error');
+            .catch(error => {
+                clearTimeout(timeoutId);
+                console.error('Resend Error:', error);
+                if (error.name === 'AbortError') {
+                    showStatus('Request timed out. Please try again.', 'error');
+                } else {
+                    showStatus('Request failed. Check your internet or try again later.', 'error');
+                }
                 btn.textContent = 'Resend OTP';
                 btn.disabled    = false;
             });
@@ -923,10 +947,10 @@
                 startLockout(serverLockedSeconds);
             } else {
                 boxes[0].focus();
-                
-                // If we just redirected from login, trigger the first OTP email via AJAX 
-                // to make the login transition feel instant.
-                @if(session('trigger_initial_resend'))
+
+                // Silent initial resend if flag is set (Triggered after login)
+                @if($triggerResend)
+                    console.log('Triggering initial OTP send asynchronously...');
                     resendOtp();
                 @endif
             }

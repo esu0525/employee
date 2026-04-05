@@ -63,8 +63,8 @@ class Employee extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'profile_picture', 'profile_picture_content', 'name', 'last_name', 'first_name', 'middle_name', 'suffix', 'so_number',
-        'position', 'agency', 'email', 'phone',
+        'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'suffix', 'so_number',
+        'position', 'agency', 'category', 'employment_status', 'salary_grade', 'level_of_position', 'email', 'phone',
         'date_joined', 'status', 'status_date', 'transfer_location',
         'address', 'date_of_birth', 'sex', 'civil_status', 'nationality', 'emergency_contact', 'emergency_phone',
         'effective_date', 'school', 'transfer_to', 'so_no', 'status_specify', 'retirement_under'
@@ -73,8 +73,23 @@ class Employee extends Model
     protected $casts = [
         'date_joined' => 'date',
         'status_date' => 'date',
-        'date_of_birth' => 'date',
+        'date_of_birth' => \App\Casts\SafeEncryptDate::class,
         'effective_date' => 'date',
+        'phone' => \App\Casts\SafeEncrypt::class,
+        'address' => \App\Casts\SafeEncrypt::class,
+        'emergency_phone' => \App\Casts\SafeEncrypt::class,
+        'emergency_contact' => \App\Casts\SafeEncrypt::class,
+        'nationality' => \App\Casts\SafeEncrypt::class,
+        'civil_status' => \App\Casts\SafeEncrypt::class,
+        'category' => \App\Casts\SafeEncrypt::class,
+        'employment_status' => \App\Casts\SafeEncrypt::class,
+        'salary_grade' => \App\Casts\SafeEncrypt::class,
+        'level_of_position' => \App\Casts\SafeEncrypt::class,
+        'so_number' => \App\Casts\SafeEncrypt::class,
+        'so_no' => \App\Casts\SafeEncrypt::class,
+        'transfer_to' => \App\Casts\SafeEncrypt::class,
+        'retirement_under' => \App\Casts\SafeEncrypt::class,
+        'status_specify' => \App\Casts\SafeEncrypt::class,
     ];
 
     public function setLastNameAttribute($value) { $this->attributes['last_name'] = $this->formatTitle($value); }
@@ -82,8 +97,8 @@ class Employee extends Model
     public function setMiddleNameAttribute($value) { $this->attributes['middle_name'] = $this->formatTitle($value); }
     public function setNameAttribute($value) { $this->attributes['name'] = $this->formatTitle($value); }
     public function setSuffixAttribute($value) { $this->attributes['suffix'] = $this->formatTitle($value); }
-    public function setPositionAttribute($value) { $this->attributes['position'] = $this->formatTitle($value); }
-    public function setAgencyAttribute($value) { $this->attributes['agency'] = $this->formatTitle($value); }
+    public function setPositionAttribute($value) { $this->attributes['position'] = $value; }
+    public function setAgencyAttribute($value) { $this->attributes['agency'] = $value; }
     public function setAddressAttribute($value) { $this->attributes['address'] = $this->formatTitle($value); }
     public function setCivilStatusAttribute($value) { $this->attributes['civil_status'] = $this->formatTitle($value); }
     public function setNationalityAttribute($value) { $this->attributes['nationality'] = $this->formatTitle($value); }

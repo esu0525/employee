@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="printable-paper-container"
-        style="animation: fadeInUp 0.5s ease-out; padding: 20px 0 150px 0; background: #f1f5f9; min-height: 100vh;">
+        style="animation: fadeInUp 0.5s ease-out; background: #f1f5f9; min-height: 100vh; padding: {{ request()->has('compact') ? '0' : '20px 0 150px 0' }};">
         <!-- Action Bar (Hidden in Print) -->
         @if(!request()->has('compact'))
             <div class="action-bar-no-print"
@@ -103,12 +103,23 @@
                     <p style="font-weight: bold; margin-bottom: 25px; font-family: 'Bookman Old Style', serif;">
                         Prepared By:</p>
                     <div style="text-align: center; width: 180px;">
-                        <span contenteditable="true" class="editable-name"
-                            style="display: block; min-height: 20px; outline: none; margin-bottom: -2px; font-size: 11pt; color: gray;"
+                        @php
+                            $preparedBy = $request->prepared_by;
+                            if (!$preparedBy && $request->status === 'approved') {
+                                $preparedBy = session('auth_user_name') ?? 'HR Personnel';
+                            }
+                            if (!$preparedBy && $request->status !== 'approved') {
+                                $preparedBy = '(Click to edit)';
+                            }
+                            $color = ($request->status === 'approved' || $preparedBy !== '(Click to edit)') ? 'black' : 'gray';
+                        @endphp
+                        <span contenteditable="{{ $request->status === 'approved' ? 'false' : 'true' }}" 
+                            class="editable-name"
+                            style="display: block; min-height: 20px; outline: none; margin-bottom: -2px; font-size: 11pt; color: {{ $color }};"
+                            @if($request->status !== 'approved')
                             onfocus="if(this.innerText.trim() === '(Click to edit)') { this.innerText = ''; this.style.color = 'black'; }"
-                            onblur="if(this.innerText.trim() === '') { this.innerText = '(Click to edit)'; this.style.color = 'gray'; }">(Click
-                            to
-                            edit)</span>
+                            onblur="if(this.innerText.trim() === '') { this.innerText = '(Click to edit)'; this.style.color = 'gray'; }"
+                            @endif>{{ $preparedBy }}</span>
                         <div style="border-bottom: 1pt solid black; width: 100%; margin-bottom: 4px;"></div>
                         <p style="font-size: 11pt; margin: 0;">HR-NTPU Personnel</p>
                     </div>
@@ -119,7 +130,7 @@
                         style="font-weight: bold; margin-bottom: 25px; font-family: 'Bookman Old Style', serif; margin-left: 12px;">
                         Received By:</p>
                     <div style="text-align: center; width: 280px;">
-                        <span style="display: block; min-height: 20px; margin-bottom: -2px;"></span>
+                        <span style="display: block; min-height: 20px; margin-bottom: -2px; font-weight: bold; margin-left: 23px;">{{ $request->employee_name }}</span>
                         <div style="border-bottom: 1pt solid black; width: 240px; margin-bottom: 4px; margin-left: 23px;">
                         </div>
                         <p style="font-size: 11pt; margin-left: 2px;">Signature over printed name</p>
@@ -246,12 +257,21 @@
                     }
 
                     /* I-reset ang body para hindi ito mag-shrink o mag-flex */
-                    body {
+                    html, body {
                         background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         width: 100% !important;
+                        height: auto !important;
                         display: block !important;
+                        -webkit-print-color-adjust: exact !important;
+                    }
+
+                    .printable-paper-container {
+                        background: white !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        min-height: auto !important;
                     }
 
                     /* Remove any backgrounds and shadows */
@@ -305,7 +325,7 @@
 
                     @page {
                         size: A4;
-                        margin: 0 !important;
+                        margin: 0;
                     }
                 }
             </style>

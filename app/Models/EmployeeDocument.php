@@ -28,7 +28,7 @@ class EmployeeDocument extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'employee_id', 'document_name', 'file_path', 'file_content', 'category', 'created_at', 'updated_at'
+        'employee_id', 'document_name', 'file_path', 'category', 'created_at', 'updated_at'
     ];
 
     protected $casts = [

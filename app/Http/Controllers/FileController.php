@@ -13,52 +13,50 @@ class FileController extends Controller
     public function showEmployeeAvatar($id)
     {
         $employee = Employee::findOrFail($id);
-        if (!$employee->profile_picture_content) {
+        if (!$employee->profile_picture) {
             return abort(404);
         }
 
-        return Response::make($employee->profile_picture_content, 200, [
-            'Content-Type' => 'image/jpeg', // Defaulting to jpeg, browser usually handles it
-            'Cache-Control' => 'max-age=86400, public',
+        $path = public_path($employee->profile_picture);
+        if (!file_exists($path)) {
+            return abort(404);
+        }
+
+        return response()->file($path, [
+            'Cache-Control' => 'no-cache, must-revalidate',
         ]);
     }
 
     public function showUserAvatar($id)
     {
         $user = User::findOrFail($id);
-        if (!$user->profile_picture_content) {
+        if (!$user->profile_picture) {
             return abort(404);
         }
 
-        return Response::make($user->profile_picture_content, 200, [
-            'Content-Type' => 'image/jpeg',
-            'Cache-Control' => 'max-age=86400, public',
+        $path = public_path($user->profile_picture);
+        if (!file_exists($path)) {
+            return abort(404);
+        }
+
+        return response()->file($path, [
+            'Cache-Control' => 'no-cache, must-revalidate',
         ]);
     }
 
     public function showDocument($id)
     {
         $document = EmployeeDocument::findOrFail($id);
-        if (!$document->file_content) {
+        if (!$document->file_path) {
             return abort(404);
         }
 
-        // Determine content type by extension if possible
-        $extension = pathinfo($document->document_name, PATHINFO_EXTENSION);
-        $mimeTypes = [
-            'pdf' => 'application/pdf',
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ];
-        
-        $contentType = $mimeTypes[strtolower($extension)] ?? 'application/octet-stream';
+        $path = public_path($document->file_path);
+        if (!file_exists($path)) {
+            return abort(404);
+        }
 
-        return Response::make($document->file_content, 200, [
-            'Content-Type' => $contentType,
+        return response()->file($path, [
             'Content-Disposition' => 'inline; filename="' . $document->document_name . '"',
         ]);
     }
@@ -66,23 +64,16 @@ class FileController extends Controller
     public function showRequestFile($id)
     {
         $request = \App\Models\EmployeeRequest::findOrFail($id);
-        if (!$request->requirements_file_content) {
+        if (!$request->requirements_file) {
             return abort(404);
         }
 
-        $extension = pathinfo($request->requirements_file, PATHINFO_EXTENSION);
-        $mimeTypes = [
-            'pdf' => 'application/pdf',
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        ];
-        
-        $contentType = $mimeTypes[strtolower($extension)] ?? 'application/octet-stream';
+        $path = public_path($request->requirements_file);
+        if (!file_exists($path)) {
+            return abort(404);
+        }
 
-        return Response::make($request->requirements_file_content, 200, [
-            'Content-Type' => $contentType,
+        return response()->file($path, [
             'Content-Disposition' => 'inline; filename="' . basename($request->requirements_file) . '"',
         ]);
     }

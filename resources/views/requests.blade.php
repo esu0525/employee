@@ -3,23 +3,48 @@
 @section('title', 'Request List')
 
 @section('content')
-    <div class="page-content" style="padding: 2rem;">
-        <!-- Modern Header Section -->
-        <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
-            <div>
-                <h1
-                    style="font-size: 2.5rem; font-weight: 900; color: #1e1b4b; margin: 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.02em;">
-                    Request <span
-                        style="background: linear-gradient(135deg, #4f46e5, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Center</span>
-                </h1>
-                <p style="font-size: 1rem; color: #64748b; margin-top: 0.5rem; font-weight: 500;">Manage and track all
-                    document requests in one place</p>
-            </div>
+    @php
+        $currentUser = \App\Models\User::find(session('auth_user_id'));
+        $canEditRequests = $currentUser && $currentUser->hasPermission('edit_requests');
 
+        if (!function_exists('fixAcronyms')) {
+            function fixAcronyms($str) {
+                if (!$str) return $str;
+                return preg_replace_callback('/\b(sdo|dbm|bir|ra|lgu|ict|hr|deped|tor|qc|gsis|pag-ibig)\b/i', function($matches) {
+                    $m = strtolower($matches[1]);
+                    if ($m === 'deped') return 'DepEd';
+                    return strtoupper($matches[1]);
+                }, $str);
+            }
+        }
+    @endphp
+    <div class="page-content" style="position: relative; z-index: 1;">
+        <!-- Modern Header Section -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; gap: 1rem; flex-wrap: wrap;">
+            <div>
+                <h1 style="font-size: 2.5rem; font-weight: 900; color: #1e1b4b; margin: 0 0 0.5rem 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.03em;">Request Center</h1>
+                <p style="color: #64748b; font-size: 1.125rem; font-weight: 500; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="file-text" style="width: 18px; height: 18px;"></i> Document Requisition & Tracking
+                </p>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                <div id="realtime-status" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 100px; color: #16a34a; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: pulse-green 2s infinite;"></span>
+                    Real-time Active
+                </div>
+            </div>
         </div>
 
+        <style>
+            @keyframes pulse-green {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            }
+        </style>
+
         <!-- Summary Statistics Dashboard -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 3rem;">
+        <div class="stats-dashboard-grid">
             <!-- Total Requests -->
             <div class="summary-card-modern">
                 <div style="display: flex; align-items: center; gap: 1.25rem;">
@@ -56,23 +81,11 @@
                     </div>
                 </div>
             </div>
-            <!-- Rejected -->
-            <div class="summary-card-modern">
-                <div style="display: flex; align-items: center; gap: 1.25rem;">
-                    <div class="stat-icon-box" style="background: #fef2f2; color: #ef4444;">
-                        <i data-lucide="alert-circle"></i>
-                    </div>
-                    <div>
-                        <span class="stat-label">Rejected</span>
-                        <span class="stat-value">{{ $rejected_count }}</span>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Sliding Tab Switcher & Search Action Bar -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1.5rem;">
-            <div style="background: #f1f5f9; padding: 0.5rem; border-radius: 20px; display: inline-flex; position: relative; border: 2px solid #cbd5e1; min-width: 400px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);"
+        <div class="action-bar-modern">
+            <div style="background: #f1f5f9; padding: 0.5rem; border-radius: 20px; display: inline-flex; position: relative; border: 2px solid #cbd5e1; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);"
                 class="tab-switcher-container">
                 <!-- Active Slide Background -->
                 <div id="tab-slider"
@@ -81,11 +94,11 @@
 
                 <button onclick="switchTab('pending')" id="btn-pending" class="tab-btn">
                     Pending
-                    <span class="count-badge">{{ $pending_count }}</span>
+                    <span class="count-badge" style="display: none;">{{ $pending_count }}</span>
                 </button>
                 <button onclick="switchTab('approved')" id="btn-approved" class="tab-btn">
                     Approved
-                    <span class="count-badge approved-count">{{ $approved_count }}</span>
+                    <span class="count-badge approved-count" style="display: none;">{{ $approved_count }}</span>
                 </button>
             </div>
 
@@ -95,6 +108,7 @@
                     <i data-lucide="search"
                         style="position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8;"></i>
                     <form method="GET" action="{{ route('employees.requests') }}" id="searchForm">
+                        <input type="hidden" name="tab" value="{{ $active_tab }}">
                         <input type="text" id="liveSearchInput" name="search"
                             style="width: 100%; border: none; padding: 0.5rem 0.5rem 0.5rem 2rem; font-size: 0.95rem; font-family: 'Inter', sans-serif; outline: none; background: transparent; color: #1e293b;"
                             placeholder="Search requests..." value="{{ $search }}" oninput="liveSearch(this.value)">
@@ -103,16 +117,16 @@
 
                 <!-- Filter Dropdown (Archive Style) -->
                 <div style="position: relative;" class="archive-filters-dropdown">
-                    <button class="filter-toggle-btn" onclick="toggleFilterMenu()"
+                    <button class="filter-toggle-btn" onclick="toggleFilterMenu()" title="Filter by Date"
                         style="height: 3.2rem; padding: 0 1.5rem; border-radius: 16px; display: flex; align-items: center; gap: 0.75rem; font-weight: 700; background: white; border: 2px solid #e2e8f0; cursor: pointer; transition: all 0.3s; color: #475569;">
-                        <i data-lucide="filter" style="width: 18px; height: 18px;"></i>
-                        <span>Filter</span>
+                        <i data-lucide="calendar" style="width: 18px; height: 18px;"></i>
                         <i data-lucide="chevron-down" style="width: 14px; height: 14px; transition: transform 0.3s;"
                             class="chevron"></i>
                     </button>
                     <div id="filterMenu" class="filter-menu-dropdown"
                         style="position: absolute; top: calc(100% + 10px); right: 0; width: 300px; background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); z-index: 1000; display: none; animation: scaleIn 0.2s ease-out;">
                         <form id="filterForm" method="GET" action="{{ route('employees.requests') }}">
+                            <input type="hidden" name="tab" value="{{ $active_tab }}">
                             @if($search) <input type="hidden" name="search" value="{{ $search }}"> @endif
 
                             <div style="margin-bottom: 1.25rem;">
@@ -128,21 +142,8 @@
                                 </select>
                             </div>
 
-                            <div style="margin-bottom: 1.25rem;">
-                                <label
-                                    style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem;">Document
-                                    Type</label>
-                                <select name="type"
-                                    style="width: 100%; height: 2.75rem; padding: 0 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;"
-                                    onchange="this.form.submit()">
-                                    <option value="">All Documents</option>
-                                    <option value="Service Record" {{ request('type') == 'Service Record' ? 'selected' : '' }}>Service Record</option>
-                                    <option value="Certificate of Employment" {{ request('type') == 'Certificate of Employment' ? 'selected' : '' }}>COE</option>
-                                </select>
-                            </div>
-
                             <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9; margin-top: 1rem;">
-                                <a href="{{ route('employees.requests') }}"
+                                <a href="{{ route('employees.requests', ['tab' => $active_tab]) }}"
                                     style="display: flex; align-items: center; gap: 0.5rem; color: #ef4444; font-size: 0.8rem; font-weight: 700; text-decoration: none;">
                                     <i data-lucide="filter-x" style="width: 14px; height: 14px;"></i>
                                     Reset Filters
@@ -156,8 +157,8 @@
 
         <!-- Tab Contents -->
         <div id="tab-pending" class="tab-pane active">
-            <div class="table-card">
-                <table style="width: 100%; border-collapse: separate; border-spacing: 0 12px;">
+            <div class="table-card table-responsive">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0 12px; min-width: 900px;">
                     <thead>
                         <tr style="background: transparent;">
                             <th class="th-mod">ID</th>
@@ -166,72 +167,89 @@
                             <th class="th-mod" style="text-align: center;">Copies</th>
                             <th class="th-mod" style="text-align: center;">Date Filed</th>
                             <th class="th-mod" style="text-align: center;">Attachment</th>
+                            @if($canEditRequests)
                             <th class="th-mod" style="text-align: center;">Quick Action</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($requests as $req)
-                            <tr class="tr-row clickable-row" onclick="showRequestDetails({
+                            <tr class="tr-row clickable-row" 
+                                data-id="{{ $req->id }}" 
+                                data-type="pending"
+                                data-timestamp="{{ $req->created_at->timestamp }}"
+                                onclick="showRequestDetails({
                                     id: '{{ $req->id }}',
                                     name: '{{ $req->employee_name }}',
-                                    agency: '{{ $req->agency ?? 'Unspecified' }}',
-                                    type: '{{ $req->request_type }}',
-                                    purpose: '{{ $req->purpose ?? 'General' }}',
+                                    agency: '{{ fixAcronyms($req->agency ?? 'Unspecified') }}',
+                                    type: '{{ fixAcronyms($req->request_type) }}',
+                                    purpose: '{{ fixAcronyms($req->purpose ?? 'General') }}',
                                     copies: '{{ $req->num_copies ?? 1 }}',
                                     date: '{{ $req->request_date->format('M d, Y') }}',
                                     file: '{{ $req->requirements_file ? asset($req->requirements_file) : '' }}'
                                 })">
                                 <td style="padding: 1.25rem 1.5rem;">
+                                    <div class="row-new-badge">NEW</div>
                                     <span class="id-badge">#{{ $req->id }}</span>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem;">
                                     <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                                         <span class="employee-name-plain">{{ $req->employee_name }}</span>
                                         <span class="agency-label"><i
-                                                data-lucide="building"></i>{{ $req->agency ?? 'Unspecified' }}</span>
+                                                data-lucide="building"></i>{{ fixAcronyms($req->agency ?? 'Unspecified') }}</span>
                                     </div>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem;">
                                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                                        <span class="doc-type">{{ $req->request_type }}</span>
+                                        <span class="doc-type">{{ fixAcronyms($req->request_type) }}</span>
                                         <span class="purpose-text"><i
-                                                data-lucide="help-circle"></i>{{ $req->purpose ?? 'General' }}</span>
+                                                data-lucide="help-circle"></i>{{ fixAcronyms($req->purpose ?? 'General') }}</span>
                                     </div>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
                                     <div class="copy-badge">{{ $req->num_copies ?? 1 }}</div>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
-                                    <span class="date-text">{{ $req->request_date->format('M d, Y') }}</span>
+                                    <div style="display: flex; flex-direction: column; gap: 0.1rem;">
+                                        <span class="date-text" style="font-weight: 800;">{{ $req->created_at->format('M d, Y') }}</span>
+                                        <span style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ $req->created_at->format('h:i A') }}</span>
+                                    </div>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
                                     @if($req->requirements_file)
-                                        <button
-                                            onclick="event.stopPropagation(); showAttachment('{{ asset($req->requirements_file) }}')"
-                                            class="btn-attachment">
-                                            <i data-lucide="paperclip"></i> View
-                                        </button>
+                                        <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
+                                            @php $files = explode(';', $req->requirements_file); @endphp
+                                            @foreach($files as $index => $file)
+                                                <button
+                                                    onclick="event.stopPropagation(); showAttachment('{{ asset($file) }}')"
+                                                    class="btn-attachment">
+                                                    <i data-lucide="paperclip"></i> File {{ count($files) > 1 ? ($index + 1) : '' }}
+                                                </button>
+                                            @endforeach
+                                        </div>
                                     @else
                                         <span class="no-attach">None</span>
                                     @endif
                                 </td>
+                                @if($canEditRequests)
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
                                     <div style="display: flex; gap: 0.75rem; justify-content: center;"
                                         onclick="event.stopPropagation()">
-                                        <form action="{{ route('requests.approve', $req->id) }}" method="POST">@csrf
-                                            <button type="submit" class="btn-action approve" title="Approve Request"><i
+                                        <form id="quick-approve-{{ $req->id }}" action="{{ route('requests.approve', $req->id) }}" method="POST">@csrf
+                                            <button type="button" class="btn-action approve" title="Approve Request" onclick="showConfirmModal('approve', 'quick-approve-{{ $req->id }}')"><i
                                                     data-lucide="check"></i></button>
                                         </form>
-                                        <form action="{{ route('requests.reject', $req->id) }}" method="POST">@csrf
-                                            <button type="submit" class="btn-action reject" title="Reject Request"><i
+                                        <form id="quick-reject-{{ $req->id }}" action="{{ route('requests.reject', $req->id) }}" method="POST">@csrf
+                                            <button type="button" class="btn-action reject" title="Reject Request" onclick="showConfirmModal('reject', 'quick-reject-{{ $req->id }}')"><i
                                                     data-lucide="x"></i></button>
                                         </form>
                                     </div>
                                 </td>
+                                @endif
                             </tr>
                         @empty
                             <tr class="empty-row" id="pending-empty-state">
-                                <td colspan="7">
+                                <td colspan="{{ $canEditRequests ? 7 : 6 }}">
                                     <div class="empty-state-modern"
                                         style="padding: 6rem 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; animation: fadeInUp 0.6s ease-out;">
                                         <div class="empty-icon-wrapper"
@@ -251,11 +269,12 @@
                     </tbody>
                 </table>
             </div>
+            @include('partials.requests-pagination', ['employees' => $requests, 'tab' => 'pending'])
         </div>
 
         <div id="tab-approved" class="tab-pane">
-            <div class="table-card">
-                <table style="width: 100%; border-collapse: separate; border-spacing: 0 12px;">
+            <div class="table-card table-responsive">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0 12px; min-width: 900px;">
                     <thead>
                         <tr style="background: transparent;">
                             <th class="th-mod">ID</th>
@@ -268,27 +287,39 @@
                     </thead>
                     <tbody>
                         @forelse ($approved_requests as $req)
-                            <tr class="tr-row approved-hover">
-                                <td style="padding: 1.25rem 1.5rem;"><span class="id-badge approved">#{{ $req->id }}</span></td>
+                            <tr class="tr-row approved-hover"
+                                onclick="showRequestDetails({ id: {{ $req->id }}, status: 'approved' })"
+                                data-id="{{ $req->id }}"
+                                data-type="approved"
+                                data-timestamp="{{ $req->updated_at->timestamp }}">
+                                <td style="padding: 1.25rem 1.5rem;">
+                                    <div class="row-new-badge">NEW</div>
+                                    <span class="id-badge approved">#{{ $req->id }}</span>
+                                </td>
                                 <td style="padding: 1.25rem 1.5rem;">
                                     <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                                         <span class="employee-name-plain">{{ $req->employee_name }}</span>
                                         <span class="agency-label"><i
-                                                data-lucide="building"></i>{{ $req->agency ?? 'Unspecified' }}</span>
+                                                data-lucide="building"></i>{{ fixAcronyms($req->agency ?? 'Unspecified') }}</span>
                                     </div>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem;">
                                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                                        <span class="doc-type-approved">{{ $req->request_type }}</span>
+                                        <span class="doc-type-approved">{{ fixAcronyms($req->request_type) }}</span>
                                         <span class="purpose-text"><i
-                                                data-lucide="help-circle"></i>{{ $req->purpose ?? 'N/A' }}</span>
+                                                data-lucide="help-circle"></i>{{ fixAcronyms($req->purpose ?? 'N/A') }}</span>
                                     </div>
+                                </td>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
                                     <div class="copy-badge">{{ $req->num_copies ?? 1 }}</div>
                                 </td>
-                                <td style="padding: 1.25rem 1.5rem; text-align: center;"><span
-                                        class="date-text">{{ $req->updated_at->format('M d, Y') }}</span></td>
+                                <td style="padding: 1.25rem 1.5rem; text-align: center;">
+                                    <div style="display: flex; flex-direction: column; gap: 0.1rem;">
+                                        <span class="date-text" style="font-weight: 800; color: #059669;">{{ $req->updated_at->format('M d, Y') }}</span>
+                                        <span style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ $req->updated_at->format('h:i A') }}</span>
+                                    </div>
+                                </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
                                     <span class="status-badge approved"><i data-lucide="check-circle"></i> Approved</span>
                                 </td>
@@ -315,6 +346,7 @@
                     </tbody>
                 </table>
             </div>
+            @include('partials.requests-pagination', ['employees' => $approved_requests, 'tab' => 'approved'])
         </div>
     </div>
 
@@ -325,10 +357,12 @@
             <div class="modal-header">
                 <h2>Official Request View</h2>
                 <div style="display: flex; gap: 1rem; align-items: center;">
-                    <button onclick="printIframe()" class="modal-btn approve"
+                    @if($canEditRequests)
+                    <button id="print-btn-modal" onclick="printIframe()" class="modal-btn approve"
                         style="padding: 0.6rem 1.5rem; width: auto; font-size: 0.9rem;">
                         <i data-lucide="printer"></i> Print Document
                     </button>
+                    @endif
                     <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
                 </div>
             </div>
@@ -336,18 +370,36 @@
                 <iframe id="detailsFrame" src=""
                     style="width: 100%; height: 85vh; border: none; background: white;"></iframe>
             </div>
-            <div class="modal-footer" style="padding: 1.25rem 2rem;">
+            @if($canEditRequests)
+            <div id="modal-approval-footer" class="modal-footer" style="padding: 1.25rem 2rem;">
                 <div style="display: flex; gap: 1.5rem; align-items: center; justify-content: flex-end; width: 100%;">
                     <span style="font-size: 0.85rem; color: #64748b; font-weight: 600; flex: 1;">Quick Process:</span>
                     <form id="form-approve" method="POST" style="margin: 0;"> @csrf
-                        <button type="submit" class="modal-btn approve" style="padding: 0.75rem 2rem; width: auto;">Approve
+                        <button type="button" onclick="approveWithPreparedBy()" class="modal-btn approve" style="padding: 0.75rem 2rem; width: auto;">Approve
                             Now</button>
                     </form>
                     <form id="form-reject" method="POST" style="margin: 0;"> @csrf
-                        <button type="submit" class="modal-btn reject" style="padding: 0.75rem 2rem; width: auto;">Reject
+                        <button type="button" onclick="rejectRequestWithConfirm()" class="modal-btn reject" style="padding: 0.75rem 2rem; width: auto;">Reject
                             Request</button>
                     </form>
                 </div>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Confirm Action Modal -->
+    <div id="confirmActionModal" class="modal-overlay" style="z-index: 10005;" onclick="closeConfirmModal()">
+        <div class="modal-card" style="max-width: 400px; padding: 2rem; text-align: center;" onclick="event.stopPropagation()">
+            <div id="confirmIconBox" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center;">
+                <i id="confirmIcon" style="width: 30px; height: 30px;"></i>
+            </div>
+            <h3 id="confirmTitle" style="font-family: 'Outfit'; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Confirm Action</h3>
+            <p id="confirmMessage" style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5;">Are you sure?</p>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" class="modal-btn" style="background: #f1f5f9; color: #475569; flex: 1;" onclick="closeConfirmModal()">Cancel</button>
+                <button type="button" id="confirmSubmitBtn" class="modal-btn" style="flex: 1;" onclick="submitConfirmForm()">Yes</button>
             </div>
         </div>
     </div>
@@ -373,25 +425,69 @@
     </div>
 
     <style>
-        .tab-pane {
-            display: none;
-            margin-top: 1rem;
-        }
-
-        .tab-pane.active {
-            display: block;
-            animation: tabSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes tabSlide {
-            from {
-                opacity: 0;
-                transform: translateX(10px);
+            /* Tab Panes Fade Animation - REMOVED for instant search snappy feel */
+            .tab-pane {
+                display: none;
             }
 
-            to {
-                opacity: 1;
-                transform: translateX(0);
+            .tab-pane.active {
+                display: block;
+                animation: none !important;
+                transition: none !important;
+            }
+
+            .hover-row, .modern-table, .modern-table *, .tab-panels, .tab-panels * {
+                transition: none !important;
+                animation: none !important;
+                transform: none !important;
+            }
+
+        .stats-dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .action-bar-modern {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+            .stats-dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-bar-modern {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .tab-switcher-container {
+                width: 100%;
+                display: flex;
+            }
+            .tab-switcher-container .tab-btn {
+                flex: 1;
+                text-align: center;
+                padding: 0.85rem 1rem;
             }
         }
 
@@ -421,7 +517,7 @@
         .stat-label {
             display: block;
             font-size: 0.875rem;
-            color: #334155;
+            color: #475569;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -483,7 +579,8 @@
         }
 
         .tr-row {
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: none !important;
+            animation: none !important;
             background: white;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
             cursor: pointer;
@@ -492,12 +589,9 @@
 
         .tr-row:hover {
             background: #fbfbff !important;
-            transform: translateY(-4px);
         }
 
         .tr-row:hover td {
-            border-top: 2px solid #8b5cf6 !important;
-            border-bottom: 2px solid #8b5cf6 !important;
             color: #1e1b4b;
         }
 
@@ -591,6 +685,50 @@
         .employee-name-plain {
             font-size: 1.05rem;
             font-weight: 800;
+        }
+
+        /* NEW Highlighting Styles */
+        .tr-row {
+            position: relative;
+        }
+
+        .row-new-badge {
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            font-weight: 900;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            z-index: 10;
+            animation: pulse-blue 2s infinite;
+            display: none;
+        }
+
+        .row-highlight-new {
+            background: rgba(59, 130, 246, 0.08) !important;
+            border-color: rgba(59, 130, 246, 0.3) !important;
+        }
+
+        @keyframes pulse-blue {
+            0% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+        }
+
+        @keyframes highlight-fade {
+            from { background: rgba(59, 130, 246, 0.08); }
+            to { background: white; }
+        }
+
+        body[data-theme="dark"] .row-highlight-new {
+            background: rgba(245, 158, 11, 0.1) !important;
+            border-color: rgba(245, 158, 11, 0.4) !important;
+        }
             color: #1e293b;
         }
 
@@ -604,8 +742,9 @@
         }
 
         .agency-label i {
-            width: 14px;
-            height: 14px;
+            width: 12.5px;
+            height: 12.5px;
+            margin-top: -1px;
         }
 
         .doc-type {
@@ -919,12 +1058,22 @@
 
         body[data-theme="dark"] .tr-row:hover {
             background: #2d3748 !important;
-            border-color: #8b5cf6;
-            box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.4), 0 0 0 2px #8b5cf6;
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.4);
         }
 
         body[data-theme="dark"] .tr-row:hover td {
-            border-color: #8b5cf6;
+            border-top: 2px solid #8b5cf6 !important;
+            border-bottom: 2px solid #8b5cf6 !important;
+            color: white !important;
+        }
+
+        body[data-theme="dark"] .tr-row:hover td:first-child {
+            border-left: 2px solid #8b5cf6 !important;
+        }
+
+        body[data-theme="dark"] .tr-row:hover td:last-child {
+            border-right: 2px solid #8b5cf6 !important;
         }
 
         body[data-theme="dark"] .employee-link,
@@ -991,6 +1140,24 @@
         }
 
         body[data-theme="dark"] .modal-card,
+        body[data-theme="dark"] .modal-header,
+        body[data-theme="dark"] .modal-footer {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        body[data-theme="dark"] .empty-state-modern h3 {
+            color: #f8fafc !important;
+        }
+
+        body[data-theme="dark"] .empty-state-modern p {
+            color: #b3c4db !important;
+        }
+
+        body[data-theme="dark"] .empty-icon-wrapper {
+            background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+            border-color: #334155 !important;
+        }
         body[data-theme="dark"] .modal-card-large {
             background: #0f172a;
             border: 1px solid #334155;
@@ -1011,206 +1178,19 @@
             background: #334155;
             color: #94a3b8;
         }
-    </style>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            switchTab('pending'); // Default to pending
-        });
-
-        function liveSearch(query) {
-            query = query.toLowerCase().trim();
-            const tables = document.querySelectorAll('table');
-
-            tables.forEach(table => {
-                const rows = table.querySelectorAll('tbody tr:not(.empty-row)');
-                const emptyState = table.querySelector('.empty-row');
-                let visibleCount = 0;
-
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    const isMatch = text.includes(query);
-                    row.style.display = isMatch ? 'table-row' : 'none';
-                    if (isMatch) visibleCount++;
-                });
-
-                if (emptyState) {
-                    if (visibleCount === 0) {
-                        emptyState.style.display = 'table-row';
-                        // Update text if search was active
-                        const title = emptyState.querySelector('h3');
-                        const desc = emptyState.querySelector('p');
-                        if (query !== '') {
-                            if (title) title.innerText = 'No Matches Found';
-                            if (desc) desc.innerText = 'We couldn\'t find any requests matching your search term.';
-                        } else {
-                            // Restore original text based on ID
-                            if (emptyState.id === 'pending-empty-state') {
-                                if (title) title.innerText = 'Workspace is Clear!';
-                                if (desc) desc.innerText = 'No pending requests at the moment. You\'re all caught up!';
-                            } else {
-                                if (title) title.innerText = 'No History Yet';
-                                if (desc) desc.innerText = 'Approved requests will appear here once you\'ve processed them.';
-                            }
-                        }
-                    } else {
-                        emptyState.style.display = 'none';
-                    }
-                }
-            });
-        }
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            const target = document.getElementById('tab-' + tabId);
-            if (target) target.classList.add('active');
-
-            const slider = document.getElementById('tab-slider');
-            const btnPending = document.getElementById('btn-pending');
-            const btnApproved = document.getElementById('btn-approved');
-
-            btnPending.classList.remove('active');
-            btnApproved.classList.remove('active');
-
-            if (tabId === 'pending') {
-                slider.style.left = '0.5rem';
-                btnPending.classList.add('active');
-            } else {
-                slider.style.left = 'calc(50% - 0.5rem + 0.5rem)';
-                btnApproved.classList.add('active');
-
-                // Reset approved count badge to 0 when viewed
-                const approvedBadge = document.querySelector('.approved-count');
-                if (approvedBadge) {
-                    approvedBadge.innerText = '0';
-                    approvedBadge.style.opacity = '0.5';
-                }
+        /* Layout Fix: Ensure Sidebar Alignment on Desktop */
+        @media (min-width: 1024px) {
+            #app-container:not(.collapsed-sidebar) .main-content {
+                margin-left: 20rem !important;
             }
-            if (window.lucide) lucide.createIcons();
-        }
-
-        // Close filter menu when clicking outside
-        window.addEventListener('click', (e) => {
-            const menu = document.getElementById('filterMenu');
-            const btn = document.querySelector('.filter-toggle-btn');
-            if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
-                menu.style.display = 'none';
-                btn.classList.remove('active');
-                const chevron = btn.querySelector('.chevron');
-                if (chevron) chevron.style.transform = 'rotate(0deg)';
-            }
-        });
-
-        function showRequestDetails(data) {
-            document.getElementById('detailsFrame').src = `/portal/view/${data.id}?compact=1`;
-
-            document.getElementById('form-approve').action = `/requests/${data.id}/approve`;
-            document.getElementById('form-reject').action = `/requests/${data.id}/reject`;
-
-            document.getElementById('detailsModal').classList.add('active');
-            if (window.lucide) lucide.createIcons();
-        }
-
-        function printIframe() {
-            const frame = document.getElementById('detailsFrame');
-            if (frame.contentWindow) {
-                frame.contentWindow.print();
-            }
-        }
-
-        function showAttachment(url) {
-            const frame = document.getElementById('attachmentFrame');
-            const imgContainer = document.getElementById('attachmentImageContainer');
-            const img = document.getElementById('attachmentImage');
-
-            // Simple extension check
-            const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url);
-
-            if (isImage) {
-                frame.style.display = 'none';
-                imgContainer.style.display = 'flex';
-                img.src = url;
-            } else {
-                imgContainer.style.display = 'none';
-                frame.style.display = 'block';
-                frame.src = url;
-            }
-
-            document.getElementById('attachmentModal').classList.add('active');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-            if (id === 'attachmentModal') {
-                document.getElementById('attachmentFrame').src = '';
-                document.getElementById('attachmentImage').src = '';
-            }
-        }
-    </script>
-
-    <style>
-        @keyframes modalFade {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
+            .collapsed-sidebar .main-content {
+                margin-left: 5.5rem !important;
             }
         }
     </style>
-
-    <style>
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-            }
-
-            70% {
-                transform: scale(1.05);
-                box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
-            }
-
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-            }
-        }
-    </style>
-
-    <!-- Success Toast -->
-    @if(session('success_message'))
-        <div id="successToast"
-            style="position: fixed; top: 2rem; right: 2rem; z-index: 9999; display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; border-radius: 12px; box-shadow: 0 20px 60px -15px rgba(0,0,0,0.25); animation: toastSlideIn 0.5s cubic-bezier(0.34,1.56,0.64,1); max-width: 400px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #6ee7b7; color: #065f46;">
-            <div
-                style="display: flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: #10b981; color: white; border-radius: 8px; flex-shrink: 0;">
-                <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
-            </div>
-            <div style="flex: 1;">
-                <p style="font-weight: 700; font-size: 0.8125rem;">Success!</p>
-                <p style="font-size: 0.75rem; color: #047857;">{{ session('success_message') }}</p>
-            </div>
-            <button onclick="closeToast()"
-                style="background: none; border: none; color: #6ee7b7; cursor: pointer; padding: 0.25rem;">
-                <i data-lucide="x" style="width: 14px; height: 14px;"></i>
-            </button>
-        </div>
-    @endif
 @endsection
 
 @push('scripts')
-    <script>
-        function closeToast() {
-            const toast = document.getElementById('successToast');
-            if (toast) {
-                toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
-                setTimeout(() => toast.remove(), 300);
-            }
-        }
-        document.addEventListener('DOMContentLoaded', function () {
-            const toast = document.getElementById('successToast');
-            if (toast) setTimeout(() => closeToast(), 4000);
-        });
-    </script>
+    <script src="{{ asset('assets/js/requests.js') }}?v=1.4"></script>
 @endpush

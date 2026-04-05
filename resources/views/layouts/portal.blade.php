@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR Portal - @yield('title')</title>
+    <title>201 System Portal - @yield('title')</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -203,9 +203,23 @@
             font-size: 0.875rem;
         }
 
+        @media (max-width: 1024px) {
+            .portal-container { max-width: 900px; }
+        }
+
+        @media (max-width: 768px) {
+            .portal-container { padding: 2rem 1rem; }
+            .bg-ornament { height: 300px; }
+            .logo-text h1 { font-size: 1.125rem; }
+        }
+
         @media (max-width: 640px) {
-            .portal-container { padding-top: 1.5rem; }
+            .portal-container { padding: 1.5rem 0.75rem; }
             .portal-navbar { padding: 0.75rem 1rem; }
+            .portal-logo { gap: 0.75rem; }
+            .logo-icon { width: 38px; height: 38px; }
+            .logo-text p { display: none; }
+            .btn-portal-secondary { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
         }
     </style>
 </head>
@@ -227,10 +241,19 @@
         </a>
         
         <div style="display: flex; gap: 1rem;">
-            <button onclick="showPinGate()" class="btn-portal-secondary">
-                <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
-                Admin Area
-            </button>
+            @if(!session()->has('auth_user_id'))
+                <a href="{{ route('landing') }}" class="btn-portal-secondary">
+                    <i data-lucide="home" style="width: 16px; height: 16px;"></i>
+                    Home
+                </a>
+            @else
+                @if(session('auth_user_role') !== 'viewer')
+                    <a href="{{ route('dashboard') }}" class="btn-portal-secondary">
+                        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+                        Return
+                    </a>
+                @endif
+            @endif
         </div>
     </nav>
     @endif
@@ -245,12 +268,12 @@
             <p style="color: var(--portal-text-muted); font-size: 0.9375rem; margin-bottom: 2rem;">Enter 6-digit access code to proceed</p>
             
             <div style="display: flex; gap: 0.75rem; justify-content: center; margin-bottom: 2rem;">
-                <input type="password" maxlength="1" class="pin-input" onkeyup="movePrevNext(this, null, 1)" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
-                <input type="password" maxlength="1" class="pin-input" onkeyup="movePrevNext(this, 0, 2)" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
-                <input type="password" maxlength="1" class="pin-input" onkeyup="movePrevNext(this, 1, 3)" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
-                <input type="password" maxlength="1" class="pin-input" onkeyup="movePrevNext(this, 2, 4)" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
-                <input type="password" maxlength="1" class="pin-input" onkeyup="movePrevNext(this, 3, 5)" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
-                <input type="password" maxlength="1" class="pin-input" onkeyup="movePrevNext(this, 4, null)" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
+                <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
+                <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
+                <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
+                <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
+                <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
+                <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" style="width: 44px; height: 56px; text-align: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #e2e8f0; border-radius: 12px; background: #f8fafc; outline: none; transition: all 0.2s;" />
             </div>
 
             <div id="pinError" style="color: #ef4444; font-size: 0.8125rem; font-weight: 700; margin-bottom: 1.5rem; display: none; animation: shake 0.4s ease-in-out;">
@@ -279,8 +302,8 @@
 
     @if(!request()->has('compact'))
     <footer class="footer-portal">
-        <div style="margin-bottom: 1.5rem; opacity: 0.7;">
-            <img src="{{ asset('images/Department_of_Education_(DepEd).svg.png') }}" alt="DepEd" style="height: 40px; filter: grayscale(1);">
+        <div style="margin-bottom: 2rem; display: flex; align-items: center; justify-content: center; opacity: 0.9;">
+            <img src="{{ asset('images/logos/deped-wordmark.png') }}" alt="DepEd" style="height: 52px; filter: grayscale(0.5);">
         </div>
         <p>&copy; {{ date('Y') }} Schools Division Office - Quezon City. All Rights Reserved.</p>
         <p style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.6;">Personnel Information & Records Management System (201 System)</p>
@@ -290,13 +313,32 @@
     <script>
         lucide.createIcons();
 
+        // New PIN Input Logic
+        const pinInputs = document.querySelectorAll('.pin-input');
+        pinInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (e.inputType === 'deleteContentBackward') return;
+                if (input.value && index < pinInputs.length - 1) {
+                    pinInputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    pinInputs[index - 1].focus();
+                } else if (e.key === 'Enter') {
+                    verifyPin();
+                }
+            });
+        });
+
         function showPinGate() {
             const modal = document.getElementById('pinGateModal');
             modal.style.display = 'flex';
             setTimeout(() => {
                 modal.style.opacity = '1';
                 modal.children[0].style.transform = 'scale(1)';
-                document.querySelectorAll('.pin-input')[0].focus();
+                pinInputs[0].focus();
             }, 10);
         }
 
@@ -305,21 +347,12 @@
             modal.style.opacity = '0';
             modal.children[0].style.transform = 'scale(0.9)';
             setTimeout(() => { modal.style.display = 'none'; }, 300);
-            document.querySelectorAll('.pin-input').forEach(i => i.value = '');
+            pinInputs.forEach(i => i.value = '');
             document.getElementById('pinError').style.display = 'none';
         }
 
-        function movePrevNext(current, prevIdx, nextIdx) {
-            const pinInputs = document.querySelectorAll('.pin-input');
-            if (current.value.length === 1 && nextIdx !== null) {
-                pinInputs[nextIdx].focus();
-            } else if (current.value.length === 0 && prevIdx !== null) {
-                pinInputs[prevIdx].focus();
-            }
-        }
-
         function verifyPin() {
-            const pin = Array.from(document.querySelectorAll('.pin-input')).map(i => i.value).join('');
+            const pin = Array.from(pinInputs).map(i => i.value).join('');
             const CORRECT_PIN = '123456'; 
             
             if (pin === CORRECT_PIN) {
@@ -327,13 +360,13 @@
             } else {
                 const error = document.getElementById('pinError');
                 error.style.display = 'block';
-                document.querySelectorAll('.pin-input').forEach(i => {
+                pinInputs.forEach(i => {
                     i.value = '';
                     i.style.borderColor = '#ef4444';
                 });
-                document.querySelectorAll('.pin-input')[0].focus();
+                pinInputs[0].focus();
                 setTimeout(() => {
-                    document.querySelectorAll('.pin-input').forEach(i => i.style.borderColor = '#e2e8f0');
+                    pinInputs.forEach(i => i.style.borderColor = '#e2e8f0');
                 }, 1000);
             }
         }

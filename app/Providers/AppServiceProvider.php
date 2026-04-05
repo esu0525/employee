@@ -33,12 +33,18 @@ class AppServiceProvider extends ServiceProvider
     protected function defineGates(): void
     {
         $permissions = [
-            'view_employees',
-            'edit_employees',
-            'delete_employees',
+            'view_masterlist',
+            'view_archive',
+            'view_requests',
+            'edit_masterlist',
+            'edit_archive',
+            'edit_requests',
             'manage_documents',
-            'manage_requests',
-            'manage_accounts'
+            'manage_accounts',
+            'change_status',
+            'export_masterlist',
+            'export_archive',
+            'add_employee'
         ];
 
         foreach ($permissions as $permission) {

@@ -1,6 +1,19 @@
 @php
     $hasDetails = ($type === 'retired' || $type === 'transfer');
     $hasSoNo    = ($type === 'transfer');
+
+    $hasSoNo    = ($type === 'transfer');
+
+    if (!function_exists('fixArchiveAcronyms')) {
+        function fixArchiveAcronyms($str) {
+            if (!$str) return $str;
+            return preg_replace_callback('/\b(sdo|dbm|bir|ra|lgu|ict|hr|deped|tor|qc|gsis|pag-ibig)\b/i', function($matches) {
+                $m = strtolower($matches[1]);
+                if ($m === 'deped') return 'DepEd';
+                return strtoupper($matches[1]);
+            }, $str);
+        }
+    }
 @endphp
 
 <div class="table-container shadow-sm">
@@ -18,14 +31,16 @@
             </thead>
             <tbody>
                 @forelse ($employees as $employee)
-                <tr class="hover-row" onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'">
+                <tr class="hover-row" 
+                    data-id="{{ $employee->id }}" 
+                    data-timestamp="{{ $employee->updated_at->timestamp ?? time() }}"
+                    onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'">
                     <td>
+                        <div class="row-new-badge">NEW</div>
                         <div class="user-info-cell">
                             <div class="user-avatar-small" style="overflow: hidden; padding: 0;">
-                                @if($employee->profile_picture_content)
-                                    <img src="{{ route('display.employee-avatar', ['id' => $employee->id]) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
-                                @elseif($employee->profile_picture)
-                                    <img src="{{ asset($employee->profile_picture) }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                                @if($employee->profile_picture && file_exists(public_path($employee->profile_picture)))
+                                    <img src="{{ asset($employee->profile_picture) }}?v={{ $employee->updated_at->timestamp ?? time() }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                                 @else
                                     {{ strtoupper(substr($employee->first_name, 0, 1)) }}{{ strtoupper(substr($employee->last_name, 0, 1)) }}
                                 @endif
@@ -48,25 +63,38 @@
                         <span class="date-text">{{ $sepDate ? $sepDate->format('M d, Y') : '-' }}</span>
                     </td>
                     <td>
-                        <span class="agency-text">{{ $employee->agency ?: $employee->school ?: '-' }}</span>
+                        <span class="agency-text">{{ fixArchiveAcronyms((!empty($employee->agency) && strtolower($employee->agency) !== 'unknown') ? $employee->agency : ((!empty($employee->school) && strtolower($employee->school) !== 'unknown') ? $employee->school : '-')) }}</span>
                     </td>
                     @if($hasDetails)
                     <td>
                         @if ($employee->status === 'transfer')
                             @php
                                 $destination = $employee->status_specify ?: ($employee->transfer_to ?: ($employee->transfer_location ?: null));
+                                if (empty($destination) || strtolower($destination) === 'unknown') {
+                                    $destination = null;
+                                } else {
+                                    // Remove existing "Transferred to" or "Transfer to" prefixes (case-insensitive) to avoid duplication
+                                    $destination = preg_replace('/^(transferred to|transfer to)\s+/i', '', trim($destination));
+                                    $destination = 'Transferred to ' . $destination;
+                                }
                             @endphp
                             <div class="detail-badge info">
                                 <i data-lucide="map-pin"></i>
-                                <span>{{ $destination ?: 'N/A' }}</span>
+                                <span>{{ fixArchiveAcronyms($destination ?: '-') }}</span>
                             </div>
                         @elseif ($employee->status === 'retired')
                             <div class="detail-badge warning">
                                 <i data-lucide="award"></i>
                                 @php
-                                    $ru = $employee->retirement_under ?: $employee->status_specify ?: 'N/A';
-                                    if ($ru !== 'N/A' && !Str::contains(strtolower($ru), 'retirement under') && !Str::contains(strtolower($ru), 'separation')) {
-                                        $ru = 'Retirement under ' . (Str::contains(strtoupper($ru), 'R.A') ? '' : 'R.A ') . $ru;
+                                    $ru = $employee->retirement_under ?: $employee->status_specify ?: null;
+                                    if (empty($ru) || strtolower($ru) === 'unknown') {
+                                        $ru = '-';
+                                    } elseif ($ru !== '-') {
+                                        if (!\Illuminate\Support\Str::contains(strtolower($ru), 'retirement under') && !\Illuminate\Support\Str::contains(strtolower($ru), 'separation')) {
+                                            $ru = 'Retirement Under ' . (preg_match('/R\.?A\.?/i', $ru) ? '' : 'R.A ') . $ru;
+                                        }
+                                        $ru = str_ireplace('retirement under', 'Retirement Under', $ru);
+                                        $ru = preg_replace('/\br\.?a\.?\b/i', 'R.A', $ru);
                                     }
                                 @endphp
                                 <span>{{ $ru }}</span>
@@ -113,7 +141,7 @@
 <style>
     .user-info-cell { display: flex; align-items: center; gap: 1rem; }
     .user-avatar-small {
-        width: 2.5rem; height: 2.5rem; border-radius: 12px;
+        width: 2.5rem; height: 2.5rem; border-radius: 50%;
         background: var(--primary-soft); color: var(--primary);
         display: flex; align-items: center; justify-content: center;
         font-weight: 800; font-size: 0.85rem; border: 1px solid var(--primary-soft);
@@ -124,6 +152,30 @@
     
     .date-text { font-weight: 600; color: var(--text-main); font-size: 0.85rem; }
     .agency-text { color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+
+    /* NEW Highlighting Styles */
+    .hover-row { position: relative; }
+    .row-new-badge {
+        position: absolute; top: -6px; left: -6px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: white; padding: 2px 8px; border-radius: 6px;
+        font-size: 0.65rem; font-weight: 900; letter-spacing: 0.05em;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        z-index: 10; animation: pulse-blue 2s infinite; display: none;
+    }
+    .row-highlight-new {
+        background: rgba(59, 130, 246, 0.05) !important;
+        border-color: rgba(59, 130, 246, 0.3) !important;
+    }
+    @keyframes pulse-blue {
+        0% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+        50% { transform: scale(1.05); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.6); }
+        100% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+    }
+    @keyframes highlight-fade {
+        from { background: rgba(59, 130, 246, 0.08); }
+        to { background: transparent; }
+    }
 
     .detail-badge {
         display: inline-flex; align-items: center; gap: 0.5rem;

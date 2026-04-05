@@ -39,11 +39,13 @@ class EmployeeRequest extends Model
 
     protected $fillable = [
         'id', 'employee_id', 'employee_name', 'agency', 'request_type',
-        'num_copies', 'purpose', 'request_date', 'status', 'description', 'requirements_file', 'requirements_file_content'
+        'num_copies', 'purpose', 'request_date', 'status', 'description', 'requirements_file', 'prepared_by'
     ];
 
     protected $casts = [
         'request_date' => 'date',
+        'purpose' => \App\Casts\SafeEncrypt::class,
+        'description' => \App\Casts\SafeEncrypt::class,
     ];
 
     public function setEmployeeNameAttribute($value) { $this->attributes['employee_name'] = $this->formatTitle($value); }

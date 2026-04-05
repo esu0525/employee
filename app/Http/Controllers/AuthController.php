@@ -6,14 +6,17 @@ use App\Models\OtpCode;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as MailException;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
     private const OTP_EXPIRY_MINUTES = 10;
-    private const MAX_OTP_ATTEMPTS  = 5;
-    private const OTP_LOCKOUT_MINUTES = 5;
+    private const MAX_OTP_ATTEMPTS = 5;
+    private const OTP_LOCKOUT_MINUTES = 3;
 
     // ─── Show Login/Register Page ─────────────────────────────────────────────
 
@@ -22,7 +25,19 @@ class AuthController extends Controller
         if (session()->has('auth_user_id')) {
             return redirect()->route('dashboard');
         }
-        return view('auth.login');
+
+        $lockedUntil = session('otp_locked_until');
+        if ($lockedUntil && now()->greaterThanOrEqualTo($lockedUntil)) {
+            session(['otp_attempts' => 0, 'otp_locked_until' => null]);
+            $lockedUntil = null;
+        }
+        $isLocked = $lockedUntil && now()->lessThan($lockedUntil);
+        $lockedSeconds = $isLocked ? now()->diffInSeconds($lockedUntil) : 0;
+
+        return view('auth.login', [
+            'isLocked' => $isLocked,
+            'lockedSeconds' => $lockedSeconds
+        ]);
     }
 
     // ─── Login ────────────────────────────────────────────────────────────────
@@ -30,15 +45,41 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (!($user instanceof User) || !Hash::check($request->password, $user->password)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid email or password.'
+                ], 401);
+            }
             return back()->withInput($request->only('email'))
                 ->with('error', 'Invalid email or password.');
+        }
+
+        // Check for persistent lockout from session
+        $lockedUntil = session('otp_locked_until');
+        if ($lockedUntil) {
+            if (now()->lessThan($lockedUntil)) {
+                $remaining = now()->diffInSeconds($lockedUntil);
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'locked' => true,
+                        'seconds' => $remaining,
+                        'message' => 'Too many failed attempts. Try again in ' . ceil($remaining / 60) . ' minute(s).',
+                    ]);
+                }
+                return back()->with('error', 'Account locked. Try again later.');
+            } else {
+                // Lockout has expired - clear it and reset attempts
+                session(['otp_attempts' => 0, 'otp_locked_until' => null]);
+            }
         }
 
         // Invalidate any old OTPs for this user
@@ -48,22 +89,51 @@ class AuthController extends Controller
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         OtpCode::create([
-            'user_id'    => $user->id,
-            'code'       => $code,
+            'user_id' => $user->id,
+            'code' => $code,
             'expires_at' => now()->addMinutes(self::OTP_EXPIRY_MINUTES),
-            'used'       => false,
+            'used' => false,
         ]);
 
         // Store temp session data
         session([
-            'otp_user_id'  => $user->id,
-            'otp_attempts' => 0,
-            'otp_locked_until' => null,
+            'otp_user_id' => $user->id,
+            'remember'    => $request->has('remember'),
+            'otp_attempts'  => 0,
+            // Flag disabled as we trigger background send directly in this method now
+            'trigger_initial_resend' => false, 
         ]);
+        session()->save();
 
-        // Send first OTP in background or via AJAX trigger on OTP page load
-        // Simply redirect to OTP page now to make transition instant
-        return redirect()->route('auth.otp')->with('trigger_initial_resend', true);
+        // ─── Fire Background OTP Dispatch ──────────────────────────────────────
+        // This makes the login button fast but starts the email process immediately
+        try {
+            $php = defined('PHP_BINARY') ? PHP_BINARY : 'php';
+            $artisan = base_path('artisan');
+            
+            \Log::info("Login-based async OTP for {$user->email} using $code");
+
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                $cmd = "start /B \"\" \"$php\" \"$artisan\" app:send-otp {$user->id} $code > nul 2>&1";
+                pclose(popen($cmd, "r"));
+            } else {
+                $cmd = "\"$php\" \"$artisan\" app:send-otp {$user->id} $code > /dev/null 2>&1 &";
+                exec($cmd);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Background OTP trigger error in login(): ' . $e->getMessage());
+        }
+
+        // Return JSON success or redirect
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'email' => $user->email,
+                'message' => 'Preparing verification screen...',
+            ]);
+        }
+
+        return redirect()->route('auth.otp');
     }
 
     // ─── Register ─────────────────────────────────────────────────────────────
@@ -71,16 +141,16 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
         User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role'     => 'staff',
+            'role' => 'viewer',
         ]);
 
         return redirect()->route('login')
@@ -91,22 +161,30 @@ class AuthController extends Controller
 
     public function showOtp()
     {
-        if (! session()->has('otp_user_id')) {
+        if (!session()->has('otp_user_id')) {
             return redirect()->route('login');
         }
 
         $remainingLockSeconds = 0;
         $isLocked = false;
         $lockedUntil = session('otp_locked_until');
+        if ($lockedUntil && now()->greaterThanOrEqualTo($lockedUntil)) {
+            session(['otp_attempts' => 0, 'otp_locked_until' => null]);
+            $lockedUntil = null;
+        }
 
         if ($lockedUntil && now()->lessThan($lockedUntil)) {
             $isLocked = true;
             $remainingLockSeconds = now()->diffInSeconds($lockedUntil);
         }
 
+        // Check if we should trigger the initial email (and clear it from session)
+        $triggerResend = session()->pull('trigger_initial_resend', false);
+
         return view('auth.otp', [
             'isLocked' => $isLocked,
-            'lockedSeconds' => $remainingLockSeconds
+            'lockedSeconds' => $remainingLockSeconds,
+            'triggerResend' => $triggerResend
         ]);
     }
 
@@ -118,7 +196,7 @@ class AuthController extends Controller
             'otp' => 'required|string|size:6',
         ]);
 
-        if (! session()->has('otp_user_id')) {
+        if (!session()->has('otp_user_id')) {
             return redirect()->route('login');
         }
 
@@ -126,14 +204,19 @@ class AuthController extends Controller
 
         // Check lockout
         $lockedUntil = session('otp_locked_until');
-        if ($lockedUntil && now()->lessThan($lockedUntil)) {
-            $remaining = now()->diffInSeconds($lockedUntil);
-            return response()->json([
-                'success'  => false,
-                'locked'   => true,
-                'seconds'  => $remaining,
-                'message'  => 'Too many attempts. Try again in ' . ceil($remaining / 60) . ' minute(s).',
-            ]);
+        if ($lockedUntil) {
+            if (now()->lessThan($lockedUntil)) {
+                $remaining = now()->diffInSeconds($lockedUntil);
+                return response()->json([
+                    'success' => false,
+                    'locked' => true,
+                    'seconds' => $remaining,
+                    'message' => 'Too many attempts. Try again in ' . ceil($remaining / 60) . ' minute(s).',
+                ]);
+            } else {
+                // Lockout has expired - clear it and reset attempts
+                session(['otp_attempts' => 0, 'otp_locked_until' => null]);
+            }
         }
 
         $otp = OtpCode::where('user_id', $userId)
@@ -141,7 +224,7 @@ class AuthController extends Controller
             ->orderByDesc('created_at')
             ->first();
 
-        if (! $otp || $otp->isExpired()) {
+        if (!$otp || $otp->isExpired()) {
             return response()->json([
                 'success' => false,
                 'message' => 'OTP has expired. Please login again.',
@@ -161,17 +244,17 @@ class AuthController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'locked'  => true,
+                    'locked' => true,
                     'seconds' => self::OTP_LOCKOUT_MINUTES * 60,
                     'message' => 'Maximum attempts reached. Locked for ' . self::OTP_LOCKOUT_MINUTES . ' minutes.',
                 ]);
             }
 
             return response()->json([
-                'success'   => false,
-                'message'   => "Invalid OTP. {$remaining} attempt(s) remaining.",
-                'attempts'  => $attempts,
-                'max'       => self::MAX_OTP_ATTEMPTS,
+                'success' => false,
+                'message' => "Invalid OTP. {$remaining} attempt(s) remaining.",
+                'attempts' => $attempts,
+                'max' => self::MAX_OTP_ATTEMPTS,
             ]);
         }
 
@@ -180,14 +263,18 @@ class AuthController extends Controller
 
         $user = User::find($userId);
 
-        // Clear OTP session, set auth session
-        session()->forget(['otp_user_id', 'otp_attempts', 'otp_locked_until']);
+        // Use standard Auth logic for "Keep me logged in"
+        $remember = session('remember', false);
+        Auth::login($user, $remember);
+
+        // Clear OTP session, set additional auth markers
+        session()->forget(['otp_user_id', 'otp_attempts', 'otp_locked_until', 'remember']);
         session([
-            'auth_user_id'   => $user->id,
+            'auth_user_id' => $user->id,
             'auth_user_name' => $user->name,
-            'auth_user_email'=> $user->email,
+            'auth_user_email' => $user->email,
             'auth_user_role' => $user->role,
-            'welcome_name'   => $user->name,
+            'welcome_name' => $user->name,
             'welcome_avatar' => $user->profile_picture,
         ]);
         session()->flash('show_welcome_modal', true);
@@ -195,54 +282,81 @@ class AuthController extends Controller
         // Record the login log
         \App\Models\ActivityLog::log('login', 'auth', 'User logged into the system');
 
+        // Update last login timestamp on user record
+        $user->update(['last_login_at' => now()]);
+
+        // Force session save to ensure markers are persistent for the next request (Dashboard)
+        session()->save();
+
         return response()->json([
-            'success'  => true,
+            'success' => true,
             'redirect' => route('dashboard'),
-        ], 200, ['Connection' => 'close']);
+        ], 200);
     }
 
     // ─── Resend OTP ───────────────────────────────────────────────────────────
 
     public function resendOtp()
     {
-        if (! session()->has('otp_user_id')) {
-            return response()->json(['success' => false, 'message' => 'Session expired.']);
+        if (!session()->has('otp_user_id')) {
+            return response()->json(['success' => false, 'message' => 'Your verification session has expired. Please login again.']);
         }
 
         $userId = session('otp_user_id');
-        $user   = User::find($userId);
+        $user = \App\Models\User::find($userId);
 
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'User not found.']);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'User account not found.']);
         }
 
-        OtpCode::where('user_id', $userId)->update(['used' => true]);
+        // Invalidate older unused tokens first
+        \App\Models\OtpCode::where('user_id', $userId)->where('used', false)->update(['used' => true]);
 
+        // Generate new 6-digit OTP
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        OtpCode::create([
-            'user_id'    => $userId,
-            'code'       => $code,
+        \App\Models\OtpCode::create([
+            'user_id' => $userId,
+            'code' => $code,
             'expires_at' => now()->addMinutes(self::OTP_EXPIRY_MINUTES),
-            'used'       => false,
+            'used' => false,
         ]);
 
         session(['otp_attempts' => 0, 'otp_locked_until' => null]);
 
-        $sent = $this->sendOtpEmail($user, $code);
+        try {
+            $php = defined('PHP_BINARY') ? PHP_BINARY : 'php';
+            $artisan = base_path('artisan');
+            
+            \Log::info("Triggering async OTP for {$user->email} using $code");
 
-        return response()->json([
-            'success' => $sent,
-            'message' => $sent ? 'New OTP sent to your email.' : 'Failed to send OTP.',
-        ]);
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                // Windows Background execution: start /B with escaped paths
+                $cmd = "start /B \"\" \"$php\" \"$artisan\" app:send-otp $userId $code > nul 2>&1";
+                pclose(popen($cmd, "r"));
+            } else {
+                // Linux Background execution: & with escaped paths
+                $cmd = "\"$php\" \"$artisan\" app:send-otp $userId $code > /dev/null 2>&1 &";
+                exec($cmd);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'New 6-digit code has been sent. Please check your inbox.',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('OTP Background trigger failure: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'System error. Please try resending manually.'], 500);
+        }
     }
 
     // ─── Logout ───────────────────────────────────────────────────────────────
 
     public function logout()
     {
+        \App\Models\ActivityLog::log('logout', 'auth', 'User logged out of the system');
         session()->flush();
-        return redirect()->route('login');
+        return redirect()->route('landing');
     }
 
     // ─── Send OTP Email via PHPMailer ─────────────────────────────────────────
@@ -253,28 +367,44 @@ class AuthController extends Controller
 
         try {
             $mail->isSMTP();
-            $mail->Host       = config('mail.mailers.smtp.host', env('MAIL_HOST'));
-            $mail->SMTPAuth   = true;
-            $mail->Username   = config('mail.mailers.smtp.username', env('MAIL_USERNAME'));
-            $mail->Password   = config('mail.mailers.smtp.password', env('MAIL_PASSWORD'));
-            $mail->SMTPSecure = config('mail.mailers.smtp.encryption', env('MAIL_ENCRYPTION', 'tls'));
+            $mail->Host = config('mail.mailers.smtp.host', env('MAIL_HOST', 'smtp.gmail.com'));
+            $mail->SMTPAuth = true;
+            $mail->Username = config('mail.mailers.smtp.username', env('MAIL_USERNAME'));
+            $mail->Password = config('mail.mailers.smtp.password', env('MAIL_PASSWORD'));
+            $mail->SMTPSecure = env('MAIL_ENCRYPTION', 'tls');
             $mail->Port       = config('mail.mailers.smtp.port', env('MAIL_PORT', 587));
+            $mail->Timeout    = 45; // Further increased timeout
+            $mail->SMTPKeepAlive = false; // Disable KeepAlive for single shot
+
+            // Add certificate bypass for local/XAMPP environments
+            $mail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                ]
+            ];
 
             $mail->setFrom(
-                env('MAIL_FROM_ADDRESS', 'noreply@deped.gov.ph'),
-                env('MAIL_FROM_NAME', 'DepEd 201 System')
+                config('mail.from.address', env('MAIL_FROM_ADDRESS')),
+                config('mail.from.name', env('MAIL_FROM_NAME', '201 System'))
             );
             $mail->addAddress($user->email, $user->name);
 
             $mail->isHTML(true);
-            $mail->Subject = "{$code} is your DepEd 201 System OTP Code";
-            $mail->Body    = $this->buildOtpEmailHtml($user->name, $code);
+            $mail->Subject = "201 System OTP Verification";
+            $mail->Body = $this->buildOtpEmailHtml($user->name, $code);
             $mail->AltBody = "Hello {$user->name},\n\nYour OTP code is: {$code}\n\nThis code expires in 10 minutes.\n\nDo not share this code with anyone.";
 
             $mail->send();
             return true;
-        } catch (MailException $e) {
+        }
+        catch (MailException $e) {
             \Log::error('PHPMailer error: ' . $mail->ErrorInfo);
+            return false;
+        }
+        catch (\Exception $e) {
+            \Log::error('General email error: ' . $e->getMessage());
             return false;
         }
     }
@@ -283,96 +413,167 @@ class AuthController extends Controller
 
     private function buildOtpEmailHtml(string $name, string $code): string
     {
-        $firstName = explode(' ', $name)[0];
         $currentDate = now()->format('Y');
-        $otpCode = $code;
+        $spacedCode = implode(' ', str_split($code));
 
-        $digitBoxes = "";
-        foreach (str_split($otpCode) as $d) {
-            $digitBoxes .= "
-            <td style=\"
-                width: 50px;
-                height: 60px;
-                background: #ffffff;
-                border: 2px solid #4f46e5;
-                font-size: 28px;
-                font-weight: 800;
-                color: #2e3192;
-                text-align: center;
-                vertical-align: middle;
-                border-radius: 12px;
-                padding: 0;
-            \">{$d}</td>
-            <td width=\"8\"></td>";
+        return "
+        <div style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f6f9fc; padding: 40px 20px;\">
+            <div style=\"max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);\">
+                <!-- Header -->
+                <div style=\"background: #4338ca; padding: 35px 20px; text-align: center;\">
+                    <h1 style=\"color: #ffffff; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;\">201 System</h1>
+                    <p style=\"color: #ffffff; margin: 8px 0 0 0; font-size: 13px; font-weight: 600; opacity: 0.9; letter-spacing: 2px;\">OFFICIAL AUTHENTICATION SERVICE</p>
+                </div>
+                
+                <!-- Content -->
+                <div style=\"padding: 40px 35px;\">
+                    <p style=\"font-size: 16px; color: #1e293b; margin-bottom: 25px;\">Hello <strong>$name</strong>,</p>
+                    <p style=\"font-size: 15px; color: #475569; line-height: 1.7; margin-bottom: 35px;\">
+                        Your 201 System OTP is ready. Use the code below to complete your login. Thank you for visiting 201 System Portal. Do not share it with anyone.
+                    </p>
+                    
+                    <!-- OTP Box -->
+                    <div style=\"text-align: center; margin-bottom: 12px;\">
+                        <div style=\"display: inline-block; background: #f8fafc; border: 1px solid #e2e8f0; padding: 25px 45px; border-radius: 16px;\">
+                            <span style=\"font-size: 36px; font-weight: 800; color: #1e1b4b; letter-spacing: 1px; font-family: 'JetBrains Mono', 'Courier New', monospace;\">$spacedCode</span>
+                        </div>
+                    </div>
+                    <p style=\"text-align: center; font-size: 13px; color: #94a3b8; margin-bottom: 35px;\">(Copy and paste this code into the verification form)</p>
+                    
+                    <p style=\"text-align: center; font-size: 15px; font-weight: 700; color: #ef4444; margin-bottom: 35px; text-transform: none;\">Expires in 10 minutes</p>
+                    
+                    <!-- Security Advisory -->
+                    <div style=\"background: #fff1f2; border-left: 5px solid #ef4444; border-radius: 10px; padding: 18px 22px;\">
+                        <p style=\"margin: 0; font-size: 14px; color: #991b1b; line-height: 1.6;\">
+                            ⚠️ <strong>Security Advisory:</strong> This code is confidential. Never share your OTP with anyone. If you didn't request this, please secure your account immediately.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style=\"text-align: center; margin-top: 35px;\">
+                <p style=\"font-size: 13px; color: #94a3b8; margin: 0;\">© $currentDate DepEd Schools Division of Quezon City • ICT Division</p>
+                <p style=\"font-size: 13px; color: #cbd5e1; margin: 8px 0 0 0;\">This is an automated system message. Do not reply.</p>
+            </div>
+        </div>";
+    }
+
+    // ─── Forgot Password Flow ────────────────────────────────────────────────
+
+    public function showForgotPasswordForm()
+    {
+        return view('auth.forgot-password');
+    }
+
+    public function sendResetLinkEmail(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return back()->with('error', 'We could not find a user with that email address.');
         }
 
-        return <<<HTML
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0;padding:20px;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;background-color:#f4f7ff;color:#334155;">
+        $token = Str::random(64);
+        DB::table('password_reset_tokens')->updateOrInsert(
+        ['email' => $request->email],
+        ['token' => $token, 'created_at' => now()]
+        );
 
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f7ff;">
-  <tr>
-    <td align="center">
-      <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width:550px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(79, 70, 229, 0.1);">
-        
-        <!-- Color Header -->
-        <tr>
-          <td style="background:linear-gradient(135deg, #2e3192 0%, #4f46e5 100%);padding:30px 40px;text-align:center;">
-            <div style="font-size:26px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;margin-bottom:4px;">DepEd 201 System</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:2px;">Official Authentication Service</div>
-          </td>
-        </tr>
+        $resetUrl = route('password.reset', ['token' => $token, 'email' => $request->email]);
 
-        <!-- Main Body -->
-        <tr>
-          <td style="padding:40px;">
-            <p style="font-size:16px;line-height:1.6;color:#334155;margin:0 0 25px;">
-              Your 201 System OTP is ready. Use the code below to complete your login. Thank you for visiting DepEd 201 System Portal. Do not share it with anyone.
+        $sent = $this->sendEmail($user->email, $user->name, 'Reset Password Link', $this->buildResetEmailHtml($user->name, $resetUrl));
+
+        if ($sent) {
+            return back()->with('success', 'We have emailed your password reset link!');
+        }
+        return back()->with('error', 'Failed to send reset link. Please try again later.');
+    }
+
+    public function showResetPasswordForm(Request $request, $token)
+    {
+        return view('auth.reset-password', ['token' => $token, 'email' => $request->email]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $entry = DB::table('password_reset_tokens')->where([
+            'email' => $request->email,
+            'token' => $request->token,
+        ])->first();
+
+        if (!$entry) {
+            return back()->with('error', 'Invalid token or email.');
+        }
+
+        User::where('email', $request->email)->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        DB::table('password_reset_tokens')->where(['email' => $request->email])->delete();
+
+        return redirect()->route('login')->with('success', 'Your password has been changed! You can now login.');
+    }
+
+    private function sendEmail($to, $name, $subject, $body)
+    {
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host = env('MAIL_HOST', 'smtp.gmail.com');
+            $mail->SMTPAuth = true;
+            $mail->Username = env('MAIL_USERNAME');
+            $mail->Password = env('MAIL_PASSWORD');
+            $mail->SMTPSecure = env('MAIL_ENCRYPTION', 'tls');
+            $mail->Port = env('MAIL_PORT', 587);
+
+            $mail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                ]
+            ];
+
+            $mail->setFrom(
+                config('mail.from.address', env('MAIL_FROM_ADDRESS')),
+                config('mail.from.name', env('MAIL_FROM_NAME'))
+            );
+            $mail->addAddress($to, $name);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body = $body;
+            $mail->send();
+            return true;
+        }
+        catch (MailException $e) {
+            \Log::error('PHPMailer reset link error: ' . $mail->ErrorInfo);
+            return false;
+        }
+    }
+
+    private function buildResetEmailHtml($name, $url)
+    {
+        return "
+        <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;'>
+            <h2 style='color: #1e293b;'>Reset Your Password</h2>
+            <p>Hello {$name},</p>
+            <p>You are receiving this email because we received a password reset request for your account.</p>
+            <p style='margin: 30px 0;'>
+                <a href='{$url}' style='background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;'>Reset Password</a>
             </p>
-
-            <div style="text-align:center;margin:35px 0;">
-              <div style="display:inline-block;padding:12px 24px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:12px;font-family:'Courier New', Courier, monospace;font-size:24px;font-weight:700;color:#2e3192;letter-spacing:4px;">
-                {$otpCode}
-              </div>
-              <p style="font-size:12px;color:#94a3b8;margin-top:10px;">(Copy and paste this code into the verification form)</p>
-            </div>
-
-            <div style="text-align:center;margin-bottom:30px;">
-              <p style="font-size:13px;color:#ef4444;font-weight:600;margin:0;">Expires in 10 minutes</p>
-            </div>
-
-            <!-- Security Advisory -->
-            <div style="padding:20px;background:#fff9f9;border-left:4px solid #ef4444;border-radius:10px;">
-              <p style="font-size:13px;color:#991b1b;margin:0;line-height:1.5;">
-                <strong>⚠️ Security Advisory:</strong> This code is confidential. Never share your OTP with anyone. If you didn't request this, please secure your account immediately.
-              </p>
-            </div>
-          </td>
-        </tr>
-
-        <!-- Elegant Footer -->
-        <tr>
-          <td style="padding:30px 40px;background:#f8fafc;text-align:center;border-top:1px solid #f1f5f9;">
-            <p style="font-size:12px;color:#94a3b8;margin:0 0 8px;">
-              &copy; {$currentDate} Department of Education • IT Division
-            </p>
-            <p style="font-size:11px;color:#cbd5e1;margin:0;">
-              This is an automated system message. Do not reply.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-
-</body>
-</html>
-HTML;
+            <p>This password reset link will expire in 60 minutes.</p>
+            <p>If you did not request a password reset, no further action is required.</p>
+            <hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;'>
+            <p style='font-size: 12px; color: #64748b;'>If you're having trouble clicking the \"Reset Password\" button, copy and paste the URL below into your web browser:</p>
+            <p style='font-size: 12px; color: #4f46e5; word-break: break-all;'>{$url}</p>
+        </div>";
     }
 }

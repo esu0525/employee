@@ -30,32 +30,37 @@ class PortalController extends Controller
             'employee_name' => 'required|string|max:255',
             'agency' => 'required|string|max:255',
             'num_copies' => 'required|integer|min:1',
-            'doc_types' => 'required|array',
+            'document_request' => 'required|string',
             'purpose' => 'required|string',
             'purpose_other' => 'required_if:purpose,OTHERS',
-            'requirements_file' => 'required|file|mimes:pdf,jpg,png,jpeg|max:512000',
+            'requirements_files.*' => 'nullable|file|mimes:pdf,jpg,png,jpeg|max:512000',
         ]);
 
-        // Combine doc types
-        $request_type = implode(', ', $request->doc_types);
-        if (in_array('OTHERS', $request->doc_types) && $request->doc_others) {
-            $request_type .= " (" . $request->doc_others . ")";
-        }
+        $request_type = $request->document_request;
 
         $purpose = $request->purpose;
         if ($purpose === 'OTHERS' && $request->purpose_other) {
             $purpose = $request->purpose_other;
         }
 
-        // Handle file upload
-        $requirements_file = null;
-        $requirements_file_content = null;
-        if ($request->hasFile('requirements_file')) {
-            $file = $request->file('requirements_file');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $requirements_file_content = file_get_contents($file->getRealPath());
-            $file->move(public_path('uploads/requirements'), $filename);
-            $requirements_file = 'uploads/requirements/' . $filename;
+        // Handle multiple file uploads
+        $requirements_files_paths = [];
+        $requirements_files_contents = [];
+        
+        if ($request->hasFile('requirements_files')) {
+            foreach ($request->file('requirements_files') as $file) {
+                if ($file) {
+                    $filename = time() . '_' . Str::random(5) . '_' . $file->getClientOriginalName();
+                    $content = file_get_contents($file->getRealPath());
+                    $file->move(public_path('uploads/requirements'), $filename);
+                    
+                    $requirements_files_paths[] = 'uploads/requirements/' . $filename;
+                    $requirements_files_contents[] = base64_encode($content); // Store as base64 in comma string or similar if needed, but the column is BLOB.
+                    // Actually, if we have multiple, storing multiple blobs in one column is tricky.
+                    // For now, I'll store the first one's content in the blob column for compatibility,
+                    // or I'll just store the paths.
+                }
+            }
         }
 
         // Try to find a matching employee ID if they exist, otherwise leave it empty (null)
@@ -73,9 +78,11 @@ class PortalController extends Controller
             'request_date' => now()->toDateString(),
             'status' => 'pending',
             'description' => "Filed via Portal. Purpose: $purpose",
-            'requirements_file' => $requirements_file,
-            'requirements_file_content' => $requirements_file_content
+            'requirements_file' => implode(';', $requirements_files_paths),
+            'requirements_file_content' => !empty($requirements_files_contents) ? base64_decode($requirements_files_contents[0]) : null
         ]);
+
+        \App\Models\ActivityLog::log('create', 'requests', 'Portal: Guest/User submitted document request for ' . $request->employee_name);
 
         if ($request->ajax()) {
             return response()->json([

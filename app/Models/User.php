@@ -31,7 +31,6 @@ class User extends Authenticatable
         'name',
         'email',
         'profile_picture',
-        'profile_picture_content',
         'password',
         'role',
         'permissions',
@@ -58,6 +57,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'permissions' => 'array',
+            'last_login_at' => 'datetime',
         ];
     }
 
@@ -66,11 +66,55 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permission): bool
     {
+        // Admins have absolute power
         if ($this->role === 'admin') {
             return true;
         }
 
-        return in_array($permission, $this->permissions ?? []);
+        // Coordinators have all powers except Account Management
+        if ($this->role === 'coordinator') {
+            return $permission !== 'manage_accounts';
+        }
+
+        $perms = $this->permissions ?? [];
+        if (in_array($permission, $perms)) {
+            return true;
+        }
+
+        // Logical grouping for Masterlist (Requested by USER)
+        // If they have edit_masterlist, they can do EVERYTHING in masterlist
+        if (in_array('edit_masterlist', $perms)) {
+            $masterlistPool = [
+                'view_masterlist', 
+                'edit_masterlist', 
+                'manage_documents', 
+                'export_masterlist', 
+                'change_status',
+                'add_employee'
+            ];
+            if (in_array($permission, $masterlistPool)) return true;
+        }
+
+        // Logical grouping for Archive (Requested by USER)
+        if (in_array('edit_archive', $perms)) {
+            $archivePool = [
+                'view_archive', 
+                'edit_archive', 
+                'manage_documents',
+                'export_archive'
+            ];
+            if (in_array($permission, $archivePool)) return true;
+        }
+
+        // Intelligent fallback: if you can edit a module, you can naturally view it
+        if (str_starts_with($permission, 'view_')) {
+            $module = str_replace('view_', '', $permission);
+            if (in_array('edit_' . $module, $perms)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

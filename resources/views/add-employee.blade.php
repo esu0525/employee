@@ -63,16 +63,16 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('employees.store') }}" id="addEmployeeForm" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('employees.store') }}" id="addEmployeeForm" enctype="multipart/form-data" data-masterlist-url="{{ route('employees.masterlist') }}">
                 @csrf
 
                 <!-- Section: Profile Picture -->
-                <div class="add-emp-section" style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
-                    <div class="add-emp-section-label">
+                <div class="add-emp-section" style="border-bottom: 2px solid #e2e8f0; background: #f8fafc; padding-top: 1rem; padding-bottom: 1rem;">
+                    <div class="add-emp-section-label" style="margin-bottom: 0.75rem;">
                         <i data-lucide="image" style="width: 15px; height: 15px;"></i>
                         Profile Picture
                     </div>
-                    <div class="profile-upload-container">
+                    <div class="profile-upload-container" style="gap: 1.5rem;">
                         <div class="profile-preview-outer">
                             <div class="profile-inner-circle">
                                 <img id="avatarPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='12' cy='7' r='4'%3E%3C/circle%3E%3C/svg%3E" alt="Preview">
@@ -192,6 +192,33 @@
                             <label class="form-label" for="agency">Agency <span class="required-star">*</span></label>
                             <input type="text" id="agency" name="agency" class="form-input {{ $errors->has('agency') ? 'input-error' : '' }}" placeholder="e.g. SDO - Caloocan City" required style="text-transform: none !important;" value="{{ old('agency') }}">
                             @error('agency')<span class="field-error">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="category">Category <span class="required-star">*</span></label>
+                            <select id="category" name="category" class="form-input {{ $errors->has('category') ? 'input-error' : '' }}" required>
+                                <option value="" disabled {{ old('category') ? '' : 'selected' }}>Select Category</option>
+                                <option value="National" {{ old('category') === 'National' ? 'selected' : '' }}>National</option>
+                                <option value="City" {{ old('category') === 'City' ? 'selected' : '' }}>City</option>
+                            </select>
+                            @error('category')<span class="field-error">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="employment_status">Status of Appointment <span class="required-star">*</span></label>
+                            <select id="employment_status" name="employment_status" class="form-input {{ $errors->has('employment_status') ? 'input-error' : '' }}" required>
+                                <option value="" disabled {{ old('employment_status') ? '' : 'selected' }}>Select Status</option>
+                                <option value="Permanent" {{ old('employment_status') === 'Permanent' ? 'selected' : '' }}>Permanent</option>
+                                <option value="Contractual" {{ old('employment_status') === 'Contractual' ? 'selected' : '' }}>Contractual</option>
+                                <option value="Original" {{ old('employment_status') === 'Original' ? 'selected' : '' }}>Original</option>
+                            </select>
+                            @error('employment_status')<span class="field-error">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="salary_grade">Salary Grade</label>
+                            <input type="text" id="salary_grade" name="salary_grade" class="form-input" placeholder="e.g. 11" value="{{ old('salary_grade') }}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="level_of_position">Level of Position</label>
+                            <input type="text" id="level_of_position" name="level_of_position" class="form-input" placeholder="e.g. 1st Level" value="{{ old('level_of_position') }}">
                         </div>
                     </div>
                 </div>
@@ -692,10 +719,10 @@
 
     /* 3-Layer Profile Picture Structure */
     .profile-preview-outer {
-        width: 180px;
-        height: 180px;
+        width: 140px;
+        height: 140px;
         border-radius: 50%;
-        padding: 5px; /* Outer Gradient Width */
+        padding: 3px; /* Outer Gradient Width */
         background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
         display: flex;
         align-items: center;
@@ -709,7 +736,7 @@
         height: 100%;
         background: white; /* Middle White Ring */
         border-radius: 50%;
-        padding: 4px; /* White ring width before reaching the image */
+        padding: 2px; /* White ring width before reaching the image */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -762,311 +789,5 @@
 
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-<script>
-function syncFullName() {
-    const last   = document.getElementById('last_name').value.trim();
-    const first  = document.getElementById('first_name').value.trim();
-    const middle = document.getElementById('middle_name').value.trim();
-    const suffix = document.getElementById('suffix').value.trim();
-    
-    const mi = middle ? ' ' + middle.charAt(0).toUpperCase() + '.' : '';
-    const sfx = suffix ? ' ' + suffix : '';
-    
-    if (last && first) {
-        document.getElementById('name').value = `${last}, ${first}${mi}${sfx}`.trim();
-    } else {
-        document.getElementById('name').value = '';
-    }
-}
-
-let cropper;
-function previewImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const modal = document.getElementById('cropperModal');
-            const image = document.getElementById('cropperImage');
-            image.src = e.target.result;
-            modal.classList.add('active');
-            
-            if (cropper) cropper.destroy();
-            
-            cropper = new Cropper(image, {
-                aspectRatio: 1,
-                viewMode: 1,
-                movable: true,
-                zoomable: true,
-                autoCropArea: 1,
-                background: false
-            });
-        }
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-function closeCropper() {
-    document.getElementById('cropperModal').classList.remove('active');
-    if (cropper) cropper.destroy();
-    // Reset file input so same file can be selected again
-    document.getElementById('profile_picture').value = "";
-}
-
-function applyCrop() {
-    if (cropper) {
-        const canvas = cropper.getCroppedCanvas({ width: 400, height: 400 });
-        const croppedData = canvas.toDataURL('image/jpeg', 0.9);
-        document.getElementById('avatarPreview').src = croppedData;
-        document.getElementById('croppedImageData').value = croppedData;
-        
-        // Clear file input so we don't upload the big original file
-        document.getElementById('profile_picture').value = "";
-        
-        closeCropper();
-    }
-}
-
-function calculateAge(birthday) {
-    const ageField = document.getElementById('age');
-    if (birthday) {
-        const birthDate = new Date(birthday);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-        ageField.value = age + (age === 1 ? ' year old' : ' years old');
-    } else {
-        ageField.value = '';
-    }
-}
-
-let docRowCount = 1;
-function addDocRow() {
-    const container = document.getElementById('docRowsContainer');
-    const newRow = document.createElement('div');
-    newRow.className = 'doc-row';
-    newRow.id = `docRow_${docRowCount}`;
-    newRow.innerHTML = `
-        <div class="add-emp-grid">
-            <div class="form-group">
-                <label class="form-label">Classification</label>
-                <select name="doc_items[${docRowCount}][classification]" class="form-input">
-                    <option value="UNCATEGORIZED">Select Classification</option>
-                    <option value="APPOINTMENT">Appointment</option>
-                    <option value="SERVICE RECORD">Service Record</option>
-                    <option value="LEAVE / DTR">Leave / DTR</option>
-                    <option value="PERSONAL DATA SHEET">Personal Data Sheet</option>
-                    <option value="CLEARANCES">Clearances</option>
-                    <option value="OTHERS">Others</option>
-                </select>
-            </div>
-            <div class="form-group" style="grid-column: span 2; position: relative;">
-                <label class="form-label">Upload Files</label>
-                <div style="display: flex; gap: 0.75rem; align-items: center;">
-                    <input type="file" name="doc_items[${docRowCount}][files][]" class="form-input" multiple acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg">
-                    <button type="button" class="btn btn-outline btn-sm" onclick="removeDocRow(${docRowCount})" style="background: #fee2e2; border-color: #fca5a5; color: #b91c1c; min-width: 40px; padding: 0.5rem;">
-                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    container.appendChild(newRow);
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-    docRowCount++;
-}
-
-function removeDocRow(id) {
-    const row = document.getElementById(`docRow_${id}`);
-    if (row) row.remove();
-}
-
-function resetForm() {
-    const form = document.getElementById('addEmployeeForm');
-    form.reset();
-    document.getElementById('age').value = '';
-    document.getElementById('name').value = '';
-    document.getElementById('avatarPreview').src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='12' cy='7' r='4'%3E%3C/circle%3E%3C/svg%3E";
-    if (window.dobPicker) window.dobPicker.clear();
-    
-    // Clear dynamic rows except first
-    const container = document.getElementById('docRowsContainer');
-    container.innerHTML = `
-        <div class="doc-row" id="docRow_0">
-            <div class="add-emp-grid">
-                <div class="form-group">
-                    <label class="form-label">Classification</label>
-                    <select name="doc_items[0][classification]" class="form-input">
-                        <option value="UNCATEGORIZED">Select Classification</option>
-                        <option value="APPOINTMENT">Appointment</option>
-                        <option value="SERVICE RECORD">Service Record</option>
-                        <option value="LEAVE / DTR">Leave / DTR</option>
-                        <option value="PERSONAL DATA SHEET">Personal Data Sheet</option>
-                        <option value="CLEARANCES">Clearances</option>
-                        <option value="OTHERS">Others</option>
-                    </select>
-                </div>
-                <div class="form-group" style="grid-column: span 2; position: relative;">
-                    <label class="form-label">Upload Files</label>
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <input type="file" name="doc_items[0][files][]" class="form-input" multiple acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg">
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    docRowCount = 1;
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function closeToast(id) {
-    const toast = document.getElementById(id || 'successToast');
-    if (toast) {
-        toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
-        setTimeout(() => toast.remove(), 300);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-dismiss toasts
-    ['successToast', 'errorToast'].forEach(id => {
-        const t = document.getElementById(id);
-        if (t) setTimeout(() => closeToast(id), 6000);
-    });
-
-    // Initialize Flatpickr for Birthday
-    window.dobPicker = flatpickr("#date_of_birth_picker", {
-        allowInput: true,
-        dateFormat: "F j, Y", 
-        altInput: true,
-        altFormat: "F j, Y",
-        onChange: function(selectedDates, dateStr, instance) {
-            if (selectedDates.length > 0) {
-                const flatDate = selectedDates[0];
-                // Store YYYY-MM-DD for backend
-                const year = flatDate.getFullYear();
-                const month = String(flatDate.getMonth() + 1).padStart(2, '0');
-                const day = String(flatDate.getDate()).padStart(2, '0');
-                const dbFormat = `${year}-${month}-${day}`;
-                document.getElementById('date_of_birth').value = dbFormat;
-                calculateAge(flatDate);
-            } else {
-                document.getElementById('date_of_birth').value = '';
-                calculateAge(null);
-            }
-        },
-        // Enable parsing for "3/1/1990" and "March 1, 1990"
-        parseDate: (datestr, format) => {
-            return new Date(datestr);
-        }
-    });
-
-    // Custom toggle for calendar icon
-    document.getElementById('calendarTrigger').addEventListener('click', function() {
-        window.dobPicker.open();
-    });
-
-    // Auto-dismiss toast
-    const toast = document.getElementById('successToast');
-    if (toast) {
-        setTimeout(() => closeToast(), 4000);
-    }
-
-    // Sync name on load if old values exist
-    syncFullName();
-
-    // AJAX Submission with Progress
-    document.getElementById('addEmployeeForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Final sync of full name
-        syncFullName();
-        
-        // Final sync of date if typed but not updated
-        const pickerVal = document.getElementById('date_of_birth_picker').value;
-        const hiddenVal = document.getElementById('date_of_birth').value;
-        if (pickerVal && !hiddenVal) {
-            try {
-                const date = new Date(pickerVal);
-                if (!isNaN(date)) {
-                    document.getElementById('date_of_birth').value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                }
-            } catch(err) {}
-        }
-
-        const form = this;
-        const formData = new FormData(form);
-        const submitBtn = document.getElementById('submitBtn');
-        const modal = document.getElementById('uploadProgressModal');
-        const progressBar = document.getElementById('progressBar');
-        const progressText = document.getElementById('progressText');
-        const statusText = document.getElementById('uploadStatusText');
-        const progressRateText = document.getElementById('progressRate');
-        
-        // Show progress UI
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i data-lucide="loader" style="width:16px;height:16px;" class="animate-spin"></i> Processing...';
-        modal.style.display = 'flex';
-        
-        let startTime = Date.now();
-        
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', form.action, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        
-        xhr.upload.onprogress = function(e) {
-            if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                progressBar.style.width = percent + '%';
-                progressText.textContent = percent + '% Complete';
-                
-                // Calculate rate
-                const duration = (Date.now() - startTime) / 1000;
-                if (duration > 0) {
-                    const kbps = (e.loaded / 1024 / duration).toFixed(1);
-                    progressRateText.textContent = kbps + ' KB/s';
-                }
-                
-                if (percent === 100) {
-                    statusText.textContent = 'Processing in database... Almost there!';
-                }
-            }
-        };
-        
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                progressBar.style.width = '100%';
-                progressText.textContent = '100% Complete';
-                document.getElementById('uploadStatusTitle').textContent = 'Registration Successful!';
-                statusText.textContent = 'Employee record has been saved.';
-                document.getElementById('uploadAlert').style.color = '#10b981';
-                document.getElementById('uploadAlert').textContent = 'Redirecting...';
-                
-                setTimeout(() => {
-                    const response = JSON.parse(xhr.responseText);
-                    window.location.href = response.redirect || '{{ route("employees.masterlist") }}';
-                }, 1500);
-            } else {
-                let errorMsg = 'Failed to save employee record.';
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    errorMsg = response.message || errorMsg;
-                } catch(err) {}
-                alert('Error: ' + errorMsg);
-                modal.style.display = 'none';
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Save Employee';
-            }
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        };
-        
-        xhr.onerror = function() {
-            alert('A network error occurred.');
-            modal.style.display = 'none';
-            submitBtn.disabled = false;
-        };
-        
-        xhr.send(formData);
-    });
-});
-</script>
+<script src="{{ asset('assets/js/add-employee.js') }}"></script>
 @endpush
