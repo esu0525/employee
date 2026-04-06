@@ -211,9 +211,15 @@
 
         <form action="{{ route('admin.users.store') }}" method="POST" style="padding: 2rem;">
             @csrf
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">FULL NAME</label>
-                <input type="text" name="name" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none; focus: border-color: var(--primary);">
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group" style="flex: 1; margin: 0;">
+                    <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">FIRST NAME</label>
+                    <input type="text" name="first_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none; focus: border-color: var(--primary);">
+                </div>
+                <div class="form-group" style="flex: 1; margin: 0;">
+                    <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">LAST NAME</label>
+                    <input type="text" name="last_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none; focus: border-color: var(--primary);">
+                </div>
             </div>
             <div class="form-group" style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">EMAIL ADDRESS</label>
@@ -267,9 +273,15 @@
         </div>
         <form id="editUserForm" method="POST" style="padding: 2rem;">
             @csrf
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">FULL NAME</label>
-                <input type="text" name="name" id="edit_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group" style="flex: 1; margin: 0;">
+                    <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">FIRST NAME</label>
+                    <input type="text" name="first_name" id="edit_first_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+                </div>
+                <div class="form-group" style="flex: 1; margin: 0;">
+                    <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">LAST NAME</label>
+                    <input type="text" name="last_name" id="edit_last_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 10px; outline: none;">
+                </div>
             </div>
             <div class="form-group" style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.8125rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">EMAIL ADDRESS</label>

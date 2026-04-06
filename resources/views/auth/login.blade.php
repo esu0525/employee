@@ -972,7 +972,7 @@
                     <div class="form-meta">
                         <label class="remember-me">
                             <input type="checkbox" name="remember">
-                            <span>Remember me</span>
+                            <span>Keep me login</span>
                         </label>
                         <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
                     </div>

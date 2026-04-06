@@ -706,7 +706,12 @@
         function autoVerifyIfComplete() {
             const val = getOtpValue();
             if (val.length === 6) {
-                setTimeout(() => submitOtp(val), 200);
+                // Change UI state to Auto-Verifying...
+                setVerifyLoading(true);
+                document.getElementById('verifyText').textContent = 'Auto-Verifying...';
+                document.getElementById('otpStatus').innerHTML = '<span class="animate-pulse">🔄 Auto-verifying code...</span>';
+                document.getElementById('otpStatus').className = 'otp-status info-msg';
+                setTimeout(() => submitOtp(val), 100); 
             }
         }
 

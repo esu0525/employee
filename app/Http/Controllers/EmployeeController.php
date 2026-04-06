@@ -109,19 +109,51 @@ class EmployeeController extends Controller
             });
         }
 
-        if ($sort === 'position') {
-            $query->orderBy('position', 'asc')->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
-        } else {
-            $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
-        }
+        $categoryFilter = $request->query('category');
+        $statusFilter = $request->query('status');
 
-        $employees = $query->paginate(20)->withQueryString();
-
-        // Summary Statistics for Masterlist
+        // Global Statistics (Unfiltered)
         $total_active = Employee::where('status', 'active')->count();
         $newly_joined = Employee::where('status', 'active')
             ->where('created_at', '>=', now()->subDays(30))
             ->count();
+
+        $employeesCollection = $query->get();
+
+        // Manual PHP-side filtering for encrypted columns
+        if (!empty($categoryFilter)) {
+            $employeesCollection = $employeesCollection->filter(function($e) use ($categoryFilter) {
+                return strcasecmp(trim($e->category ?? ''), $categoryFilter) === 0;
+            });
+        }
+
+        if (!empty($statusFilter)) {
+            $employeesCollection = $employeesCollection->filter(function($e) use ($statusFilter) {
+                return strcasecmp(trim($e->employment_status ?? ''), $statusFilter) === 0;
+            });
+        }
+
+        // Sorting the collection
+        if ($sort === 'name_desc') {
+            $employeesCollection = $employeesCollection->sortByDesc(function($e) {
+                return strtolower($e->last_name ?? $e->name);
+            })->values();
+        } else {
+            $employeesCollection = $employeesCollection->sortBy(function($e) {
+                return strtolower($e->last_name ?? $e->name);
+            })->values();
+        }
+
+        // Manual Pagination
+        $page = (int) $request->query('page', 1);
+        $perPage = 20;
+        $employees = new \Illuminate\Pagination\LengthAwarePaginator(
+            $employeesCollection->forPage($page, $perPage)->values(),
+            $employeesCollection->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         if ($request->ajax()) {
             return view('partials.masterlist-table', compact('employees', 'sort'))->render();
@@ -133,6 +165,8 @@ class EmployeeController extends Controller
             'employees', 
             'search', 
             'sort', 
+            'categoryFilter',
+            'statusFilter',
             'total_active', 
             'newly_joined'
         ));
@@ -176,7 +210,7 @@ class EmployeeController extends Controller
             $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
         }
 
-        $employees = $query->get(['id', 'name', 'position', 'agency', 'category', 'employment_status', 'salary_grade', 'level_of_position', 'sex', 'date_joined']);
+        $employees = $query->get(['id', 'name', 'position', 'agency', 'category', 'employment_status', 'employment_type', 'salary_grade', 'level_of_position', 'sex', 'date_joined']);
 
         \App\Models\ActivityLog::log('export', 'masterlist', 'Exported masterlist data (JSON fetch for client-side generation). Search: ' . ($search ?: 'None'));
             
@@ -535,7 +569,7 @@ class EmployeeController extends Controller
         }
 
         $employees = $query->orderBy('effective_date', 'desc')
-            ->get(['id', 'name', 'position', 'agency', 'school', 'status', 'effective_date', 'status_specify', 'so_no', 'transfer_to', 'retirement_under', 'salary_grade', 'level_of_position', 'employment_status']);
+            ->get(['id', 'name', 'position', 'agency', 'school', 'status', 'effective_date', 'status_specify', 'so_no', 'transfer_to', 'retirement_under', 'salary_grade', 'level_of_position', 'employment_status', 'employment_type']);
 
         \App\Models\ActivityLog::log('export', 'archive', 'Exported archive data (JSON fetch). Filters: Year=' . ($year ?: 'All') . ', Month=' . ($month ?: 'All') . ', Tab=' . ($tab ?: 'All'));
             
@@ -610,14 +644,15 @@ class EmployeeController extends Controller
             'position' => 'required|string|max:100',
             'agency' => 'required|string|max:100',
             'category' => 'required|string|in:National,City',
-            'employment_status' => 'required|string|in:Permanent,Contractual,Original',
+            'employment_status' => 'required|string|in:Permanent,Original',
+            'employment_type' => 'nullable|string|in:Regular,Contractual',
             'salary_grade' => 'nullable|string|max:50',
             'level_of_position' => 'nullable|string|max:100',
             'so_number' => 'nullable|string|max:100',
-            'date_of_birth' => 'required|date',
+            'date_of_birth' => 'nullable|date',
             'sex' => 'required|string|in:Male,Female',
-            'civil_status' => 'required|string|max:50',
-            'address' => 'required|string|max:500',
+            'civil_status' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
             'profile_picture' => 'nullable',
@@ -889,7 +924,8 @@ class EmployeeController extends Controller
             'position' => 'required|string|max:100',
             'agency' => 'required|string|max:100',
             'category' => 'nullable|string|in:National,City',
-            'employment_status' => 'nullable|string|in:Permanent,Contractual,Original',
+            'employment_status' => 'nullable|string|in:Permanent,Original',
+            'employment_type' => 'nullable|string|in:Regular,Contractual',
             'salary_grade' => 'nullable|string|max:50',
             'level_of_position' => 'nullable|string|max:100',
             'so_number' => 'nullable|string|max:100',

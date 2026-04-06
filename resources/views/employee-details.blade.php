@@ -205,6 +205,10 @@
                                 <span>{{ $employee->employment_status ?: '--' }}</span>
                             </div>
                             <div class="info-group">
+                                <label><i data-lucide="file-badge" style="color: #14b8a6;"></i> Type of Employment</label>
+                                <span>{{ $employee->employment_type ?: '--' }}</span>
+                            </div>
+                            <div class="info-group">
                                 <label><i data-lucide="line-chart" style="color: #f59e0b;"></i> Salary Grade</label>
                                 <span>{{ $employee->salary_grade ?: '--' }}</span>
                             </div>
@@ -456,8 +460,15 @@
                         <label>Status of Appointment</label>
                         <select name="employment_status">
                             <option value="Permanent" {{ $employee->employment_status == 'Permanent' ? 'selected' : '' }}>Permanent</option>
-                            <option value="Contractual" {{ $employee->employment_status == 'Contractual' ? 'selected' : '' }}>Contractual</option>
                             <option value="Original" {{ $employee->employment_status == 'Original' ? 'selected' : '' }}>Original</option>
+                        </select>
+                    </div>
+                    <div class="modal-input">
+                        <label>Type of Employment</label>
+                        <select name="employment_type">
+                            <option value="" {{ !$employee->employment_type ? 'selected' : '' }}>-- Select --</option>
+                            <option value="Regular" {{ $employee->employment_type == 'Regular' ? 'selected' : '' }}>Regular</option>
+                            <option value="Contractual" {{ $employee->employment_type == 'Contractual' ? 'selected' : '' }}>Contractual</option>
                         </select>
                     </div>
                     <div class="modal-input">

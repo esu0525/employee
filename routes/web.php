@@ -47,6 +47,14 @@ Route::post('/portal/submit', [PortalController::class, 'submit'])->name('portal
 
 // ─── Protected Routes (require login + OTP) ────────────────────────────────
 Route::middleware([AuthMiddleware::class])->group(function () {
+    // Session heartbeat - keeps session alive for "Keep Me Logged In" users
+    Route::get('/session/heartbeat', function () {
+        return response()->json([
+            'alive' => true,
+            'keep_logged_in' => session('keep_logged_in', false),
+        ]);
+    })->name('session.heartbeat');
+
     Route::get('/dashboard', [EmployeeController::class, 'dashboard'])->name('dashboard');
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/add-employee', [EmployeeController::class, 'addEmployee'])->name('employees.add');

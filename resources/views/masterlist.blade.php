@@ -34,7 +34,11 @@
     </div>
 
     <!-- Action Bar -->
-    <div class="action-bar" style="position: relative; z-index: 5;" data-initial-sort="{{ $sort }}" data-export-url="{{ route("employees.export.json") }}">
+    <div class="action-bar" style="position: relative; z-index: 5;" 
+         data-initial-sort="{{ $sort }}" 
+         data-initial-category="{{ $categoryFilter ?? '' }}" 
+         data-initial-status="{{ $statusFilter ?? '' }}"
+         data-export-url="{{ route("employees.export.json") }}">
         <div class="search-container">
             <i data-lucide="search" class="search-icon"></i>
             <input 
@@ -76,10 +80,51 @@
             @endif
 
 
-            <button id="sortBtn" class="btn {{ $sort === 'position' ? 'btn-primary' : 'btn-outline' }}" onclick="toggleSort()">
-                <i data-lucide="{{ $sort === 'position' ? 'briefcase' : 'sort-asc' }}"></i>
-                Sort by {{ $sort === 'position' ? 'Position' : 'Name' }}
-            </button>
+            <div class="sort-dropdown">
+                <button id="sortBtn" class="btn btn-outline" onclick="toggleSortMenu(event)" title="Sort & Filter">
+                    <i data-lucide="list-filter"></i>
+                    <span id="sortLabel">@if($categoryFilter || $statusFilter)Filtered List @else Sort & Filter @endif</span>
+                </button>
+                <div id="sortMenu" class="export-menu">
+                    <div class="menu-section-label">Sorting</div>
+                    <button onclick="setSort('name')" class="{{ $sort === 'name' ? 'active-opt' : '' }}">
+                        <i data-lucide="sort-asc"></i>
+                        <span>A-Z (Name)</span>
+                    </button>
+                    <button onclick="setSort('name_desc')" class="{{ $sort === 'name_desc' ? 'active-opt' : '' }}">
+                        <i data-lucide="sort-desc"></i>
+                        <span>Z-A (Name)</span>
+                    </button>
+                    
+                    <div class="menu-section-label">Category Filter</div>
+                    <button onclick="setFilter('category', '')">
+                        <i data-lucide="layers"></i>
+                        <span>All Categories</span>
+                    </button>
+                    <button onclick="setFilter('category', 'National')" class="{{ $categoryFilter === 'National' ? 'active-opt' : '' }}">
+                        <i data-lucide="flag"></i>
+                        <span>National Only</span>
+                    </button>
+                    <button onclick="setFilter('category', 'City')" class="{{ $categoryFilter === 'City' ? 'active-opt' : '' }}">
+                        <i data-lucide="building-2"></i>
+                        <span>City Only</span>
+                    </button>
+
+                    <div class="menu-section-label">Appointment Filter</div>
+                    <button onclick="setFilter('status', '')">
+                        <i data-lucide="file-stack"></i>
+                        <span>All Status</span>
+                    </button>
+                    <button onclick="setFilter('status', 'Original')" class="{{ $statusFilter === 'Original' ? 'active-opt' : '' }}">
+                        <i data-lucide="file-badge"></i>
+                        <span>Original Only</span>
+                    </button>
+                    <button onclick="setFilter('status', 'Permanent')" class="{{ $statusFilter === 'Permanent' ? 'active-opt' : '' }}">
+                        <i data-lucide="shield-check"></i>
+                        <span>Permanent Only</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -253,6 +298,38 @@
     }
     .export-menu button:hover { background: #f1f5f9; color: #1e293b; }
     .export-menu i { width: 18px; height: 18px; }
+    .export-menu button.active-opt {
+        background: #eef2ff;
+        color: #4f46e5;
+        font-weight: 800 !important;
+        position: relative;
+    }
+    .export-menu button.active-opt::after {
+        content: "";
+        position: absolute;
+        right: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 6px;
+        background: #4f46e5;
+        border-radius: 50%;
+    }
+    body[data-theme="dark"] .export-menu button.active-opt {
+        background: #312e81;
+        color: #818cf8;
+    }
+
+    .menu-section-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.75rem 1rem 0.25rem;
+    }
+    
+    .sort-dropdown { position: relative; display: inline-block; z-index: 10; }
     
     body[data-theme="dark"] .export-menu { background: #1e293b; border-color: #334155; }
     body[data-theme="dark"] .export-menu button { color: #94a3b8; }

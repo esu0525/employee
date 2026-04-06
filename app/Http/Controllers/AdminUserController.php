@@ -36,16 +36,24 @@ class AdminUserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
             'password' => 'required|string|min:8',
             'role' => ['required', Rule::in(['admin', 'viewer', 'editor', 'coordinator'])],
             'permissions' => 'nullable|array'
         ]);
 
+        $hashedEmail = hash('sha256', strtolower(trim($validated['email'])));
+        if (User::where('email_hash', $hashedEmail)->exists()) {
+            return back()->withErrors(['email' => 'The email has already been taken.'])->withInput();
+        }
+
         $user = User::create([
-            'name' => $validated['name'],
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
             'email' => $validated['email'],
+            'email_hash' => $hashedEmail,
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
             'permissions' => in_array($validated['role'], ['admin', 'coordinator']) ? [] : ($validated['permissions'] ?? [])
@@ -64,16 +72,24 @@ class AdminUserController extends Controller
         $user = User::findOrFail($id);
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => 'nullable|string|min:8',
             'role' => ['required', Rule::in(['admin', 'viewer', 'editor', 'coordinator'])],
             'permissions' => 'nullable|array'
         ]);
 
+        $hashedEmail = hash('sha256', strtolower(trim($validated['email'])));
+        if (User::where('email_hash', $hashedEmail)->where('id', '!=', $user->id)->exists()) {
+            return back()->withErrors(['email' => 'The email has already been taken.'])->withInput();
+        }
+
         $updateData = [
-            'name' => $validated['name'],
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
             'email' => $validated['email'],
+            'email_hash' => $hashedEmail,
             'role' => $validated['role'],
             'permissions' => in_array($validated['role'], ['admin', 'coordinator']) ? [] : ($validated['permissions'] ?? [])
         ];

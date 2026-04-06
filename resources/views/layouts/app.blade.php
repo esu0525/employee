@@ -1022,6 +1022,57 @@
     @endpush
 
     <script src="{{ asset('assets/js/app.js') }}"></script>
+
+    {{-- Session Heartbeat for "Keep Me Logged In" --}}
+    <meta name="keep-logged-in" content="{{ session('keep_logged_in') ? '1' : '0' }}">
+    <meta name="heartbeat-url" content="{{ route('session.heartbeat') }}">
+    <script>
+    (function() {
+        const heartbeatUrl = document.querySelector('meta[name="heartbeat-url"]')?.content;
+        const isAuthenticated = {{ session()->has('auth_user_id') ? 'true' : 'false' }};
+
+        if (isAuthenticated && heartbeatUrl) {
+            // Ping the server every 5 minutes to keep the session alive
+            const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+            function sendHeartbeat() {
+                fetch(heartbeatUrl, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.status === 401) {
+                        console.error('[Session] Heartbeat failed (401). Redirecting...');
+                        window.location.href = '/login';
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.alive) {
+                        const mode = data.keep_logged_in ? 'Persistent' : 'Standard';
+                        console.log(`[Session] Heartbeat OK (${mode}) — auto-sync at ${new Date(Date.now() + HEARTBEAT_INTERVAL).toLocaleTimeString()}`);
+                    }
+                })
+                .catch(err => {
+                    console.warn('[Session] Network glitch during heartbeat. System will retry.');
+                });
+            }
+
+            // Start heartbeat interval
+            setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+
+            // Give the browser 10 seconds to stabilize before first sync
+            setTimeout(sendHeartbeat, 10000);
+        }
+    })();
+    </script>
+
     @stack('scripts')
 </body>
 </html>
+

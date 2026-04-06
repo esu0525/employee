@@ -24,6 +24,35 @@ document.addEventListener('DOMContentLoaded', function () {
             window.fetchData(page);
         }
     });
+
+    // ─── Restore saved masterlist state on page load ───
+    // Check URL params first, then sessionStorage as fallback
+    const urlParams = new URLSearchParams(window.location.search);
+    const savedPage = urlParams.get('page') || sessionStorage.getItem('masterlist_page');
+    const savedSearch = urlParams.get('search') || sessionStorage.getItem('masterlist_search') || '';
+    const savedSort = urlParams.get('sort') || sessionStorage.getItem('masterlist_sort') || '';
+    const savedCategory = urlParams.get('category') || sessionStorage.getItem('masterlist_category') || '';
+    const savedStatus = urlParams.get('status') || sessionStorage.getItem('masterlist_status') || '';
+
+    // Always update lastUrl on load so the Back button on details page works
+    localStorage.setItem('masterlistLastUrl', window.location.href);
+
+    const shouldRestore = savedPage && parseInt(savedPage) > 1;
+
+    if (shouldRestore || savedSearch || savedCategory || savedStatus) {
+        const searchInput = document.getElementById('searchInput');
+        const actionBar = document.querySelector('.action-bar');
+
+        if (searchInput && savedSearch) searchInput.value = savedSearch;
+        if (actionBar) {
+            if (savedSort) actionBar.setAttribute('data-initial-sort', savedSort);
+            if (savedCategory) actionBar.setAttribute('data-initial-category', savedCategory);
+            if (savedStatus) actionBar.setAttribute('data-initial-status', savedStatus);
+        }
+
+        // Fetch the saved page
+        window.fetchData(parseInt(savedPage) || 1);
+    }
 });
 
 window.openAddEmployeeModal = function() {
@@ -148,34 +177,136 @@ window.liveSearch = function(query) {
     }, 400);
 }
 
-window.toggleSort = function() {
+window.toggleSortMenu = function(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('sortMenu');
+    if (menu) {
+        menu.classList.toggle('active');
+        // Auto-close export if open
+        const exportMenu = document.getElementById('exportMenu');
+        if (exportMenu) exportMenu.classList.remove('active');
+    }
+}
+
+window.setSort = function(type) {
     const actionBar = document.querySelector('.action-bar');
-    let currentSort = actionBar.getAttribute('data-initial-sort');
-    currentSort = (currentSort === 'name') ? 'position' : 'name';
-    actionBar.setAttribute('data-initial-sort', currentSort);
+    if (!actionBar) return;
     
-    // Update button visual
-    const sortBtn = document.getElementById('sortBtn');
-    if (sortBtn) {
-        sortBtn.innerHTML = currentSort === 'position' 
-            ? '<i data-lucide="briefcase"></i> Sort by Position' 
-            : '<i data-lucide="sort-asc"></i> Sort by Name';
-        sortBtn.className = currentSort === 'position' ? 'btn btn-primary' : 'btn btn-outline';
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+    // Clear filters when setting sort, because user wants ONLY one active
+    actionBar.setAttribute('data-initial-category', '');
+    actionBar.setAttribute('data-initial-status', '');
+    actionBar.setAttribute('data-initial-sort', type);
+    
+    // UI Feedback for sort buttons
+    const menu = document.getElementById('sortMenu');
+    if (menu) {
+        // Clear ALL active options
+        menu.querySelectorAll('button').forEach(b => b.classList.remove('active-opt'));
+        
+        // Highlight only the clicked one
+        menu.querySelectorAll('button[onclick^="setSort"]').forEach(b => {
+            if (b.getAttribute('onclick').includes(`'${type}'`)) {
+                b.classList.add('active-opt');
+            }
+        });
+        menu.classList.remove('active');
     }
     
+    const sortLabelSpan = document.querySelector('.action-btn[onclick="toggleSortMenu(event)"] span');
+    if (sortLabelSpan) {
+        if (type === 'name_asc') sortLabelSpan.textContent = 'Alphabetical (A-Z)';
+        if (type === 'name_desc') sortLabelSpan.textContent = 'Alphabetical (Z-A)';
+        if (type === 'position_asc') sortLabelSpan.textContent = 'By Position';
+    }
+
+    // Reset sort button highlight
+    const sortBtn = document.querySelector('.action-btn[onclick="toggleSortMenu(event)"]');
+    if (sortBtn) {
+        sortBtn.style.color = '';
+        sortBtn.style.borderColor = '';
+    }
+
+    window.fetchData(1);
+}
+
+window.setFilter = function(key, value) {
+    const actionBar = document.querySelector('.action-bar');
+    if (!actionBar) return;
+
+    // Clear sort and other filter depending on what was clicked
+    actionBar.setAttribute('data-initial-sort', 'name'); // Default sort
+    
+    if (key === 'category') {
+        actionBar.setAttribute('data-initial-category', value);
+        actionBar.setAttribute('data-initial-status', '');
+    } else {
+        actionBar.setAttribute('data-initial-status', value);
+        actionBar.setAttribute('data-initial-category', '');
+    }
+    
+    // Update active classes for filter buttons
+    const menu = document.getElementById('sortMenu');
+    if (menu) {
+        // Clear ALL active options
+        menu.querySelectorAll('button').forEach(b => b.classList.remove('active-opt'));
+        
+        const prefix = `setFilter('${key}'`;
+        menu.querySelectorAll(`button[onclick^="${prefix}"]`).forEach(b => {
+            // Only add 'active-opt' if value is not empty
+            if (value !== '' && b.getAttribute('onclick').includes(`'${value}'`)) {
+                b.classList.add('active-opt');
+            }
+        });
+        menu.classList.remove('active');
+    }
+
+    // Highlight the main button if filters are active
+    const sortBtn = document.querySelector('.action-btn[onclick="toggleSortMenu(event)"]');
+    if (sortBtn) {
+        if (value !== '') {
+            sortBtn.style.color = 'var(--primary)';
+            sortBtn.style.borderColor = 'var(--primary)';
+        } else {
+            sortBtn.style.color = '';
+            sortBtn.style.borderColor = '';
+        }
+    }
+
     window.fetchData(1);
 }
 
 // ─── Data Fetching ───
 window.fetchData = function(page = 1) {
     const query = document.getElementById('searchInput').value;
-    const sort = document.querySelector('.action-bar').getAttribute('data-initial-sort');
+    const actionBar = document.querySelector('.action-bar');
+    const sort = actionBar.getAttribute('data-initial-sort');
+    const category = actionBar.getAttribute('data-initial-category') || '';
+    const status = actionBar.getAttribute('data-initial-status') || '';
+    
     const container = document.getElementById('tableContainer');
     
     if (container) container.style.opacity = '0.5';
 
-    let url = `/masterlist?page=${page}&search=${encodeURIComponent(query)}&sort=${sort}`;
+    // Save state to sessionStorage so it persists when navigating back
+    sessionStorage.setItem('masterlist_page', page);
+    sessionStorage.setItem('masterlist_search', query);
+    sessionStorage.setItem('masterlist_sort', sort);
+    sessionStorage.setItem('masterlist_category', category);
+    sessionStorage.setItem('masterlist_status', status);
+
+    // Update browser URL without reload (so back button preserves state)
+    const stateParams = new URLSearchParams();
+    stateParams.set('page', page);
+    if (query) stateParams.set('search', query);
+    if (sort && sort !== 'name') stateParams.set('sort', sort);
+    if (category) stateParams.set('category', category);
+    if (status) stateParams.set('status', status);
+    
+    const newUrl = '/masterlist?' + stateParams.toString();
+    history.replaceState(null, '', newUrl);
+    localStorage.setItem('masterlistLastUrl', window.location.href);
+
+    let url = `/masterlist?page=${page}&search=${encodeURIComponent(query)}&sort=${sort}&category=${encodeURIComponent(category)}&status=${encodeURIComponent(status)}`;
 
     fetch(url, {
         headers: {
@@ -257,14 +388,14 @@ function generateExcel(employees) {
 
     // Title Row
     const titleRow = sheet.addRow(['EMPLOYEE MASTERLIST']);
-    sheet.mergeCells(1, 1, 1, 7);
+    sheet.mergeCells(1, 1, 1, 8);
     titleRow.eachCell(c => {
         c.font = { size: 14, bold: true, name: 'Arial Narrow' };
         c.alignment = { horizontal: 'center' };
     });
 
     sheet.addRow([`Report Generated: ${new Date().toLocaleDateString()}`]);
-    sheet.mergeCells(2, 1, 2, 7);
+    sheet.mergeCells(2, 1, 2, 8);
     sheet.getRow(2).eachCell(c => {
         c.font = { italic: true, size: 10, name: 'Arial Narrow' };
         c.alignment = { horizontal: 'center' };
@@ -273,7 +404,7 @@ function generateExcel(employees) {
     sheet.addRow([]);
 
     // Headers
-    const headers = ['NAME', 'POSITION', 'AGENCY', 'CATEGORY', 'STATUS', 'S.G.', 'LEVEL'];
+    const headers = ['NAME', 'POSITION', 'AGENCY', 'CATEGORY', 'STATUS', 'TYPE', 'S.G.', 'LEVEL'];
     const headerRow = sheet.addRow(headers);
     headerRow.eachCell((c, i) => {
         c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10, name: 'Arial Narrow' };
@@ -290,6 +421,7 @@ function generateExcel(employees) {
             e.agency,
             e.category || '-',
             e.employment_status || '-',
+            e.employment_type || '-',
             e.salary_grade || '-',
             e.level_of_position || '-'
         ]);
@@ -306,8 +438,9 @@ function generateExcel(employees) {
     sheet.getColumn(3).width = 25;
     sheet.getColumn(4).width = 15;
     sheet.getColumn(5).width = 15;
-    sheet.getColumn(6).width = 8;
-    sheet.getColumn(7).width = 12;
+    sheet.getColumn(6).width = 15;
+    sheet.getColumn(7).width = 8;
+    sheet.getColumn(8).width = 12;
 
     workbook.xlsx.writeBuffer().then(buffer => {
         saveAs(new Blob([buffer]), `Masterlist_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -332,12 +465,13 @@ function generatePDF(employees) {
         e.position,
         e.agency,
         e.employment_status || '-',
+        e.employment_type || '-',
         e.salary_grade || '-',
         e.level_of_position || '-'
     ]);
 
     doc.autoTable({
-        head: [['NAME', 'POSITION', 'AGENCY', 'STATUS', 'S.G.', 'LEVEL']],
+        head: [['NAME', 'POSITION', 'AGENCY', 'STATUS', 'TYPE', 'S.G.', 'LEVEL']],
         body: tableBody,
         startY: 28,
         theme: 'grid',
@@ -356,9 +490,9 @@ function generatePDF(employees) {
 
 function generateDocsSimple(employees) {
     // Simple CSV-based trick for "Word" or just use table html
-    let content = "NAME,POSITION,AGENCY,STATUS,S.G.,LEVEL\n";
+    let content = "NAME,POSITION,AGENCY,STATUS,TYPE,S.G.,LEVEL\n";
     employees.forEach((e, i) => {
-        content += `"${e.name}","${e.position}","${e.agency}","${e.employment_status || '-'}","${e.salary_grade || '-'}","${e.level_of_position || '-'}"\n`;
+        content += `"${e.name}","${e.position}","${e.agency}","${e.employment_status || '-'}","${e.employment_type || '-'}","${e.salary_grade || '-'}","${e.level_of_position || '-'}"\n`;
     });
     
     saveAs(new Blob([content], { type: "text/csv;charset=utf-8" }), `Masterlist_Data_${new Date().toISOString().slice(0,10)}.csv`);
@@ -369,12 +503,16 @@ window.addEventListener('click', function(e) {
     const addModal = document.getElementById('addEmployeeModal');
     const statusModal = document.getElementById('statusModal');
     const exportMenu = document.getElementById('exportMenu');
+    const sortMenu = document.getElementById('sortMenu');
     
     if (e.target === addModal) window.closeAddEmployeeModal();
     if (e.target === statusModal) window.closeStatusModal();
     
     if (exportMenu && !exportMenu.contains(e.target)) {
         exportMenu.classList.remove('active');
+    }
+    if (sortMenu && !sortMenu.contains(e.target)) {
+        sortMenu.classList.remove('active');
     }
 });
 

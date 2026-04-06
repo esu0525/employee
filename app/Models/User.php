@@ -28,8 +28,10 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
+        'email_hash',
         'profile_picture',
         'password',
         'role',
@@ -54,11 +56,22 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'email' => \App\Casts\SafeEncrypt::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'permissions' => 'array',
             'last_login_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Get the user's full name.
+     *
+     * @return string
+     */
+    public function getNameAttribute()
+    {
+        return trim("{$this->first_name} {$this->last_name}");
     }
 
     /**
@@ -122,10 +135,8 @@ class User extends Authenticatable
      */
     public function initials(): string
     {
-        return Str::of($this->name)
-            ->explode(' ')
-            ->take(2)
-            ->map(fn ($word) => Str::substr($word, 0, 1))
-            ->implode('');
+        $first = strtoupper(substr($this->first_name ?? '', 0, 1));
+        $last = strtoupper(substr($this->last_name ?? '', 0, 1));
+        return $first . $last;
     }
 }

@@ -628,9 +628,15 @@
                 <form action="{{ route('admin.users.update-from-profile', $user->id) }}" method="POST">
                     @csrf
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label>Full Name</label>
-                            <input type="text" name="name" value="{{ old('name', $user->name) }}" class="form-control" required>
+                        <div style="display: flex; gap: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>First Name</label>
+                                <input type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}" class="form-control" required>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Last Name</label>
+                                <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" class="form-control" required>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Email Address</label>
@@ -688,14 +694,25 @@
                     <div class="privacy-grid">
                         <!-- Name & Email Section -->
                         <div>
-                            <div class="form-group" style="margin-bottom: 1.5rem;">
-                                <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Full Name</label>
-                                @if($viewer_role === 'admin')
-                                    <input type="text" name="name" value="{{ $user->name }}" class="form-control" style="padding: 0.6rem; border-radius: 6px;" required>
-                                @else
-                                    <input type="text" value="{{ $user->name }}" class="form-control" style="background: var(--bg-main); opacity: 0.6; cursor: not-allowed; padding: 0.6rem; border-radius: 6px;" readonly title="Account name can only be changed by an administrator.">
-                                    <input type="hidden" name="name" value="{{ $user->name }}">
-                                @endif
+                            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                                <div class="form-group" style="flex: 1; margin: 0;">
+                                    <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">First Name</label>
+                                    @if($viewer_role === 'admin')
+                                        <input type="text" name="first_name" value="{{ $user->first_name }}" class="form-control" style="padding: 0.6rem; border-radius: 6px;" required>
+                                    @else
+                                        <input type="text" value="{{ $user->first_name }}" class="form-control" style="background: var(--bg-main); opacity: 0.6; cursor: not-allowed; padding: 0.6rem; border-radius: 6px;" readonly title="Account name can only be changed by an administrator.">
+                                        <input type="hidden" name="first_name" value="{{ $user->first_name }}">
+                                    @endif
+                                </div>
+                                <div class="form-group" style="flex: 1; margin: 0;">
+                                    <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Last Name</label>
+                                    @if($viewer_role === 'admin')
+                                        <input type="text" name="last_name" value="{{ $user->last_name }}" class="form-control" style="padding: 0.6rem; border-radius: 6px;" required>
+                                    @else
+                                        <input type="text" value="{{ $user->last_name }}" class="form-control" style="background: var(--bg-main); opacity: 0.6; cursor: not-allowed; padding: 0.6rem; border-radius: 6px;" readonly title="Account name can only be changed by an administrator.">
+                                        <input type="hidden" name="last_name" value="{{ $user->last_name }}">
+                                    @endif
+                                </div>
                             </div>
 
                             <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Email Address</label>

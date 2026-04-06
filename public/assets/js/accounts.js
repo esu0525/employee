@@ -126,12 +126,14 @@ window.togglePermissions = function(type, isManualChange = false) {
 }
 
 window.editUser = function(user) {
-    const nameEl = document.getElementById('edit_name');
+    const firstNameEl = document.getElementById('edit_first_name');
+    const lastNameEl = document.getElementById('edit_last_name');
     const emailEl = document.getElementById('edit_email');
     const roleEl = document.getElementById('edit_role');
     const formEl = document.getElementById('editUserForm');
 
-    if (nameEl) nameEl.value = user.name;
+    if (firstNameEl) firstNameEl.value = user.first_name;
+    if (lastNameEl) lastNameEl.value = user.last_name;
     if (emailEl) emailEl.value = user.email;
     if (roleEl) roleEl.value = user.role;
     

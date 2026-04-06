@@ -124,10 +124,14 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Auto submit if all 6 boxes are filled
             if (Array.from(otpInputs).every(i => i.value.length === 1)) {
-                setTimeout(() => {
-                    const otpForm = document.getElementById('otpForm');
-                    if (otpForm) otpForm.requestSubmit();
-                }, 100);
+                const otpForm = document.getElementById('otpForm');
+                const verifyBtn = document.getElementById('verifyBtn');
+                if (otpForm && verifyBtn) {
+                    verifyBtn.disabled = true;
+                    verifyBtn.innerHTML = '<span class="animate-pulse">AUTO-VERIFYING...</span>';
+                    // Small delay to let the user see the 6th digit
+                    setTimeout(() => otpForm.requestSubmit(), 100);
+                }
             }
         });
 
@@ -143,10 +147,26 @@ document.addEventListener('DOMContentLoaded', function () {
             pastedData.split('').forEach((char, i) => {
                 if (otpInputs[i]) {
                     otpInputs[i].value = char;
-                    if (otpInputs[i+1]) otpInputs[i+1].focus();
                 }
             });
             updateFullCode();
+            
+            // Auto submit if all 6 boxes are filled after paste
+            if (Array.from(otpInputs).every(i => i.value.length === 1)) {
+                otpInputs[5].focus(); // Focus the last box
+                
+                const otpForm = document.getElementById('otpForm');
+                const verifyBtn = document.getElementById('verifyBtn');
+                if (otpForm && verifyBtn) {
+                    verifyBtn.disabled = true;
+                    verifyBtn.innerHTML = '<span class="animate-pulse">AUTO-VERIFYING...</span>';
+                    setTimeout(() => otpForm.requestSubmit(), 100);
+                }
+            } else {
+                // Focus the next empty box if not full
+                const nextIndex = pastedData.length;
+                if (otpInputs[nextIndex]) otpInputs[nextIndex].focus();
+            }
         });
     });
 

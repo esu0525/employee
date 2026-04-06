@@ -22,7 +22,17 @@ class AuthController extends Controller
 
     public function showLogin()
     {
-        if (session()->has('auth_user_id')) {
+        // Custom session check OR Native Auth check (Remember Me)
+        if (session()->has('auth_user_id') || auth()->check()) {
+            if (auth()->check() && !session()->has('auth_user_id')) {
+                $user = auth()->user();
+                session([
+                    'auth_user_id' => $user->id,
+                    'auth_user_name' => $user->name,
+                    'auth_user_email' => $user->email,
+                    'auth_user_role' => $user->role,
+                ]);
+            }
             return redirect()->route('dashboard');
         }
 
@@ -49,7 +59,8 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $hashedEmail = hash('sha256', strtolower(trim($request->email)));
+        $user = User::where('email_hash', $hashedEmail)->first();
 
         if (!($user instanceof User) || !Hash::check($request->password, $user->password)) {
             if ($request->ajax() || $request->wantsJson()) {
@@ -141,14 +152,22 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
+        $hashedEmail = hash('sha256', strtolower(trim($request->email)));
+        if (User::where('email_hash', $hashedEmail)->exists()) {
+            return back()->withErrors(['email' => 'The email has already been taken.'])->withInput();
+        }
+
         User::create([
-            'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'email' => $request->email,
+            'email_hash' => $hashedEmail,
             'password' => Hash::make($request->password),
             'role' => 'viewer',
         ]);
@@ -263,21 +282,33 @@ class AuthController extends Controller
 
         $user = User::find($userId);
 
-        // Use standard Auth logic for "Keep me logged in"
+        // Capture "Keep me logged in" choice BEFORE any session manipulation
         $remember = session('remember', false);
+
+        // Use standard Auth logic for "Keep me logged in" (sets remember_me cookie)
         Auth::login($user, $remember);
 
-        // Clear OTP session, set additional auth markers
+        // Clear OTP-related session keys
         session()->forget(['otp_user_id', 'otp_attempts', 'otp_locked_until', 'remember']);
+        
+        // Set authenticated session markers
         session([
             'auth_user_id' => $user->id,
             'auth_user_name' => $user->name,
             'auth_user_email' => $user->email,
             'auth_user_role' => $user->role,
+            'keep_logged_in' => $remember,
             'welcome_name' => $user->name,
             'welcome_avatar' => $user->profile_picture,
         ]);
         session()->flash('show_welcome_modal', true);
+
+        // If "Keep Me Logged In" is active, extend session lifetime aggressively
+        if ($remember) {
+            $oneYear = 525600; // minutes
+            config(['session.lifetime' => $oneYear]);
+            ini_set('session.gc_maxlifetime', $oneYear * 60);
+        }
 
         // Record the login log
         \App\Models\ActivityLog::log('login', 'auth', 'User logged into the system');
@@ -355,7 +386,10 @@ class AuthController extends Controller
     public function logout()
     {
         \App\Models\ActivityLog::log('logout', 'auth', 'User logged out of the system');
-        session()->flush();
+        
+        Auth::logout(); // Clear Laravel remember token
+        session()->flush(); // Clear custom session
+        
         return redirect()->route('landing');
     }
 

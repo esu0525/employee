@@ -64,7 +64,7 @@ class Employee extends Model
 
     protected $fillable = [
         'id', 'profile_picture', 'name', 'last_name', 'first_name', 'middle_name', 'suffix', 'so_number',
-        'position', 'agency', 'category', 'employment_status', 'salary_grade', 'level_of_position', 'email', 'phone',
+        'position', 'agency', 'category', 'employment_status', 'employment_type', 'salary_grade', 'level_of_position', 'email', 'phone',
         'date_joined', 'status', 'status_date', 'transfer_location',
         'address', 'date_of_birth', 'sex', 'civil_status', 'nationality', 'emergency_contact', 'emergency_phone',
         'effective_date', 'school', 'transfer_to', 'so_no', 'status_specify', 'retirement_under'
@@ -83,6 +83,7 @@ class Employee extends Model
         'civil_status' => \App\Casts\SafeEncrypt::class,
         'category' => \App\Casts\SafeEncrypt::class,
         'employment_status' => \App\Casts\SafeEncrypt::class,
+        'employment_type' => \App\Casts\SafeEncrypt::class,
         'salary_grade' => \App\Casts\SafeEncrypt::class,
         'level_of_position' => \App\Casts\SafeEncrypt::class,
         'so_number' => \App\Casts\SafeEncrypt::class,

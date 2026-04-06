@@ -83,15 +83,23 @@ class ProfileController extends Controller
         $user = User::findOrFail($id);
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => 'nullable|string|min:8',
             'role' => ['required', Rule::in(['admin', 'viewer', 'editor', 'coordinator'])],
             'permissions' => 'nullable|array'
         ]);
 
-        $user->name = $validated['name'];
+        $hashedEmail = hash('sha256', strtolower(trim($validated['email'])));
+        if (User::where('email_hash', $hashedEmail)->where('id', '!=', $user->id)->exists()) {
+            return back()->withErrors(['email' => 'The email has already been taken.'])->withInput();
+        }
+
+        $user->first_name = $validated['first_name'];
+        $user->last_name = $validated['last_name'];
         $user->email = $validated['email'];
+        $user->email_hash = $hashedEmail;
         $user->role = $validated['role'];
         $user->permissions = in_array($validated['role'], ['admin', 'coordinator']) ? [] : ($validated['permissions'] ?? []);
 
@@ -148,17 +156,25 @@ class ProfileController extends Controller
         if (!$user) return redirect()->route('login');
         
         $rules = [
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'email' => ['required', 'string', 'email', 'max:255'],
         ];
 
         if ($user->role === 'admin') {
-            $rules['name'] = 'required|string|max:255';
+            $rules['first_name'] = 'required|string|max:255';
+            $rules['last_name'] = 'required|string|max:255';
         }
 
         $request->validate($rules);
 
-        if ($user->role === 'admin' && $request->has('name')) {
-            $user->name = $request->name;
+        $hashedEmail = hash('sha256', strtolower(trim($request->email)));
+        if (User::where('email_hash', $hashedEmail)->where('id', '!=', $user->id)->exists()) {
+            return back()->withErrors(['email' => 'The email has already been taken.'])->withInput();
+        }
+
+        if ($user->role === 'admin' && $request->has('first_name')) {
+            $user->first_name = $request->first_name;
+            $user->last_name = $request->last_name;
+            $user->save();
             session(['auth_user_name' => $user->name]);
         }
 
@@ -207,6 +223,7 @@ class ProfileController extends Controller
         if ($user) {
             $oldEmail = $user->email;
             $user->email = $verification->new_email;
+            $user->email_hash = hash('sha256', strtolower(trim($verification->new_email)));
             $user->save();
 
             \App\Models\ActivityLog::log('edit', 'profile', 'Verified new email address change from ' . $oldEmail . ' to ' . $user->email);

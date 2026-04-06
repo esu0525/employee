@@ -24,7 +24,7 @@
             @endphp
 
             <div class="master-item-card"
-                data-search="{{ strtolower($displayName . ' ' . $employee->position . ' ' . $employee->agency . ' ' . $employee->category . ' ' . $employee->employment_status . ' ' . $employee->salary_grade . ' ' . $employee->level_of_position) }}"
+                data-search="{{ strtolower($displayName . ' ' . $employee->position . ' ' . $employee->agency . ' ' . $employee->category . ' ' . $employee->employment_status . ' ' . $employee->employment_type . ' ' . $employee->salary_grade . ' ' . $employee->level_of_position) }}"
                 onclick="window.location='{{ route('employees.show', ['id' => $employee->id]) }}'">
                 <div class="master-card-left">
                     <div class="master-avatar-3layer">

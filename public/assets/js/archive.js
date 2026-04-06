@@ -11,6 +11,9 @@ const config = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Save current URL for details page back button
+    localStorage.setItem('archiveLastUrl', window.location.href);
+
     const panels = document.getElementById('panelsContainer');
     if (panels) {
         currentTab = panels.getAttribute('data-active-tab') || 'resign';
@@ -187,6 +190,8 @@ function switchTab(tab, updateUrl = true) {
         const url = new URL(window.location.href);
         url.searchParams.set('tab', tab);
         window.history.replaceState({}, '', url);
+        // Also update the "back" destination URL
+        localStorage.setItem('archiveLastUrl', window.location.href);
     }
 }
 window.switchTab = switchTab;

@@ -55,6 +55,10 @@
 
     /* Transitions */
     --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Gradients */
+    --bg-gradient: radial-gradient(circle at top left, #f1f5f9, #e2e8f0);
+    --title-gradient: linear-gradient(to right, #1e1b4b, #4338ca, #6366f1);
 }
 
 * {
@@ -63,12 +67,19 @@
     box-sizing: border-box;
 }
 
+html {
+    /* Match the app-container background to avoid the white gap at bottom */
+    background: var(--bg-gradient);
+    zoom: 0.8; /* Scales entire UI to 80% for 100% zoom level per user request */
+    height: 100%;
+}
+
 body {
     font-family: 'Outfit', sans-serif;
-    background-color: var(--bg-main);
     color: var(--text-main);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    min-height: 125%; /* To compensate for 0.8 zoom and fill the screen */
 }
 
 h1,
@@ -83,8 +94,8 @@ h4,
 
 .app-container {
     display: flex;
-    height: 100vh;
-    background: radial-gradient(circle at top left, #f1f5f9, #e2e8f0);
+    height: 125vh; /* Compensates for zoom: 0.8 (100 / 0.8 = 125) */
+    background: var(--bg-gradient);
 }
 
 /* Mobile Menu Button - Now visible on all screens in the header */
@@ -112,11 +123,11 @@ h4,
     top: 0;
     left: 0;
     width: 20rem;
-    height: 100vh;
+    height: 125vh; /* To compensate for 0.8 zoom and ensure it reaches the bottom */
     background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
     color: white;
     box-shadow: var(--shadow-xl);
-    z-index: 200; /* Increased to stay above sticky headers (like Archive action-bar) */
+    z-index: 200; 
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
     overflow-x: hidden;
