@@ -13,8 +13,10 @@
                     <p class="page-subtitle">Manage and view retired, resigned, and historical personnel records.</p>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
-                    <div id="realtime-status-archive" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 100px; color: #16a34a; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;">
-                        <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: pulse-green-archive 2s infinite;"></span>
+                    <div id="realtime-status-archive"
+                        style="display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 100px; color: #16a34a; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;">
+                        <span
+                            style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: pulse-green-archive 2s infinite;"></span>
                         Real-time Active
                     </div>
                 </div>
@@ -23,9 +25,20 @@
 
         <style>
             @keyframes pulse-green-archive {
-                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-                70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                0% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                }
+
+                70% {
+                    transform: scale(1.2);
+                    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+                }
+
+                100% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                }
             }
         </style>
 
@@ -254,8 +267,7 @@
                 data-report-url="{{ route('employees.archive.export.json') }}?tab=all"
                 data-report-store-url="{{ route('archive.reports.store') }}"
                 data-reports-list-url="{{ route('archive.reports.index') }}"
-                data-reported-ids-url="{{ route('archive.reported-ids') }}"
-                data-report-delete-url="/archive/reports"
+                data-reported-ids-url="{{ route('archive.reported-ids') }}" data-report-delete-url="/archive/reports"
                 data-csrf-token="{{ csrf_token() }}">
                 @include('partials.archive-panels')
             </div>
@@ -513,7 +525,11 @@
                 transition: none !important;
             }
 
-            .hover-row, .modern-table, .modern-table *, .tab-panels, .tab-panels * {
+            .hover-row,
+            .modern-table,
+            .modern-table *,
+            .tab-panels,
+            .tab-panels * {
                 transition: none !important;
                 animation: none !important;
                 transform: none !important;
@@ -712,61 +728,76 @@
 
     <!-- Report Viewer Modal -->
     <div id="reportViewModal" class="modal">
-        <div class="modal-content" style="max-width: 1200px; width: 95%; height: 90vh; padding: 0; display: flex; flex-direction: column;">
-            <div class="modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-card);">
+        <div class="modal-content"
+            style="max-width: 1200px; width: 95%; height: 95%; max-height: 95%; padding: 0; display: flex; flex-direction: column;">
+            <div class="modal-header"
+                style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-card);">
                 <div style="display: flex; flex-direction: column;">
-                    <h2 id="reportViewTitle" style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0;">Report Preview</h2>
-                    <span id="reportViewSub" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Loading document...</span>
+                    <h2 id="reportViewTitle"
+                        style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0;">Report Preview</h2>
+                    <span id="reportViewSub" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Loading
+                        document...</span>
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
-                    <button class="btn btn-outline" onclick="closeReportViewModal()" style="padding: 0.5rem; width: 2.5rem; height: 2.5rem; border-radius: 8px;">
+                    <button class="btn btn-outline" onclick="closeReportViewModal()"
+                        style="padding: 0.5rem; width: 2.5rem; height: 2.5rem; border-radius: 8px;">
                         <i data-lucide="x" style="width: 20px;"></i>
                     </button>
                 </div>
             </div>
-            <div class="modal-body" style="padding: 0; flex: 1; overflow: hidden; background: #64748b; display: flex; flex-direction: column; position: relative;">
-                <div id="reportViewLoading" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 10; gap: 1rem; color: var(--text-muted);">
+            <div class="modal-body"
+                style="padding: 0; flex: 1; overflow: hidden; background: #64748b; display: flex; flex-direction: column; position: relative;">
+                <div id="reportViewLoading"
+                    style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 10; gap: 1rem; color: var(--text-muted);">
                     <i data-lucide="loader" class="animate-spin" style="width: 3rem; height: 3rem;"></i>
                     <p style="font-weight: 700;">Preparing Preview...</p>
                 </div>
                 <!-- PDF Container -->
                 <iframe id="reportViewIframe" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
                 <!-- Excel Container -->
-                <div id="reportViewExcel" style="width: 100%; height: 100%; overflow: auto; background: #f1f5f9; display: none; padding: 20px;">
-                    <div style="background: white; border: 1px solid #ccc; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: fit-content; min-width: 100%;">
+                <div id="reportViewExcel"
+                    style="width: 100%; height: 100%; overflow: auto; background: #f1f5f9; display: none; padding: 20px;">
+                    <div
+                        style="background: white; border: 1px solid #ccc; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: fit-content; min-width: 100%;">
                         <table id="excelPreviewTable" class="gsheet-style-table"></table>
                     </div>
                 </div>
             </div>
-            
+
             <style>
-                .gsheet-style-table { 
-                    border-collapse: collapse; 
-                    background: white; 
-                    font-family: 'Arial Narrow', Arial, sans-serif; 
-                    font-size: 11px; 
+                .gsheet-style-table {
+                    border-collapse: collapse;
+                    background: white;
+                    font-family: 'Arial Narrow', Arial, sans-serif;
+                    font-size: 11px;
                     width: 100%;
                 }
-                .gsheet-style-table th, .gsheet-style-table td { 
-                    border: 1px solid #e2e8f0; 
-                    padding: 8px 10px; 
+
+                .gsheet-style-table th,
+                .gsheet-style-table td {
+                    border: 1px solid #e2e8f0;
+                    padding: 8px 10px;
                     color: #1e293b;
                     outline: none;
                 }
+
                 .gsheet-style-table td[contenteditable="true"]:focus {
                     background: #fff !important;
                     box-shadow: inset 0 0 0 2px #3b82f6;
                     z-index: 10;
                     position: relative;
                 }
+
                 .gsheet-style-table tbody tr:hover td {
                     background: #f8fafc;
                 }
+
                 .gsheet-style-table thead tr:first-child th {
                     background: #f8fafc;
                     font-weight: 800;
                     font-size: 13px;
                 }
+
                 .gsheet-col-header {
                     background: #f1f5f9;
                     color: #64748b;
@@ -776,6 +807,7 @@
                     width: 30px;
                     pointer-events: none;
                 }
+
                 .gsheet-row-header {
                     background: #f1f5f9;
                     color: #64748b;
@@ -786,8 +818,10 @@
                     pointer-events: none;
                 }
             </style>
-            <div class="modal-footer" style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--border); background: var(--bg-card); display: flex; justify-content: flex-end; gap: 1rem;">
-                <button id="downloadEditedBtn" class="btn btn-primary" onclick="redownloadCurrentViewReport()" style="padding: 0.5rem 1.25rem; border-radius: 10px; font-weight: 700;">
+            <div class="modal-footer"
+                style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--border); background: var(--bg-card); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button id="downloadEditedBtn" class="btn btn-primary" onclick="redownloadCurrentViewReport()"
+                    style="padding: 0.5rem 1.25rem; border-radius: 10px; font-weight: 700;">
                     <i data-lucide="save" style="width: 18px; margin-right: 4px;"></i> Download Edited File
                 </button>
             </div>
@@ -841,7 +875,8 @@
                         onclick="setReportTab('others', this)">Others</button>
                 </div>
 
-                <div style="display: flex; gap: 2rem; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+                <div
+                    style="display: flex; gap: 2rem; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
                     <!-- Format Choice -->
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <label style="font-size: 0.85rem; font-weight: 800; color: var(--text-main);">Format:</label>

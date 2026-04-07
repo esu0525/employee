@@ -8,11 +8,14 @@
         $canEditRequests = $currentUser && $currentUser->hasPermission('edit_requests');
 
         if (!function_exists('fixAcronyms')) {
-            function fixAcronyms($str) {
-                if (!$str) return $str;
-                return preg_replace_callback('/\b(sdo|dbm|bir|ra|lgu|ict|hr|deped|tor|qc|gsis|pag-ibig)\b/i', function($matches) {
+            function fixAcronyms($str)
+            {
+                if (!$str)
+                    return $str;
+                return preg_replace_callback('/\b(sdo|dbm|bir|ra|lgu|ict|hr|deped|tor|qc|gsis|pag-ibig)\b/i', function ($matches) {
                     $m = strtolower($matches[1]);
-                    if ($m === 'deped') return 'DepEd';
+                    if ($m === 'deped')
+                        return 'DepEd';
                     return strtoupper($matches[1]);
                 }, $str);
             }
@@ -20,16 +23,22 @@
     @endphp
     <div class="page-content" style="position: relative; z-index: 1;">
         <!-- Modern Header Section -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; gap: 1rem; flex-wrap: wrap;">
+        <div
+            style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; gap: 1rem; flex-wrap: wrap;">
             <div>
-                <h1 style="font-size: 2.5rem; font-weight: 900; color: #1e1b4b; margin: 0 0 0.5rem 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.03em;">Request Center</h1>
-                <p style="color: #64748b; font-size: 1.125rem; font-weight: 500; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <h1
+                    style="font-size: 2.5rem; font-weight: 900; color: #1e1b4b; margin: 0 0 0.5rem 0; font-family: 'Outfit', sans-serif; letter-spacing: -0.03em;">
+                    Request Center</h1>
+                <p
+                    style="color: #64748b; font-size: 1.125rem; font-weight: 500; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                     <i data-lucide="file-text" style="width: 18px; height: 18px;"></i> Document Requisition & Tracking
                 </p>
             </div>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
-                <div id="realtime-status" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 100px; color: #16a34a; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: pulse-green 2s infinite;"></span>
+                <div id="realtime-status"
+                    style="display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 100px; color: #16a34a; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <span
+                        style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: pulse-green 2s infinite;"></span>
                     Real-time Active
                 </div>
             </div>
@@ -37,9 +46,20 @@
 
         <style>
             @keyframes pulse-green {
-                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-                70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                0% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                }
+
+                70% {
+                    transform: scale(1.2);
+                    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+                }
+
+                100% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                }
             }
         </style>
 
@@ -168,26 +188,23 @@
                             <th class="th-mod" style="text-align: center;">Date Filed</th>
                             <th class="th-mod" style="text-align: center;">Attachment</th>
                             @if($canEditRequests)
-                            <th class="th-mod" style="text-align: center;">Quick Action</th>
+                                <th class="th-mod" style="text-align: center;">Quick Action</th>
                             @endif
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($requests as $req)
-                            <tr class="tr-row clickable-row" 
-                                data-id="{{ $req->id }}" 
-                                data-type="pending"
-                                data-timestamp="{{ $req->created_at->timestamp }}"
-                                onclick="showRequestDetails({
-                                    id: '{{ $req->id }}',
-                                    name: '{{ $req->employee_name }}',
-                                    agency: '{{ fixAcronyms($req->agency ?? 'Unspecified') }}',
-                                    type: '{{ fixAcronyms($req->request_type) }}',
-                                    purpose: '{{ fixAcronyms($req->purpose ?? 'General') }}',
-                                    copies: '{{ $req->num_copies ?? 1 }}',
-                                    date: '{{ $req->request_date->format('M d, Y') }}',
-                                    file: '{{ $req->requirements_file ? asset($req->requirements_file) : '' }}'
-                                })">
+                            <tr class="tr-row clickable-row" data-id="{{ $req->id }}" data-type="pending"
+                                data-timestamp="{{ $req->created_at->timestamp }}" onclick="showRequestDetails({
+                                            id: '{{ $req->id }}',
+                                            name: '{{ $req->employee_name }}',
+                                            agency: '{{ fixAcronyms($req->agency ?? 'Unspecified') }}',
+                                            type: '{{ fixAcronyms($req->request_type) }}',
+                                            purpose: '{{ fixAcronyms($req->purpose ?? 'General') }}',
+                                            copies: '{{ $req->num_copies ?? 1 }}',
+                                            date: '{{ $req->request_date->format('M d, Y') }}',
+                                            file: '{{ $req->requirements_file ? asset($req->requirements_file) : '' }}'
+                                        })">
                                 <td style="padding: 1.25rem 1.5rem;">
                                     <div class="row-new-badge">NEW</div>
                                     <span class="id-badge">#{{ $req->id }}</span>
@@ -211,8 +228,10 @@
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
                                     <div style="display: flex; flex-direction: column; gap: 0.1rem;">
-                                        <span class="date-text" style="font-weight: 800;">{{ $req->created_at->format('M d, Y') }}</span>
-                                        <span style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ $req->created_at->format('h:i A') }}</span>
+                                        <span class="date-text"
+                                            style="font-weight: 800;">{{ $req->created_at->format('M d, Y') }}</span>
+                                        <span
+                                            style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ $req->created_at->format('h:i A') }}</span>
                                     </div>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
@@ -220,8 +239,7 @@
                                         <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
                                             @php $files = explode(';', $req->requirements_file); @endphp
                                             @foreach($files as $index => $file)
-                                                <button
-                                                    onclick="event.stopPropagation(); showAttachment('{{ asset($file) }}')"
+                                                <button onclick="event.stopPropagation(); showAttachment('{{ asset($file) }}')"
                                                     class="btn-attachment">
                                                     <i data-lucide="paperclip"></i> File {{ count($files) > 1 ? ($index + 1) : '' }}
                                                 </button>
@@ -232,19 +250,23 @@
                                     @endif
                                 </td>
                                 @if($canEditRequests)
-                                <td style="padding: 1.25rem 1.5rem; text-align: center;">
-                                    <div style="display: flex; gap: 0.75rem; justify-content: center;"
-                                        onclick="event.stopPropagation()">
-                                        <form id="quick-approve-{{ $req->id }}" action="{{ route('requests.approve', $req->id) }}" method="POST">@csrf
-                                            <button type="button" class="btn-action approve" title="Approve Request" onclick="showConfirmModal('approve', 'quick-approve-{{ $req->id }}')"><i
-                                                    data-lucide="check"></i></button>
-                                        </form>
-                                        <form id="quick-reject-{{ $req->id }}" action="{{ route('requests.reject', $req->id) }}" method="POST">@csrf
-                                            <button type="button" class="btn-action reject" title="Reject Request" onclick="showConfirmModal('reject', 'quick-reject-{{ $req->id }}')"><i
-                                                    data-lucide="x"></i></button>
-                                        </form>
-                                    </div>
-                                </td>
+                                    <td style="padding: 1.25rem 1.5rem; text-align: center;">
+                                        <div style="display: flex; gap: 0.75rem; justify-content: center;"
+                                            onclick="event.stopPropagation()">
+                                            <form id="quick-approve-{{ $req->id }}"
+                                                action="{{ route('requests.approve', $req->id) }}" method="POST">@csrf
+                                                <button type="button" class="btn-action approve" title="Approve Request"
+                                                    onclick="showConfirmModal('approve', 'quick-approve-{{ $req->id }}')"><i
+                                                        data-lucide="check"></i></button>
+                                            </form>
+                                            <form id="quick-reject-{{ $req->id }}" action="{{ route('requests.reject', $req->id) }}"
+                                                method="POST">@csrf
+                                                <button type="button" class="btn-action reject" title="Reject Request"
+                                                    onclick="showConfirmModal('reject', 'quick-reject-{{ $req->id }}')"><i
+                                                        data-lucide="x"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 @endif
                             </tr>
                         @empty
@@ -289,8 +311,7 @@
                         @forelse ($approved_requests as $req)
                             <tr class="tr-row approved-hover"
                                 onclick="showRequestDetails({ id: {{ $req->id }}, status: 'approved' })"
-                                data-id="{{ $req->id }}"
-                                data-type="approved"
+                                data-id="{{ $req->id }}" data-type="approved"
                                 data-timestamp="{{ $req->updated_at->timestamp }}">
                                 <td style="padding: 1.25rem 1.5rem;">
                                     <div class="row-new-badge">NEW</div>
@@ -316,8 +337,10 @@
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
                                     <div style="display: flex; flex-direction: column; gap: 0.1rem;">
-                                        <span class="date-text" style="font-weight: 800; color: #059669;">{{ $req->updated_at->format('M d, Y') }}</span>
-                                        <span style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ $req->updated_at->format('h:i A') }}</span>
+                                        <span class="date-text"
+                                            style="font-weight: 800; color: #059669;">{{ $req->updated_at->format('M d, Y') }}</span>
+                                        <span
+                                            style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ $req->updated_at->format('h:i A') }}</span>
                                     </div>
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; text-align: center;">
@@ -353,53 +376,62 @@
     <!-- Request Details Modal (A4 Print Format) -->
     <div id="detailsModal" class="modal-overlay" onclick="closeModal('detailsModal')">
         <div class="modal-card-large" onclick="event.stopPropagation()"
-            style="max-height: 95vh; display: flex; flex-direction: column;">
+            style="height: 95%; max-height: 95%; width: 95%; max-width: 1250px; display: flex; flex-direction: column;">
             <div class="modal-header">
                 <h2>Official Request View</h2>
                 <div style="display: flex; gap: 1rem; align-items: center;">
                     @if($canEditRequests)
-                    <button id="print-btn-modal" onclick="printIframe()" class="modal-btn approve"
-                        style="padding: 0.6rem 1.5rem; width: auto; font-size: 0.9rem;">
-                        <i data-lucide="printer"></i> Print Document
-                    </button>
+                        <button id="print-btn-modal" onclick="printIframe()" class="modal-btn approve"
+                            style="padding: 0.6rem 1.5rem; width: auto; font-size: 0.9rem;">
+                            <i data-lucide="printer"></i> Print Document
+                        </button>
                     @endif
                     <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
                 </div>
             </div>
-            <div class="modal-body-full" style="flex: 1; overflow: hidden; background: #f1f5f9;">
+            <div class="modal-body-full" style="flex: 1; overflow: hidden; background: #f1f5f9; padding: 0;">
                 <iframe id="detailsFrame" src=""
-                    style="width: 100%; height: 85vh; border: none; background: white;"></iframe>
+                    style="width: 100%; height: 100%; border: none; background: white;"></iframe>
             </div>
             @if($canEditRequests)
-            <div id="modal-approval-footer" class="modal-footer" style="padding: 1.25rem 2rem;">
-                <div style="display: flex; gap: 1.5rem; align-items: center; justify-content: flex-end; width: 100%;">
-                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 600; flex: 1;">Quick Process:</span>
-                    <form id="form-approve" method="POST" style="margin: 0;"> @csrf
-                        <button type="button" onclick="approveWithPreparedBy()" class="modal-btn approve" style="padding: 0.75rem 2rem; width: auto;">Approve
-                            Now</button>
-                    </form>
-                    <form id="form-reject" method="POST" style="margin: 0;"> @csrf
-                        <button type="button" onclick="rejectRequestWithConfirm()" class="modal-btn reject" style="padding: 0.75rem 2rem; width: auto;">Reject
-                            Request</button>
-                    </form>
+                <div id="modal-approval-footer" class="modal-footer" style="padding: 1.25rem 2rem;">
+                    <div style="display: flex; gap: 1.5rem; align-items: center; justify-content: flex-end; width: 100%;">
+                        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600; flex: 1;">Quick Process:</span>
+                        <form id="form-approve" method="POST" style="margin: 0;"> @csrf
+                            <button type="button" onclick="approveWithPreparedBy()" class="modal-btn approve"
+                                style="padding: 0.75rem 2rem; width: auto;">Approve
+                                Now</button>
+                        </form>
+                        <form id="form-reject" method="POST" style="margin: 0;"> @csrf
+                            <button type="button" onclick="rejectRequestWithConfirm()" class="modal-btn reject"
+                                style="padding: 0.75rem 2rem; width: auto;">Reject
+                                Request</button>
+                        </form>
+                    </div>
                 </div>
-            </div>
             @endif
         </div>
     </div>
 
     <!-- Confirm Action Modal -->
     <div id="confirmActionModal" class="modal-overlay" style="z-index: 10005;" onclick="closeConfirmModal()">
-        <div class="modal-card" style="max-width: 400px; padding: 2rem; text-align: center;" onclick="event.stopPropagation()">
-            <div id="confirmIconBox" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center;">
+        <div class="modal-card" style="max-width: 400px; padding: 2rem; text-align: center;"
+            onclick="event.stopPropagation()">
+            <div id="confirmIconBox"
+                style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center;">
                 <i id="confirmIcon" style="width: 30px; height: 30px;"></i>
             </div>
-            <h3 id="confirmTitle" style="font-family: 'Outfit'; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Confirm Action</h3>
-            <p id="confirmMessage" style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5;">Are you sure?</p>
-            
+            <h3 id="confirmTitle"
+                style="font-family: 'Outfit'; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Confirm Action
+            </h3>
+            <p id="confirmMessage" style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5;">Are
+                you sure?</p>
+
             <div style="display: flex; gap: 1rem;">
-                <button type="button" class="modal-btn" style="background: #f1f5f9; color: #475569; flex: 1;" onclick="closeConfirmModal()">Cancel</button>
-                <button type="button" id="confirmSubmitBtn" class="modal-btn" style="flex: 1;" onclick="submitConfirmForm()">Yes</button>
+                <button type="button" class="modal-btn" style="background: #f1f5f9; color: #475569; flex: 1;"
+                    onclick="closeConfirmModal()">Cancel</button>
+                <button type="button" id="confirmSubmitBtn" class="modal-btn" style="flex: 1;"
+                    onclick="submitConfirmForm()">Yes</button>
             </div>
         </div>
     </div>
@@ -425,22 +457,26 @@
     </div>
 
     <style>
-            /* Tab Panes Fade Animation - REMOVED for instant search snappy feel */
-            .tab-pane {
-                display: none;
-            }
+        /* Tab Panes Fade Animation - REMOVED for instant search snappy feel */
+        .tab-pane {
+            display: none;
+        }
 
-            .tab-pane.active {
-                display: block;
-                animation: none !important;
-                transition: none !important;
-            }
+        .tab-pane.active {
+            display: block;
+            animation: none !important;
+            transition: none !important;
+        }
 
-            .hover-row, .modern-table, .modern-table *, .tab-panels, .tab-panels * {
-                transition: none !important;
-                animation: none !important;
-                transform: none !important;
-            }
+        .hover-row,
+        .modern-table,
+        .modern-table *,
+        .tab-panels,
+        .tab-panels * {
+            transition: none !important;
+            animation: none !important;
+            transform: none !important;
+        }
 
         .stats-dashboard-grid {
             display: grid;
@@ -474,7 +510,7 @@
             .stats-dashboard-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .action-bar-modern {
                 flex-direction: column;
                 align-items: stretch;
@@ -484,6 +520,7 @@
                 width: 100%;
                 display: flex;
             }
+
             .tab-switcher-container .tab-btn {
                 flex: 1;
                 text-align: center;
@@ -715,21 +752,38 @@
         }
 
         @keyframes pulse-blue {
-            0% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
-            50% { transform: scale(1.05); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.6); }
-            100% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+            0% {
+                transform: scale(1);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            }
+
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 4px 20px rgba(59, 130, 246, 0.6);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            }
         }
 
         @keyframes highlight-fade {
-            from { background: rgba(59, 130, 246, 0.08); }
-            to { background: white; }
+            from {
+                background: rgba(59, 130, 246, 0.08);
+            }
+
+            to {
+                background: white;
+            }
         }
 
         body[data-theme="dark"] .row-highlight-new {
             background: rgba(245, 158, 11, 0.1) !important;
             border-color: rgba(245, 158, 11, 0.4) !important;
         }
-            color: #1e293b;
+
+        color: #1e293b;
         }
 
         .agency-label {
@@ -1158,6 +1212,7 @@
             background: linear-gradient(135deg, #1e293b, #0f172a) !important;
             border-color: #334155 !important;
         }
+
         body[data-theme="dark"] .modal-card-large {
             background: #0f172a;
             border: 1px solid #334155;
@@ -1184,6 +1239,7 @@
             #app-container:not(.collapsed-sidebar) .main-content {
                 margin-left: 20rem !important;
             }
+
             .collapsed-sidebar .main-content {
                 margin-left: 5.5rem !important;
             }

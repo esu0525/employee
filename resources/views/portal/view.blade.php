@@ -265,6 +265,8 @@
                         height: auto !important;
                         display: block !important;
                         -webkit-print-color-adjust: exact !important;
+                        zoom: 1 !important; /* Disable global zoom for printing */
+                        overflow: visible !important;
                     }
 
                     .printable-paper-container {
@@ -272,6 +274,9 @@
                         padding: 0 !important;
                         margin: 0 !important;
                         min-height: auto !important;
+                        width: 100% !important;
+                        display: block !important;
+                        overflow: visible !important;
                     }
 
                     /* Remove any backgrounds and shadows */
@@ -283,38 +288,38 @@
                     /* Reset main containers for printing */
                     main,
                     article,
+                    .portal-container,
                     .container-fluid,
                     .content-wrapper {
                         display: block !important;
                         width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
+                        max-width: none !important;
                         border: none !important;
-                    }
-
-                    /* I-center at i-full size ang papel */
-                    .printable-paper-container {
-                        display: block !important;
-                        width: 210mm !important;
-                        margin: 0 auto !important;
+                        overflow: visible !important;
                     }
 
                     .printable-paper {
-                        width: 210mm !important;
+                        width: 100% !important; /* Use 100% to fill the A4 width defined in @page */
+                        max-width: 210mm !important; /* But capped at A4 width */
                         min-height: 297mm !important;
                         padding: 10mm 15mm !important;
                         /* Standard A4 padding */
-                        margin: 0 !important;
+                        margin: 0 auto !important;
                         background: white !important;
                         position: relative !important;
                         box-sizing: border-box !important;
+                        border: none !important;
+                        box-shadow: none !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                         page-break-after: avoid;
+                        overflow: visible !important;
                     }
 
                     /* Siguraduhin na ang absolute footer ay nasa dulo ng paper */
-                    .printable-paper div[style*="position: absolute; bottom: 15mm;"] {
+                    .printable-paper div[style*="position: absolute; bottom:"] {
                         position: absolute !important;
                         bottom: 10mm !important;
                         /* Itaas nang kaunti para hindi maputol */
