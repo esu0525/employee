@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'deped_system' => [
+        'api_url' => env('DEPED_SYSTEM_API_URL', 'http://localhost/integ/deped-system/public/api'),
+    ],
+
 ];

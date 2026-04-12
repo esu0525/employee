@@ -133,14 +133,19 @@ class EmployeeController extends Controller
             });
         }
 
-        // Sorting the collection
+        // Sorting the collection for Masterlist
         if ($sort === 'name_desc') {
             $employeesCollection = $employeesCollection->sortByDesc(function($e) {
-                return strtolower($e->last_name ?? $e->name);
+                return strtolower(($e->last_name ?? '') . ' ' . ($e->first_name ?? '') . ' ' . ($e->middle_name ?? '') . ' ' . ($e->name ?? ''));
+            })->values();
+        } elseif ($sort === 'position') {
+            $employeesCollection = $employeesCollection->sortBy(function($e) {
+                return strtolower(($e->position ?? '') . ' ' . ($e->last_name ?? '') . ' ' . ($e->first_name ?? ''));
             })->values();
         } else {
+            // Default: Name A-Z
             $employeesCollection = $employeesCollection->sortBy(function($e) {
-                return strtolower($e->last_name ?? $e->name);
+                return strtolower(($e->last_name ?? '') . ' ' . ($e->first_name ?? '') . ' ' . ($e->middle_name ?? '') . ' ' . ($e->name ?? ''));
             })->values();
         }
 
@@ -205,9 +210,9 @@ class EmployeeController extends Controller
         }
 
         if ($sort === 'position') {
-            $query->orderBy('position', 'asc')->orderBy('last_name', 'asc');
+            $query->orderBy('position', 'asc')->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
         } else {
-            $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
+            $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc')->orderBy('middle_name', 'asc');
         }
 
         $employees = $query->get(['id', 'name', 'position', 'agency', 'category', 'employment_status', 'employment_type', 'salary_grade', 'level_of_position', 'sex', 'date_joined']);
@@ -487,7 +492,7 @@ class EmployeeController extends Controller
             }
 
             if ($sort === 'name') {
-                $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc');
+                $query->orderBy('last_name', 'asc')->orderBy('first_name', 'asc')->orderBy('middle_name', 'asc');
             } elseif ($sort === 'sep_asc') {
                 $query->orderBy('effective_date', 'asc');
             } elseif ($sort === 'archived_recent') {
@@ -618,7 +623,7 @@ class EmployeeController extends Controller
         $approved_count = EmployeeRequest::where('status', 'approved')->count();
         $rejected_count = EmployeeRequest::where('status', 'rejected')->count();
 
-        $employees = Employee::where('status', 'active')->orderBy('name', 'asc')->get();
+        $employees = Employee::where('status', 'active')->orderBy('last_name', 'asc')->orderBy('first_name', 'asc')->get();
 
         $viewData = compact(
             'requests', 'approved_requests', 'search', 'year', 'active_tab',
