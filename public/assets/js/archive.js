@@ -7,6 +7,7 @@ const config = {
     reportStoreUrl: '/archive/reports',
     reportsListUrl: '/archive/reports',
     reportedIdsUrl: '/archive/reported-employee-ids',
+    reportDownloadRoot: '/archive/reports',
     csrfToken: '',
 };
 
@@ -652,7 +653,9 @@ async function viewArchiveReport(reportId) {
         sub.innerText = `${r.file_name}.pdf • Generated on ${new Date(r.created_at).toLocaleDateString()}`;
 
         // Fetch the employees included in this report
-        const empRes = await fetch(config.reportEmployeesUrl + '?tab=all');
+        // Fetch the employees included in this report - Use base URL without double-tab
+        const empUrl = config.reportEmployeesUrl.includes('?') ? config.reportEmployeesUrl : config.reportEmployeesUrl + '?tab=all';
+        const empRes = await fetch(empUrl);
         const allEmps = await empRes.json();
         const selectedEmployees = allEmps.filter(e => r.employee_ids.includes(String(e.id)));
         
@@ -839,7 +842,9 @@ async function redownloadArchiveReport(reportId) {
         if (!r) throw new Error('Report not found');
 
         // Fetch the employees included in this report
-        const empRes = await fetch(config.reportEmployeesUrl + '?tab=all');
+        // Fetch the employees included in this report
+        const empUrl = config.reportEmployeesUrl.includes('?') ? config.reportEmployeesUrl : config.reportEmployeesUrl + '?tab=all';
+        const empRes = await fetch(empUrl);
         const allEmps = await empRes.json();
         
         // Filter those in report.employee_ids

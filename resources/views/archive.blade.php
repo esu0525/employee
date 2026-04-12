@@ -1003,5 +1003,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="{{ asset('assets/js/archive.js') }}?v=1.7"></script>
+    <script src="{{ asset('assets/js/archive.js') }}?v=1.8"></script>
 @endpush
