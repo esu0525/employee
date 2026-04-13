@@ -80,7 +80,7 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     min-height: 100%;
-    background: #ffffff !important;
+    background: var(--bg-main);
 }
 
 h1,
@@ -558,7 +558,7 @@ h4,
     overflow-y: auto;
     scroll-behavior: smooth;
     transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    background: #ffffff !important;
+    background: var(--bg-card);
     min-height: 100vh;
 }
 
