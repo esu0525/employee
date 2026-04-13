@@ -39,6 +39,7 @@ function setTheme(theme, event) {
     }
     
     document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
     localStorage.setItem('app-theme', theme);
     
     // Update active button

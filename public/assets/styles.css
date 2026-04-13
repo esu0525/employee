@@ -61,6 +61,130 @@
     --title-gradient: linear-gradient(to right, #1e1b4b, #4338ca, #6366f1);
 }
 
+/* ─── Dark Mode ─────────────────────────────────────────────────────────── */
+body[data-theme="dark"] {
+    --primary: #818cf8;
+    --primary-light: #a5b4fc;
+    --primary-dark: #6366f1;
+    --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --primary-soft: #334155;
+
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --bg-gradient: #0f172a;
+    --border: rgba(255, 255, 255, 0.12);
+    --border-light: rgba(255, 255, 255, 0.06);
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+
+    --success-soft: #064e3b;
+    --info-soft: #1e3a8a;
+    --warning-soft: #78350f;
+    --danger-soft: #7f1d1d;
+
+    --glass: rgba(30, 41, 59, 0.85);
+    --title-gradient: linear-gradient(to right, #818cf8, #a78bfa, #c084fc);
+
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+body[data-theme="dark"] .app-container {
+    background: radial-gradient(circle at top left, #1e293b, #0f172a);
+}
+
+body[data-theme="dark"] .main-content {
+    background: var(--bg-card);
+}
+
+body[data-theme="dark"] .stat-card,
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .table-container {
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+
+body[data-theme="dark"] .search-input,
+body[data-theme="dark"] input,
+body[data-theme="dark"] select,
+body[data-theme="dark"] textarea {
+    background: #0f172a;
+    color: var(--text-main);
+    border-color: var(--border);
+}
+
+body[data-theme="dark"] .search-input::placeholder,
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+    color: var(--text-muted);
+}
+
+body[data-theme="dark"] table thead tr {
+    background: #0f172a;
+}
+
+body[data-theme="dark"] table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+body[data-theme="dark"] table td,
+body[data-theme="dark"] table th {
+    border-color: var(--border);
+    color: var(--text-main);
+}
+
+body[data-theme="dark"] .btn-outline {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border-color: var(--border);
+}
+
+/* ─── Night (Eye Protection) Mode ──────────────────────────────────────── */
+body[data-theme="night"] {
+    --primary: #d97706;
+    --primary-light: #f59e0b;
+    --primary-dark: #b45309;
+    --primary-gradient: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+    --primary-soft: #fef3c7;
+
+    --bg-main: #f2ead3;
+    --bg-card: #fdf8ee;
+    --bg-gradient: #f2ead3;
+    --border: #c4a98a;
+    --border-light: #ddd0bb;
+    --text-main: #1a0f00;
+    --text-muted: #7c5c34;
+
+    --success-soft: #ebf5eb;
+    --info-soft: #e3f0f5;
+    --warning-soft: #fdf0d5;
+    --danger-soft: #fdebef;
+
+    --glass: rgba(253, 248, 238, 0.9);
+    --title-gradient: linear-gradient(to right, #92400e, #b45309, #d97706);
+
+    background: var(--bg-main);
+    color: var(--text-main);
+    filter: sepia(0.25) brightness(1) contrast(0.95);
+}
+
+body[data-theme="night"] .app-container {
+    background: radial-gradient(circle at top left, #fdfbf7, #f2ead3);
+}
+
+body[data-theme="night"] .main-content {
+    background: var(--bg-card);
+}
+
+body[data-theme="night"] .search-input,
+body[data-theme="night"] input,
+body[data-theme="night"] select,
+body[data-theme="night"] textarea {
+    background: #fdf8ee;
+    color: var(--text-main);
+    border-color: var(--border);
+}
+
 * {
     margin: 0;
     padding: 0;

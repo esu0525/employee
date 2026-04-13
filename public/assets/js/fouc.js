@@ -5,3 +5,15 @@ if (localStorage.getItem('sidebar_collapsed') === 'true' && window.innerWidth >=
         container.classList.add('collapsed-sidebar');
     }
 }
+
+// Apply saved theme immediately to <body> to avoid FOUC on dark/night mode
+(function() {
+    const savedTheme = localStorage.getItem('app-theme');
+    if (savedTheme && savedTheme !== 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        // body may not exist yet at this point in sidebar fouc.js, so we use a listener
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.setAttribute('data-theme', savedTheme);
+        });
+    }
+})();

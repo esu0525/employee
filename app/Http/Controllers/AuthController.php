@@ -73,78 +73,47 @@ class AuthController extends Controller
                 ->with('error', 'Invalid email or password.');
         }
 
-        // Check for persistent lockout from session
-        $lockedUntil = session('otp_locked_until');
-        if ($lockedUntil) {
-            if (now()->lessThan($lockedUntil)) {
-                $remaining = now()->diffInSeconds($lockedUntil);
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'locked' => true,
-                        'seconds' => $remaining,
-                        'message' => 'Too many failed attempts. Try again in ' . ceil($remaining / 60) . ' minute(s).',
-                    ]);
-                }
-                return back()->with('error', 'Account locked. Try again later.');
-            } else {
-                // Lockout has expired - clear it and reset attempts
-                session(['otp_attempts' => 0, 'otp_locked_until' => null]);
-            }
-        }
+        // Credentials are valid — log in directly (no OTP)
+        $remember = $request->has('remember');
+        Auth::login($user, $remember);
 
-        // Invalidate any old OTPs for this user
-        OtpCode::where('user_id', $user->id)->update(['used' => true]);
-
-        // Generate new 6-digit OTP
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        OtpCode::create([
-            'user_id' => $user->id,
-            'code' => $code,
-            'expires_at' => now()->addMinutes(self::OTP_EXPIRY_MINUTES),
-            'used' => false,
-        ]);
-
-        // Store temp session data
+        // Set authenticated session markers
         session([
-            'otp_user_id' => $user->id,
-            'remember'    => $request->has('remember'),
-            'otp_attempts'  => 0,
-            // Flag disabled as we trigger background send directly in this method now
-            'trigger_initial_resend' => false, 
+            'auth_user_id'   => $user->id,
+            'auth_user_name' => $user->name,
+            'auth_user_email'=> $user->email,
+            'auth_user_role' => $user->role,
+            'keep_logged_in' => $remember,
+            'welcome_name'   => $user->name,
+            'welcome_avatar' => $user->profile_picture,
         ]);
-        session()->save();
+        session()->flash('show_welcome_modal', true);
 
-        // ─── Fire Background OTP Dispatch ──────────────────────────────────────
-        // This makes the login button fast but starts the email process immediately
-        try {
-            $php = defined('PHP_BINARY') ? PHP_BINARY : 'php';
-            $artisan = base_path('artisan');
-            
-            \Log::info("Login-based async OTP for {$user->email} using $code");
-
-            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                $cmd = "start /B \"\" \"$php\" \"$artisan\" app:send-otp {$user->id} $code > nul 2>&1";
-                pclose(popen($cmd, "r"));
-            } else {
-                $cmd = "\"$php\" \"$artisan\" app:send-otp {$user->id} $code > /dev/null 2>&1 &";
-                exec($cmd);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Background OTP trigger error in login(): ' . $e->getMessage());
+        // If "Keep Me Logged In" is active, extend session lifetime aggressively
+        if ($remember) {
+            $oneYear = 525600; // minutes
+            config(['session.lifetime' => $oneYear]);
+            ini_set('session.gc_maxlifetime', $oneYear * 60);
         }
+
+        // Record the login log
+        \App\Models\ActivityLog::log('login', 'auth', 'User logged into the system');
+
+        // Update last login timestamp on user record
+        $user->update(['last_login_at' => now()]);
+
+        session()->save();
 
         // Return JSON success or redirect
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
-                'success' => true,
-                'email' => $user->email,
-                'message' => 'Preparing verification screen...',
+                'success'  => true,
+                'redirect' => route('dashboard'),
+                'message'  => 'Login successful. Redirecting...',
             ]);
         }
 
-        return redirect()->route('auth.otp');
+        return redirect()->route('dashboard');
     }
 
     // ─── Register ─────────────────────────────────────────────────────────────

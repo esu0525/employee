@@ -47,7 +47,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(async response => {
                 const data = await response.clone().json().catch(() => ({}));
                 
-                if (data.success) {
+                if (data.success && data.redirect) {
+                    window.location.href = data.redirect;
+                } else if (data.success) {
                     showOTP();
                     if (data.message) showAlert(data.message, 'success');
                 } else if (data.locked) {
