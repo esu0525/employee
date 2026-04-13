@@ -57,7 +57,7 @@
     --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
     /* Gradients */
-    --bg-gradient: radial-gradient(circle at top left, #f1f5f9, #e2e8f0);
+    --bg-gradient: #ffffff;
     --title-gradient: linear-gradient(to right, #1e1b4b, #4338ca, #6366f1);
 }
 
@@ -79,7 +79,8 @@ body {
     color: var(--text-main);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    min-height: 125%; /* To compensate for 0.8 zoom and fill the screen */
+    min-height: 100%;
+    background: #ffffff !important;
 }
 
 h1,
@@ -94,7 +95,7 @@ h4,
 
 .app-container {
     display: flex;
-    height: 125vh; /* Compensates for zoom: 0.8 (100 / 0.8 = 125) */
+    min-height: 100vh;
     background: var(--bg-gradient);
 }
 
@@ -123,7 +124,7 @@ h4,
     top: 0;
     left: 0;
     width: 20rem;
-    height: 125vh; /* To compensate for 0.8 zoom and ensure it reaches the bottom */
+    height: 125vh; /* Reverted to 125vh to fill the screen under 0.8 zoom */
     background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
     color: white;
     box-shadow: var(--shadow-xl);
@@ -131,6 +132,15 @@ h4,
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
     overflow-x: hidden;
+}
+
+.sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+.sidebar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* Collapsed state for desktop (Gmail style) */
@@ -439,7 +449,7 @@ h4,
 /* Sidebar Footer */
 .sidebar-footer {
     padding: 1.5rem;
-    border-top: 1px solid var(--border);
+    border-top: none;
 }
 
 .sidebar-user {
@@ -548,6 +558,8 @@ h4,
     overflow-y: auto;
     scroll-behavior: smooth;
     transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #ffffff !important;
+    min-height: 100vh;
 }
 
 /* Expanded state when sidebar is collapsed on desktop */

@@ -898,10 +898,6 @@
                             <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
                         </a>
                     </div>
-                    <div class="sidebar-footer-content" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between;">
-                        <p class="footer-text" style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin: 0;">© 2026 Admin Portal</p>
-                        <span class="version-tag" style="font-size: 0.65rem; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 2px 8px; border-radius: 6px; font-weight: 700;">v2.1</span>
-                    </div>
                 </div>
             </div>
         </aside>
