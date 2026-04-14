@@ -47,19 +47,13 @@ Route::post('/portal/submit', [PortalController::class, 'submit'])->name('portal
 
 // ─── Protected Routes (require login + OTP) ────────────────────────────────
 Route::middleware([AuthMiddleware::class])->group(function () {
-    // Session heartbeat - keeps session alive for "Keep Me Logged In" users
-    Route::get('/session/heartbeat', function () {
-        return response()->json([
-            'alive' => true,
-            'keep_logged_in' => session('keep_logged_in', false),
-        ]);
-    })->name('session.heartbeat');
+
 
     Route::get('/dashboard', [EmployeeController::class, 'dashboard'])->name('dashboard');
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/add-employee', [EmployeeController::class, 'addEmployee'])->name('employees.add');
     Route::get('/masterlist', [EmployeeController::class, 'masterlist'])->name('employees.masterlist');
-    Route::get('/masterlist/json', [EmployeeController::class, 'allEmployeesJson'])->name('employees.export.json');
+
     Route::post('/masterlist/import', [EmployeeController::class, 'import'])->name('employees.import');
     Route::get('/employee-details', [EmployeeController::class, 'show'])->name('employees.show');
     Route::post('/employee-details/{id}/update', [EmployeeController::class, 'update'])->name('employees.details-update');
@@ -68,7 +62,7 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::post('/employee/update-status/{id}', [EmployeeController::class, 'updateStatus'])->name('employees.update-status');
     Route::get('/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
-    Route::get('/archive/json', [EmployeeController::class, 'archiveEmployeesJson'])->name('employees.archive.export.json');
+
     Route::get('/history', function() { return redirect()->route('employees.archive'); });
     
     // Archive Reports
@@ -76,7 +70,7 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::get('/archive/reports/{id}/download', [ArchiveReportController::class, 'download'])->name('archive.reports.download');
     Route::post('/archive/reports', [ArchiveReportController::class, 'store'])->name('archive.reports.store');
     Route::delete('/archive/reports/{id}', [ArchiveReportController::class, 'destroy'])->name('archive.reports.destroy');
-    Route::get('/archive/reported-employee-ids', [ArchiveReportController::class, 'reportedEmployeeIds'])->name('archive.reported-ids');
+
     Route::get('/requests', [EmployeeController::class, 'requests'])->name('employees.requests');
     Route::post('/employee-details/upload/{id}', [EmployeeController::class, 'upload'])->name('employees.upload');
     Route::delete('/employee-details/delete-doc/{id}', [EmployeeController::class, 'deleteDoc'])->name('employees.delete-doc');
@@ -104,7 +98,7 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
-    Route::post('/profile/check-password', [ProfileController::class, 'checkPassword'])->name('profile.check-password');
+
 
     // File Display Routes
     Route::get('/display-file/employee-avatar/{id}', [FileController::class, 'showEmployeeAvatar'])->name('display.employee-avatar');

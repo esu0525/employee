@@ -1022,7 +1022,7 @@
 
     {{-- Session Heartbeat for "Keep Me Logged In" --}}
     <meta name="keep-logged-in" content="{{ session('keep_logged_in') ? '1' : '0' }}">
-    <meta name="heartbeat-url" content="{{ route('session.heartbeat') }}">
+    <meta name="heartbeat-url" content="{{ route('api.session.heartbeat') }}">
     <script>
     (function() {
         const heartbeatUrl = document.querySelector('meta[name="heartbeat-url"]')?.content;

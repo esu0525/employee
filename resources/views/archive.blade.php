@@ -278,11 +278,11 @@
         <!-- Tab Panels -->
         <div class="tab-panels-wrapper" style="margin-top: 1rem;">
             <div id="panelsContainer" class="tab-panels" data-active-tab="{{ $active_tab }}"
-                data-export-url="{{ route('employees.archive.export.json') }}"
-                data-report-url="{{ route('employees.archive.export.json') }}?tab=all"
+                data-export-url="{{ route('api.employees.archive.export.json') }}"
+                data-report-url="{{ route('api.employees.archive.export.json') }}?tab=all"
                 data-report-store-url="{{ route('archive.reports.store') }}"
                 data-reports-list-url="{{ route('archive.reports.index') }}"
-                data-reported-ids-url="{{ route('archive.reported-ids') }}" data-report-delete-url="/archive/reports"
+                data-reported-ids-url="{{ route('api.archive.reported-ids') }}" data-report-delete-url="/archive/reports"
                 data-csrf-token="{{ csrf_token() }}">
                 @include('partials.archive-panels')
             </div>

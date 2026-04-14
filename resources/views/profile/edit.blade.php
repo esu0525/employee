@@ -1042,7 +1042,7 @@
 
     function checkCurrentPassword(pw) {
         const ind = document.getElementById('cur_pw_indicator');
-        fetch('{{ route("profile.check-password") }}', {
+        fetch('{{ route("api.profile.check-password") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

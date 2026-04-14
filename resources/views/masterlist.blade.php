@@ -38,7 +38,7 @@
          data-initial-sort="{{ $sort }}" 
          data-initial-category="{{ $categoryFilter ?? '' }}" 
          data-initial-status="{{ $statusFilter ?? '' }}"
-         data-export-url="{{ route("employees.export.json") }}">
+         data-export-url="{{ route("api.employees.export.json") }}">
         <div class="search-container">
             <i data-lucide="search" class="search-icon"></i>
             <input 
