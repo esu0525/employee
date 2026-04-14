@@ -50,6 +50,26 @@ document.addEventListener('DOMContentLoaded', function () {
     // Sync name on load if old values exist
     syncFullName();
 
+    // Arrow Key Navigation
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            const active = document.activeElement;
+            if (active && active.classList.contains('form-input')) {
+                const inputs = Array.from(document.querySelectorAll('.form-input:not([type="hidden"]):not([readonly])'));
+                const index = inputs.indexOf(active);
+                if (index === -1) return;
+
+                if (e.key === 'ArrowDown' && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                    e.preventDefault();
+                } else if (e.key === 'ArrowUp' && index > 0) {
+                    inputs[index - 1].focus();
+                    e.preventDefault();
+                }
+            }
+        }
+    });
+
     // AJAX Submission with Progress
     const form = document.getElementById('addEmployeeForm');
     if (form) {
@@ -61,6 +81,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
 });
+
+function handleFileSelect(input) {
+    const rowId = input.closest('.doc-row').id.split('_')[1];
+    const listContainer = document.getElementById(`fileList_${rowId}`);
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+    
+    if (input.files && input.files.length > 0) {
+        Array.from(input.files).forEach(file => {
+            const fileItem = document.createElement('div');
+            fileItem.style.cssText = 'display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.6rem; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: 6px; font-size: 0.75rem; font-weight: 600; color: var(--text-main);';
+            
+            let iconName = 'file-text';
+            if (file.type.includes('pdf')) iconName = 'file-type-2';
+            else if (file.type.includes('image')) iconName = 'file-image';
+            else if (file.type.includes('sheet') || file.name.endsWith('.xlsx')) iconName = 'file-spreadsheet';
+
+            fileItem.innerHTML = `<i data-lucide="${iconName}" style="width: 14px; height: 14px; color: var(--primary);"></i> <span>${file.name}</span>`;
+            listContainer.appendChild(fileItem);
+        });
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
 
 function syncFullName() {
     const lastName = document.getElementById('last_name');
@@ -161,16 +205,19 @@ function addDocRow() {
                     <option value="LEAVE / DTR">Leave / DTR</option>
                     <option value="PERSONAL DATA SHEET">Personal Data Sheet</option>
                     <option value="CLEARANCES">Clearances</option>
-                    <option value="OTHERS">Others</option>
+                    <option value="GENERAL">General</option>
                 </select>
             </div>
             <div class="form-group" style="grid-column: span 2; position: relative;">
                 <label class="form-label">Upload Files</label>
-                <div style="display: flex; gap: 0.75rem; align-items: center;">
-                    <input type="file" name="doc_items[${docRowCount}][files][]" class="form-input" multiple acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg">
-                    <button type="button" class="btn btn-outline btn-sm" onclick="removeDocRow(${docRowCount})" style="background: #fee2e2; border-color: #fca5a5; color: #b91c1c; min-width: 40px; padding: 0.5rem;">
-                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                    </button>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <input type="file" name="doc_items[${docRowCount}][files][]" class="form-input" multiple acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg" onchange="handleFileSelect(this)">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="removeDocRow(${docRowCount})" style="background: #fee2e2; border-color: #fca5a5; color: #b91c1c; min-width: 40px; padding: 0.5rem;">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
+                    <div class="doc-file-list" id="fileList_${docRowCount}" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;"></div>
                 </div>
             </div>
         </div>
@@ -208,13 +255,16 @@ function resetForm() {
                         <option value="LEAVE / DTR">Leave / DTR</option>
                         <option value="PERSONAL DATA SHEET">Personal Data Sheet</option>
                         <option value="CLEARANCES">Clearances</option>
-                        <option value="OTHERS">Others</option>
+                        <option value="GENERAL">General</option>
                     </select>
                 </div>
                 <div class="form-group" style="grid-column: span 2; position: relative;">
                     <label class="form-label">Upload Files</label>
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <input type="file" name="doc_items[0][files][]" class="form-input" multiple acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg">
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            <input type="file" name="doc_items[0][files][]" class="form-input" multiple acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg" onchange="handleFileSelect(this)">
+                        </div>
+                        <div class="doc-file-list" id="fileList_0" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;"></div>
                     </div>
                 </div>
             </div>

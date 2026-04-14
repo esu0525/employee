@@ -114,7 +114,8 @@ class User extends Authenticatable
                 'view_archive', 
                 'edit_archive', 
                 'manage_documents',
-                'export_archive'
+                'export_archive',
+                'edit_report'
             ];
             if (in_array($permission, $archivePool)) return true;
         }

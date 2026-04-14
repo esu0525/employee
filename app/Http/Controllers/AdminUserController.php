@@ -22,6 +22,7 @@ class AdminUserController extends Controller
             'view_requests'    => 'View Requests Center',
             'edit_masterlist'  => 'Edit Masterlist (Edit, Export, Status, Add)',
             'edit_archive'     => 'Edit Archive (Edit, Export, Upload)',
+            'edit_report'      => 'Edit Report',
             'edit_requests'    => 'Manage Requests (Approve/Reject)',
             'manage_documents' => 'Manage Documents',
             'manage_accounts'  => 'Manage Accounts'

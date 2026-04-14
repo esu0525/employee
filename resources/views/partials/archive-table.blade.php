@@ -14,6 +14,9 @@
             }, $str);
         }
     }
+
+    $currentUser = \App\Models\User::find(session('auth_user_id'));
+    $canDeleteArchive = $currentUser && $currentUser->hasPermission('edit_archive');
 @endphp
 
 <div class="table-container shadow-sm">
@@ -27,6 +30,9 @@
                     @if($hasDetails)<th>Details</th>@endif
                     @if($hasSoNo)<th>S.O. Number</th>@endif
                     <th>Status</th>
+                    @if($canDeleteArchive)
+                    <th style="width: 80px; text-align: center;">Action</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -122,10 +128,18 @@
                             </span>
                         @endif
                     </td>
+                    @if($canDeleteArchive)
+                    <td style="text-align: center;">
+                        <button type="button" class="btn-delete-archive" title="Delete Permanently"
+                                onclick="event.stopPropagation(); confirmArchiveDelete('{{ $employee->id }}', '{{ addslashes($archiveDisplayName) }}')">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </td>
+                    @endif
                 </tr>
                 @empty
                 <tr class="empty-row">
-                    <td colspan="{{ $hasDetails ? ($hasSoNo ? 6 : 5) : 4 }}" class="empty-cell">
+                    <td colspan="{{ ($hasDetails ? ($hasSoNo ? 7 : 6) : 5) - ($canDeleteArchive ? 0 : 1) }}" class="empty-cell">
                         <div class="empty-state">
                             <i data-lucide="{{ $icon }}"></i>
                             <p>No archived {{ strtolower($label) }} records found</p>
@@ -208,5 +222,24 @@
         font-weight: 700;
         white-space: nowrap;
     }
+    .btn-delete-archive {
+        background: transparent;
+        border: none;
+        color: #ef4444;
+        padding: 0.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-delete-archive:hover {
+        background: #fef2f2;
+        transform: scale(1.1);
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.15);
+    }
+    .btn-delete-archive i { width: 18px; height: 18px; }
+
     .text-muted-sm { color: var(--text-muted); font-size: 1rem; }
 </style>

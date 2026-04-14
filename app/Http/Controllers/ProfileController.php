@@ -35,6 +35,7 @@ class ProfileController extends Controller
             'view_requests'    => 'View Requests Center',
             'edit_masterlist'  => 'Edit Masterlist (Edit, Export, Status, Add)',
             'edit_archive'     => 'Edit Archive (Edit, Export, Upload)',
+            'edit_report'      => 'Edit Report',
             'edit_requests'    => 'Manage Requests (Approve/Reject)',
             'manage_documents' => 'Manage Documents',
             'manage_accounts'  => 'Manage Accounts'
@@ -242,34 +243,94 @@ class ProfileController extends Controller
      */
     public function updateAvatar(Request $request)
     {
-        $user = $this->getUser();
-        if (!$user) return redirect()->route('login');
+        $currentUser = $this->getUser();
+        if (!$currentUser) return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         
+        $targetUserId = $request->input('user_id', $currentUser->id);
+        if ($targetUserId != $currentUser->id && $currentUser->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $user = User::findOrFail($targetUserId);
+
         $request->validate([
-            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'avatar' => 'required|string' // We expect base64 from cropper
         ]);
         
-        $file = $request->file('avatar');
-        $filename = time() . '_' . \Illuminate\Support\Str::slug($user->name) . '.' . $file->getClientOriginalExtension();
+        $imgData = $request->avatar;
+        if (preg_match('/^data:image\/(\w+);base64,/', $imgData, $type)) {
+            $imgData = substr($imgData, strpos($imgData, ',') + 1);
+            $type = strtolower($type[1]); // jpg, png, gif
+
+            if (!in_array($type, ['jpg', 'jpeg', 'gif', 'png'])) {
+                return response()->json(['success' => false, 'message' => 'Invalid image type'], 422);
+            }
+
+            $imgData = base64_decode($imgData);
+
+            if ($imgData === false) {
+                return response()->json(['success' => false, 'message' => 'Base64 decode failed'], 422);
+            }
+        } else {
+            return response()->json(['success' => false, 'message' => 'Invalid image data'], 422);
+        }
+
+        $filename = time() . '_' . \Illuminate\Support\Str::slug($user->name) . '.' . $type;
+        $path = 'assets/avatars/' . $filename;
         
-        // Move the file into public/assets/avatars
-        $file->move(public_path('assets/avatars'), $filename);
+        if (!file_exists(public_path('assets/avatars'))) {
+            mkdir(public_path('assets/avatars'), 0755, true);
+        }
+
+        file_put_contents(public_path($path), $imgData);
         
         // Delete old avatar if exists and not default
         if ($user->profile_picture && file_exists(public_path($user->profile_picture))) {
             @unlink(public_path($user->profile_picture));
         }
         
-        $user->profile_picture = 'assets/avatars/' . $filename;
-        
-        // Also update session avatar since app.blade.php uses it
-        session(['welcome_avatar' => 'assets/avatars/' . $filename]);
-        
+        $user->profile_picture = $path;
         $user->save();
 
-        \App\Models\ActivityLog::log('edit', 'profile', 'Updated personal profile picture');
+        // Update session avatar ONLY if updating self
+        if ($targetUserId == $currentUser->id) {
+            session(['welcome_avatar' => $path]);
+        }
+        
+        \App\Models\ActivityLog::log('edit', 'profile', 'Updated profile picture for ' . ($targetUserId == $currentUser->id ? 'self' : $user->name) . ' (cropped)');
 
-        return redirect()->back()->with('success', 'Profile picture updated successfully.');
+        return response()->json(['success' => true, 'message' => 'Profile picture updated successfully.', 'avatar' => asset($path)]);
+    }
+
+    /**
+     * Delete the user's avatar.
+     */
+    public function deleteAvatar(Request $request)
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser) return redirect()->route('login');
+
+        $targetUserId = $request->input('user_id', $currentUser->id);
+        if ($targetUserId != $currentUser->id && $currentUser->role !== 'admin') {
+            return redirect()->back()->with('error', 'Unauthorized.');
+        }
+
+        $user = User::findOrFail($targetUserId);
+
+        if ($user->profile_picture && file_exists(public_path($user->profile_picture))) {
+            @unlink(public_path($user->profile_picture));
+        }
+
+        $user->profile_picture = null;
+        $user->save();
+
+        if ($targetUserId == $currentUser->id) {
+            session()->forget('welcome_avatar');
+        }
+
+        \App\Models\ActivityLog::log('delete', 'profile', 'Deleted profile picture for ' . ($targetUserId == $currentUser->id ? 'self' : $user->name));
+
+        return redirect()->back()->with('success', 'Profile picture deleted successfully.');
     }
     
     /**

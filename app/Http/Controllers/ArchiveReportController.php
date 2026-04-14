@@ -51,7 +51,22 @@ class ArchiveReportController extends Controller
      */
     public function index(Request $request)
     {
-        $reports = ArchiveReport::orderBy('created_at', 'desc')->get();
+        $query = ArchiveReport::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where('title', 'LIKE', "%{$search}%");
+        }
+
+        if ($request->filled('year')) {
+            $query->whereYear('created_at', $request->year);
+        }
+
+        if ($request->filled('month')) {
+            $query->whereMonth('created_at', $request->month);
+        }
+
+        $reports = $query->orderBy('created_at', 'desc')->get();
         return response()->json($reports);
     }
 

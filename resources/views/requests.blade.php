@@ -64,41 +64,26 @@
         </style>
 
         <!-- Summary Statistics Dashboard -->
-        <div class="stats-dashboard-grid">
-            <!-- Total Requests -->
-            <div class="summary-card-modern">
-                <div style="display: flex; align-items: center; gap: 1.25rem;">
-                    <div class="stat-icon-box" style="background: #eef2ff; color: #6366f1;">
-                        <i data-lucide="layers"></i>
-                    </div>
-                    <div>
-                        <span class="stat-label">Total Files</span>
-                        <span class="stat-value">{{ $all_requests }}</span>
-                    </div>
-                </div>
-            </div>
+        <div class="stats-dashboard-grid-compact">
             <!-- Pending -->
-            <div class="summary-card-modern">
-                <div style="display: flex; align-items: center; gap: 1.25rem;">
-                    <div class="stat-icon-box" style="background: #fffbeb; color: #f59e0b;">
-                        <i data-lucide="clock-3"></i>
-                    </div>
-                    <div>
-                        <span class="stat-label">Pending</span>
-                        <span class="stat-value">{{ $pending_count }}</span>
-                    </div>
+            <div class="summary-card-compact card-warning pointer" onclick="switchTab('pending')">
+                <div class="card-icon-box-compact">
+                    <i data-lucide="clock-3"></i>
+                </div>
+                <div class="card-stats-compact">
+                    <span class="stats-value-compact">{{ $pending_count }}</span>
+                    <span class="stats-label-compact">Total Pending</span>
                 </div>
             </div>
+
             <!-- Approved -->
-            <div class="summary-card-modern">
-                <div style="display: flex; align-items: center; gap: 1.25rem;">
-                    <div class="stat-icon-box" style="background: #ecfdf5; color: #10b981;">
-                        <i data-lucide="check-circle-2"></i>
-                    </div>
-                    <div>
-                        <span class="stat-label">Approved</span>
-                        <span class="stat-value">{{ $approved_count }}</span>
-                    </div>
+            <div class="summary-card-compact card-success pointer" onclick="switchTab('approved')">
+                <div class="card-icon-box-compact">
+                    <i data-lucide="check-circle-2"></i>
+                </div>
+                <div class="card-stats-compact">
+                    <span class="stats-value-compact">{{ $approved_count }}</span>
+                    <span class="stats-label-compact">Total Approved</span>
                 </div>
             </div>
         </div>
@@ -478,11 +463,71 @@
             transform: none !important;
         }
 
-        .stats-dashboard-grid {
+        .stats-dashboard-grid-compact {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 1.5rem;
-            margin-bottom: 3rem;
+            margin-bottom: 2.5rem;
+            max-width: 600px; /* Constrain width for 2 compact cards */
+        }
+
+        .summary-card-compact {
+            background: white;
+            border-radius: 20px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .summary-card-compact:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-icon-box-compact {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .summary-card-compact.card-warning .card-icon-box-compact {
+            background: #fffbeb;
+            color: #f59e0b;
+        }
+
+        .summary-card-compact.card-success .card-icon-box-compact {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .card-stats-compact {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stats-value-compact {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.1;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .stats-label-compact {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
 
         .action-bar-modern {
@@ -501,13 +546,13 @@
         }
 
         @media (max-width: 1024px) {
-            .stats-dashboard-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .stats-dashboard-grid-compact {
+                max-width: 100%;
             }
         }
 
         @media (max-width: 640px) {
-            .stats-dashboard-grid {
+            .stats-dashboard-grid-compact {
                 grid-template-columns: 1fr;
             }
 

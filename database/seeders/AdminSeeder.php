@@ -10,19 +10,22 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create default admin if none exists
-        if (! User::where('role', 'admin')->exists()) {
-            User::create([
-                'name'     => 'System Administrator',
-                'email'    => 'admin@deped.gov.ph',
-                'password' => Hash::make('Admin@12345'),
-                'role'     => 'admin',
-                'permissions' => [],
-            ]);
+        $email = 'markjamesp11770@gmail.com';
+        $hashedEmail = hash('sha256', strtolower(trim($email)));
 
-            $this->command->info('Default admin created: admin@deped.gov.ph / Admin@12345');
-        } else {
-            $this->command->info('Admin already exists, skipping seed.');
-        }
+        // Create/Update admin account
+        User::updateOrCreate(
+            ['email_hash' => $hashedEmail],
+            [
+                'email'      => $email,
+                'first_name' => 'Mark James',
+                'last_name'  => 'P',
+                'password'   => Hash::make('deped123'),
+                'role'       => 'admin',
+                'permissions' => ['view_employees', 'edit_employees', 'delete_employees', 'manage_documents', 'manage_requests', 'manage_accounts'],
+            ]
+        );
+
+        $this->command->info('Admin account updated with split names: markjamesp11770@gmail.com / deped123');
     }
 }

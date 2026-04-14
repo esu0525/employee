@@ -67,6 +67,7 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::post('/add-employee', [EmployeeController::class, 'store'])->name('employees.store');
     Route::post('/employee/update-status/{id}', [EmployeeController::class, 'updateStatus'])->name('employees.update-status');
     Route::get('/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
+    Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::get('/archive/json', [EmployeeController::class, 'archiveEmployeesJson'])->name('employees.archive.export.json');
     Route::get('/history', function() { return redirect()->route('employees.archive'); });
     
@@ -101,6 +102,7 @@ Route::middleware([AuthMiddleware::class])->group(function () {
     Route::post('/accounts/{id}/profile', [ProfileController::class, 'updateAdmin'])->name('admin.users.update-from-profile');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
+    Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.avatar.delete');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/check-password', [ProfileController::class, 'checkPassword'])->name('profile.check-password');
 

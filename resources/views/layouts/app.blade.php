@@ -768,6 +768,7 @@
                     $canManageRequests = $currentUser && $currentUser->hasPermission('view_requests');
                     $canManageAccounts = $currentUser && $currentUser->hasPermission('manage_accounts');
                     $canViewArchive    = $currentUser && $currentUser->hasPermission('view_archive');
+                    $canViewReports    = $currentUser && $currentUser->hasPermission('edit_report');
                 @endphp
                 <div class="sidebar-header sidebar-header-container">
                     <!-- Mobile Close Button -->
@@ -839,11 +840,11 @@
                             </ul>
                         </li>
                         @endif
-                        @if($canViewArchive)
+                        @if($canViewArchive || $canViewReports)
                         <li>
-                            <a href="{{ route('employees.archive') }}" class="nav-link {{ Route::is('employees.archive') || (isset($isArchived) && $isArchived) ? 'active' : '' }}" onclick="const lastUrl = localStorage.getItem('archiveLastUrl'); if(lastUrl && lastUrl.includes('/archive') && !window.location.href.includes('/archive')) { event.preventDefault(); window.location.href = lastUrl; }">
-                                <i data-lucide="archive"></i>
-                                <span>Archive</span>
+                            <a href="{{ $canViewArchive ? route('employees.archive') : route('employees.archive', ['tab' => 'reports']) }}" class="nav-link {{ Route::is('employees.archive') || (isset($isArchived) && $isArchived) ? 'active' : '' }}" onclick="const lastUrl = localStorage.getItem('archiveLastUrl'); if(lastUrl && lastUrl.includes('/archive') && !window.location.href.includes('/archive')) { event.preventDefault(); window.location.href = lastUrl; }">
+                                <i data-lucide="{{ $canViewArchive ? 'archive' : 'file-text' }}"></i>
+                                <span>{{ $canViewArchive ? 'Archive' : 'Report Module' }}</span>
                             </a>
                         </li>
                         @endif

@@ -1,3 +1,4 @@
+@if($canViewArchive)
 <!-- Resign Tab -->
 <div id="resignTab" class="tab-pane {{ $active_tab == 'resign' ? 'active' : '' }}">
     @include('partials.archive-table', ['employees' => $resign, 'type' => 'resign', 'icon' => 'user-minus', 'badge' => 'badge-danger', 'label' => 'Resigned'])
@@ -21,6 +22,7 @@
     @include('partials.archive-table', ['employees' => $others, 'type' => 'others', 'icon' => 'more-horizontal', 'badge' => 'badge-primary', 'label' => 'Others'])
     @include('partials.archive-pagination', ['employees' => $others, 'tab' => 'others'])
 </div>
+@endif
 
 <!-- Reports Tab -->
 <div id="reportsTab" class="tab-pane {{ $active_tab == 'reports' ? 'active' : '' }}">

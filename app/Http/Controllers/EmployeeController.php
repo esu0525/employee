@@ -453,6 +453,14 @@ class EmployeeController extends Controller
 
     public function archive(Request $request)
     {
+        $currentUser = \App\Models\User::find(session('auth_user_id'));
+        $canViewArchive = $currentUser && $currentUser->hasPermission('view_archive');
+        $canViewReports = $currentUser && $currentUser->hasPermission('edit_report');
+
+        if (!$canViewArchive && !$canViewReports) {
+            return redirect()->route('dashboard')->with('error', 'You do not have permission to access this module.');
+        }
+
         $search = $request->query('search', '');
         $filter_year = $request->query('year');
         $filter_month = $request->query('month');
@@ -516,43 +524,27 @@ class EmployeeController extends Controller
         $transfer_count = Employee::where('status', 'transfer')->count();
         $others_count = Employee::where('status', 'others')->count();
 
-        $active_tab = $request->query('tab', 'resign');
+        $active_tab = $request->query('tab', ($canViewArchive ? 'resign' : 'reports'));
         
-        // Auto-locate search results across tabs
-        if (!empty($search)) {
-            $searchCounts = [
-                'resign' => $resign->count(),
-                'retired' => $retired->count(),
-                'transfer' => $transfer->count(),
-                'others' => $others->count(),
-            ];
-            
-            // If the user's current tab has no search results, intelligently switch them to the first tab that has their result
-            if (($searchCounts[$active_tab] ?? 0) === 0) {
-                foreach ($searchCounts as $tab => $count) {
-                    if ($count > 0) {
-                        $active_tab = $tab;
-                        break;
-                    }
-                }
-            }
+        // If user CANNOT view archive but CAN view reports, force tab to reports
+        if (!$canViewArchive && $canViewReports) {
+            $active_tab = 'reports';
         }
+        
+        // Passing permissions to view
+        $compactData = [
+            'resign', 'retired', 'transfer', 'others', 'search',
+            'resign_count', 'retired_count', 'transfer_count', 'others_count',
+            'active_tab', 'canViewArchive', 'canViewReports', 'currentUser'
+        ];
 
         if ($request->ajax()) {
-            return view('partials.archive-panels', compact(
-                'resign', 'retired', 'transfer', 'others', 'search',
-                'resign_count', 'retired_count', 'transfer_count', 'others_count',
-                'active_tab'
-            ))->render();
+            return view('partials.archive-panels', compact(...$compactData))->render();
         }
 
         \App\Models\ActivityLog::log('view', 'archive', 'Accessed the archive module');
 
-        return view('archive', compact(
-            'resign', 'retired', 'transfer', 'others', 'search',
-            'resign_count', 'retired_count', 'transfer_count', 'others_count',
-            'active_tab'
-        ));
+        return view('archive', compact(...$compactData));
     }
 
     public function archiveEmployeesJson(Request $request)
@@ -1031,5 +1023,34 @@ class EmployeeController extends Controller
 
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'personal'])
             ->with('success_message', 'Profile picture updated successfully.');
+    }
+
+    public function destroy($id)
+    {
+        $employee = Employee::findOrFail($id);
+        $name = $employee->name;
+
+        // Delete associated documents and their files
+        foreach ($employee->documents as $doc) {
+            $filePath = public_path($doc->file_path);
+            if (File::exists($filePath)) {
+                File::delete($filePath);
+            }
+            $doc->delete();
+        }
+
+        // Delete profile picture if it exists
+        if ($employee->profile_picture) {
+            $avatarPath = public_path($employee->profile_picture);
+            if (File::exists($avatarPath)) {
+                File::delete($avatarPath);
+            }
+        }
+
+        $employee->delete();
+
+        \App\Models\ActivityLog::log('delete', 'archive', 'Permanently deleted employee record for ' . $name);
+
+        return redirect()->back()->with('success', 'Employee record permanently deleted.');
     }
 }

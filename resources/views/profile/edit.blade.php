@@ -3,6 +3,8 @@
 @section('title', 'My Profile')
 
 @push('styles')
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 <style>
 /* Modern Profile Layout */
 .profile-wrapper {
@@ -496,7 +498,8 @@
             <form action="{{ route('profile.avatar') }}" method="POST" enctype="multipart/form-data" id="avatarForm" style="padding: 0 1.5rem;">
             @csrf
             <div class="profile-avatar-wrapper" id="avatar-container">
-                @if($user->profile_picture && file_exists(public_path($user->profile_picture)))
+                @php $hasAvatar = $user->profile_picture && file_exists(public_path($user->profile_picture)); @endphp
+                @if($hasAvatar)
                     <img src="{{ asset($user->profile_picture) }}?v={{ $user->updated_at->timestamp ?? time() }}" alt="Profile Picture" class="profile-avatar" id="avatar-preview">
                 @else
                     <div class="profile-avatar-fallback" id="avatar-fallback">
@@ -513,7 +516,20 @@
                 @endif
             </div>
 
-            <h2 class="profile-name" style="font-size: 1.5rem; color: var(--text-main);">{{ $user->name }}</h2>
+            <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem;">
+                @if($hasAvatar)
+                    <button type="button" onclick="viewFullImage()" class="btn-avatar-action" title="View Full Image" style="background: var(--info-soft); color: var(--primary); border: none; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                        <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                    </button>
+                    @if($canEdit)
+                    <button type="button" onclick="confirmDeleteAvatar()" class="btn-avatar-action" title="Delete Profile Picture" style="background: var(--danger-soft); color: #ef4444; border: none; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                    </button>
+                    @endif
+                @endif
+            </div>
+
+            <h2 class="profile-name" style="font-size: 1.5rem; color: var(--text-main); margin-top: 1rem;">{{ $user->name }}</h2>
             <div class="profile-role" style="font-size: 0.875rem; padding: 0.2rem 0.75rem; background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);">
                 <i data-lucide="{{ in_array($user->role, ['admin', 'coordinator']) ? 'shield-check' : 'user' }}" style="width: 14px; height: 14px; color: var(--primary);"></i>
                 {{ ucfirst($user->role) }}
@@ -666,7 +682,7 @@
                                     {{ in_array($key, $user->permissions ?? []) ? 'checked' : '' }}
                                     class="perm-checkbox-profile"
                                     style="width: 16px; height: 16px; accent-color: var(--primary);">
-                                {{ $label }}
+                                {{ $key === 'edit_report' ? 'Edit Report' : $label }}
                             </label>
                             @endforeach
                         </div>
@@ -818,7 +834,51 @@
     </div>
 </div>
 
+<!-- Cropper Modal -->
+<div id="cropperModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 5000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div style="background: var(--bg-card); width: 95%; max-width: 600px; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-xl);">
+        <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-main);">
+            <h3 style="margin: 0; font-family: Outfit; font-weight: 700; color: var(--text-main);">Crop Profile Picture</h3>
+            <button onclick="closeCropperModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 5px; display: flex; align-items: center; justify-content: center; border-radius: 50%; hover { background: var(--bg-card); }"><i data-lucide="x"></i></button>
+        </div>
+        <div style="padding: 1.5rem; max-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111;">
+            <div style="width: 100%; height: 400px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 12px;">
+                <img id="cropperImage" src="" style="max-width: 100%; max-height: 100%;">
+            </div>
+        </div>
+        <div style="padding: 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-main);">
+            <div style="display: flex; gap: 0.75rem;">
+                <button type="button" onclick="cropper.rotate(-90)" class="btn-cropper-tool" title="Rotate Anti-clockwise" style="width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); cursor: pointer; display: flex; align-items: center; justify-content: center;"><i data-lucide="rotate-ccw" style="width: 18px;"></i></button>
+                <button type="button" onclick="cropper.rotate(90)" class="btn-cropper-tool" title="Rotate Clockwise" style="width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); cursor: pointer; display: flex; align-items: center; justify-content: center;"><i data-lucide="rotate-cw" style="width: 18px;"></i></button>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="closeCropperModal()" style="padding: 0.75rem 1.5rem; border: none; background: transparent; color: var(--text-main); font-weight: 600; cursor: pointer;">Cancel</button>
+                <button type="button" onclick="performCrop()" class="btn-update" style="padding: 0.75rem 2rem; border-radius: 12px;">
+                    <i data-lucide="check" style="width: 18px; margin-right: 0.5rem;"></i> Apply Crop
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Image Modal -->
+<div id="viewImageModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 5500; align-items: center; justify-content: center; backdrop-filter: blur(10px); cursor: zoom-out;" onclick="closeViewImageModal()">
+    <div style="position: relative; max-width: 90vw; max-height: 90vh;">
+        <button onclick="closeViewImageModal()" style="position: absolute; top: -50px; right: 0; background: white; border: none; cursor: pointer; color: black; padding: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"><i data-lucide="x"></i></button>
+        <img id="fullImagePreview" src="" style="max-width: 100%; max-height: 90vh; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); object-fit: contain;">
+    </div>
+</div>
+
+<!-- Hidden Delete Avatar Form -->
+<form id="deleteAvatarForm" action="{{ route('profile.avatar.delete') }}" method="POST" style="display: none;">
+    @csrf
+    @method('DELETE')
+    <input type="hidden" name="user_id" value="{{ $user->id }}">
+</form>
+
 @push('scripts')
+<!-- Cropper.js JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 <script>
     function togglePermissionsProfile(isManualChange = false) {
         const roleEl = document.getElementById('profile_role');
@@ -1134,25 +1194,149 @@
         }, 2000);
     }
 
-    // ─── Preview Avatar ───────────────────────────────────────────────────────
+    // ─── Avatar Management ────────────────────────────────────────────────────
+    let cropper = null;
+    let originalAvatarSrc = null;
+
+    function viewFullImage() {
+        const preview = document.getElementById('avatar-preview');
+        const viewModal = document.getElementById('viewImageModal');
+        const fullImg = document.getElementById('fullImagePreview');
+        if (preview && preview.src) {
+            fullImg.src = preview.src;
+            viewModal.style.display = 'flex';
+            lucide.createIcons();
+        }
+    }
+
+    function closeViewImageModal() {
+        document.getElementById('viewImageModal').style.display = 'none';
+    }
+
+    function confirmDeleteAvatar() {
+        if (confirm('Are you sure you want to delete your profile picture?')) {
+            document.getElementById('deleteAvatarForm').submit();
+        }
+    }
+
     function previewAvatar(input) {
         if (input.files && input.files[0]) {
-            var reader = new FileReader();
+            const file = input.files[0];
+            const reader = new FileReader();
+            
             reader.onload = function(e) {
-                var preview  = document.getElementById('avatar-preview');
-                var fallback = document.getElementById('avatar-fallback');
-                preview.src = e.target.result;
+                const modal = document.getElementById('cropperModal');
+                const image = document.getElementById('cropperImage');
+                
+                image.src = e.target.result;
+                modal.style.display = 'flex';
+                
+                if (cropper) {
+                    cropper.destroy();
+                }
+                
+                cropper = new Cropper(image, {
+                    aspectRatio: 1,
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 1,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                });
+                
+                lucide.createIcons();
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function closeCropperModal() {
+        document.getElementById('cropperModal').style.display = 'none';
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        document.getElementById('avatar-input').value = '';
+    }
+
+    function performCrop() {
+        if (!cropper) return;
+        
+        const canvas = cropper.getCroppedCanvas({
+            width: 500,
+            height: 500,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+        
+        const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // Show loading state on crop button
+        const cropBtn = event.currentTarget;
+        const originalText = cropBtn.innerHTML;
+        cropBtn.disabled = true;
+        cropBtn.innerHTML = '<i class="animate-spin" data-lucide="loader-2" style="width:18px; margin-right: 0.5rem;"></i> Saving...';
+        lucide.createIcons();
+
+        // Send to server immediately via AJAX
+        fetch('{{ route("profile.avatar") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                avatar: croppedDataUrl,
+                user_id: {{ $user->id }}
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI
+                const preview = document.getElementById('avatar-preview');
+                const fallback = document.getElementById('avatar-fallback');
+                
+                preview.src = data.avatar;
                 preview.style.display = 'block';
                 if (fallback) fallback.style.display = 'none';
-                document.getElementById('save-avatar-btn').style.display = 'inline-flex';
-                preview.style.transform = 'scale(0.9)';
+                
+                closeCropperModal();
+                
+                // Show success toast
+                const toastContainer = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = 'toast toast-success';
+                toast.innerHTML = '<i data-lucide="check-circle"></i><span>Profile picture updated successfully!</span>';
+                toastContainer.appendChild(toast);
+                lucide.createIcons();
+                
                 setTimeout(() => {
-                    preview.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                    preview.style.transform = 'scale(1)';
-                }, 50);
+                    toast.classList.add('hiding');
+                    setTimeout(() => toast.remove(), 300);
+                }, 4000);
+
+                // Reload page after a delay to reflect changes everywhere (header/sidebar)
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                alert(data.message || 'Error uploading image');
+                cropBtn.disabled = false;
+                cropBtn.innerHTML = originalText;
+                lucide.createIcons();
             }
-            reader.readAsDataURL(input.files[0]);
-        }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while uploading. Please try again.');
+            cropBtn.disabled = false;
+            cropBtn.innerHTML = originalText;
+            lucide.createIcons();
+        });
     }
 
     // ─── Toast auto-hide ──────────────────────────────────────────────────────

@@ -212,8 +212,13 @@ function toggleSortMenu() {
 window.toggleSortMenu = toggleSortMenu;
 
 function submitWithFilter() {
-    const form = document.getElementById('filterForm');
-    if (form) form.submit();
+    if (currentTab === 'reports') {
+        loadArchiveReports();
+        toggleFilterMenu(); // Close the menu
+    } else {
+        const form = document.getElementById('filterForm');
+        if (form) form.submit();
+    }
 }
 window.submitWithFilter = submitWithFilter;
 
@@ -543,8 +548,30 @@ async function loadArchiveReports() {
     const tbody = document.getElementById('reportsTableBody');
     if (!tbody) return;
 
+    // Show loading state
+    tbody.innerHTML = `
+        <tr class="loading-reports">
+            <td colspan="5" style="text-align: center; padding: 3rem;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted);">
+                    <i data-lucide="loader" class="animate-spin" style="width: 2rem; height: 2rem;"></i>
+                    <p style="font-weight: 600;">Loading reports...</p>
+                </div>
+            </td>
+        </tr>
+    `;
+    if (window.lucide) lucide.createIcons();
+
+    const search = document.getElementById('archiveSearchInput')?.value || '';
+    const year = document.getElementById('filterYear')?.value || '';
+    const month = document.getElementById('filterMonth')?.value || '';
+
+    let url = new URL(config.reportsListUrl, window.location.origin);
+    if (search) url.searchParams.set('search', search);
+    if (year) url.searchParams.set('year', year);
+    if (month) url.searchParams.set('month', month);
+
     try {
-        const res = await fetch(config.reportsListUrl);
+        const res = await fetch(url);
         const reports = await res.json();
         renderArchiveReports(reports);
     } catch (err) {
@@ -682,12 +709,12 @@ function closeReportViewModal() {
     const modal = document.getElementById('reportViewModal');
     if (modal) {
         modal.classList.remove('active');
-        // If it was fullscreen, exit
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        }
-        // Remove fs class if exists
-        modal.querySelector('.modal-content').classList.remove('fullscreen');
+        // Reset fullscreen state
+        modal.classList.remove('modal-fullscreen');
+        const maxIcon = document.getElementById('maxIcon');
+        const minIcon = document.getElementById('minIcon');
+        if (maxIcon) maxIcon.style.display = 'block';
+        if (minIcon) minIcon.style.display = 'none';
     }
     const iframe = document.getElementById('reportViewIframe');
     if (iframe) iframe.src = 'about:blank';
@@ -696,22 +723,23 @@ function closeReportViewModal() {
 window.closeReportViewModal = closeReportViewModal;
 
 function toggleReportFullScreen() {
-    const modalContent = document.querySelector('#reportViewModal .modal-content');
-    const btnText = document.querySelector('#reportViewModal .fs-text');
-    const icon = document.querySelector('#reportViewModal .btn [data-lucide="maximize"], #reportViewModal .btn [data-lucide="minimize"]');
-    
-    if (!modalContent) return;
+    const modal = document.getElementById('reportViewModal');
+    if (!modal) return;
 
-    if (!document.fullscreenElement) {
-        modalContent.parentElement.requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-        });
-        if (btnText) btnText.innerText = 'Exit Full Screen';
-        // Swap icon via HTML if possible
+    modal.classList.toggle('modal-fullscreen');
+    
+    const maxIcon = document.getElementById('maxIcon');
+    const minIcon = document.getElementById('minIcon');
+    
+    if (modal.classList.contains('modal-fullscreen')) {
+        if (maxIcon) maxIcon.style.display = 'none';
+        if (minIcon) minIcon.style.display = 'block';
     } else {
-        document.exitFullscreen();
-        if (btnText) btnText.innerText = 'Full Screen';
+        if (maxIcon) maxIcon.style.display = 'block';
+        if (minIcon) minIcon.style.display = 'none';
     }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 window.toggleReportFullScreen = toggleReportFullScreen;
 
@@ -1460,10 +1488,19 @@ const archivePages = {
 };
 const perPage = 10;
 
+let searchTimeout;
 window.liveSearch = function (query) {
     const term = query.toLowerCase().trim();
     const container = document.getElementById('panelsContainer');
     if (!container) return;
+
+    if (currentTab === 'reports') {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            loadArchiveReports();
+        }, 300);
+        return;
+    }
 
     // Filter ALL tabs instantly
     ['resign', 'retired', 'transfer', 'others'].forEach(tab => {
@@ -1569,7 +1606,26 @@ window.goToPage = function (tab, page) {
     updateTablePagination(tab, searchInput && searchInput.value.trim() !== '');
 };
 
+
 window.fetchData = function (page, query) {
     // This now only reloads content from server if needed (e.g. after update)
     location.reload();
 };
+
+window.confirmArchiveDelete = function(id, name) {
+    const modal = document.getElementById('archiveDeleteModal');
+    const nameSpan = document.getElementById('deleteEmployeeName');
+    const form = document.getElementById('deleteArchiveForm');
+    
+    if (modal && nameSpan && form) {
+        nameSpan.innerText = name;
+        form.action = `/employees/${id}`;
+        modal.classList.add('active');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+window.closeArchiveDeleteModal = function() {
+    const modal = document.getElementById('archiveDeleteModal');
+    if (modal) modal.classList.remove('active');
+}

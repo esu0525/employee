@@ -42,6 +42,7 @@
             }
         </style>
 
+        @if($canViewArchive)
         <!-- Summary Statistics Cards -->
         <div class="summary-cards-grid">
             <!-- Resigned Card -->
@@ -54,7 +55,7 @@
                     <span class="stats-label">Total Resigned</span>
                 </div>
             </div>
-
+            <!-- ... (other cards) ... -->
             <!-- Retired Card -->
             <div class="summary-card card-warning pointer" onclick="switchTab('retired')">
                 <div class="card-icon-box">
@@ -88,151 +89,156 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <!-- Filter & Search Bar -->
         <div class="archive-action-bar" style="margin-top: 0.5rem; margin-bottom: 1rem;">
-            <!-- Search bar -->
-            <form id="searchForm" method="GET" action="{{ route('employees.archive') }}" style="margin: 0; padding: 0;">
+            @if($canViewArchive || $canViewReports)
+            <!-- Search Bar -->
+            <form id="archiveSearchForm" onsubmit="return false;" style="margin: 0;">
                 <input type="hidden" name="tab" id="searchTabInput" value="{{ $active_tab }}">
                 <div class="archive-search">
                     <i data-lucide="search" class="search-icon"></i>
                     <input type="text" name="search" id="archiveSearchInput" class="search-input-modern"
-                        placeholder="Search archive..." value="{{ $search }}" oninput="liveSearch(this.value)"
+                        placeholder="Search {{ $active_tab === 'reports' ? 'reports' : 'archive' }}..." value="{{ $search }}" oninput="liveSearch(this.value)"
                         autocomplete="off">
                 </div>
             </form>
 
-            <div class="archive-actions-right" style="display: flex; gap: 0.75rem;">
-                <!-- Filter Dropdown -->
-                <div class="archive-filters-dropdown">
-                    <button title="Filter by Date" class="btn btn-outline filter-toggle-btn" onclick="toggleFilterMenu()"
-                        style="border-radius: 12px; height: 3rem; padding: 0 1rem;">
-                        <i data-lucide="calendar-check"></i>
-                        <i data-lucide="chevron-down" class="chevron"></i>
-                    </button>
-                    <div id="filterMenu" class="filter-menu-dropdown">
-                        <form id="filterForm" method="GET" action="{{ route('employees.archive') }}" class="filters-form">
-                            @if($search) <input type="hidden" name="search" value="{{ $search }}"> @endif
-                            <input type="hidden" name="tab" id="filterTabInput" value="{{ $active_tab }}">
-
-                            <div class="filter-group-item">
-                                <label>Year</label>
-                                <select name="year" class="filter-select" onchange="submitWithFilter()">
+            <!-- Filter Dropdown -->
+            <div class="archive-filters-dropdown">
+                <button class="btn btn-outline filter-toggle-btn" onclick="toggleFilterMenu()"
+                    style="border-radius: 12px; height: 3rem; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); font-weight: 700; font-size: 0.85rem; color: var(--text-main);">
+                    <i data-lucide="filter" style="width: 18px;"></i>
+                    <span>Filters</span>
+                    <i data-lucide="chevron-down" class="chevron" style="width: 16px; opacity: 0.5;"></i>
+                </button>
+                <div id="filterMenu" class="filter-menu-dropdown modern-filter-menu"
+                    style="min-width: 320px; padding: 1.5rem;">
+                    <form id="filterForm" method="GET" action="{{ route('employees.archive') }}">
+                        <input type="hidden" name="tab" id="filterTabInput" value="{{ $active_tab }}">
+                        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                            <div class="filter-group">
+                                <label
+                                    style="display: block; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+                                    {{ $active_tab === 'reports' ? 'Report' : 'Separation' }} Year
+                                </label>
+                                <select name="year" id="filterYear" class="filter-select">
                                     <option value="">All Years</option>
-                                    @for($y = date('Y'); $y >= date('Y') - 10; $y--)
-                                        <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                                    @for ($y = date('Y'); $y >= 1990; $y--)
+                                        <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>
+                                            {{ $y }}</option>
                                     @endfor
                                 </select>
                             </div>
 
-                            <div class="filter-group-item">
-                                <label>Month</label>
-                                <select name="month" class="filter-select" onchange="submitWithFilter()">
+                            <div class="filter-group">
+                                <label
+                                    style="display: block; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+                                    {{ $active_tab === 'reports' ? 'Report' : 'Separation' }} Month
+                                </label>
+                                <select name="month" id="filterMonth" class="filter-select">
                                     <option value="">All Months</option>
-                                    @foreach(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as $index => $name)
-                                        <option value="{{ $index + 1 }}" {{ request('month') == ($index + 1) ? 'selected' : '' }}>
-                                            {{ $name }}
-                                        </option>
+                                    @foreach (range(1, 12) as $m)
+                                        <option value="{{ $m }}" {{ request('month') == $m ? 'selected' : '' }}>
+                                            {{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
-                            <div class="filter-group-item">
-                                <label>Specific Date</label>
-                                <input type="date" name="date" class="filter-date" value="{{ request('date') }}"
-                                    onchange="submitWithFilter()">
-                            </div>
-
-                            <div class="filter-menu-footer">
-                                <a href="{{ route('employees.archive') }}?tab={{ $active_tab }}" class="btn-reset-filters"
-                                    onclick="localStorage.setItem('archiveFilterOpen', 'false')">
-                                    <i data-lucide="filter-x"></i>
-                                    Reset Filters
+                            <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+                                <button type="submit" class="btn btn-primary" style="flex: 2; border-radius: 10px;">Apply Filters</button>
+                                <a href="{{ route('employees.archive', ['tab' => $active_tab]) }}" class="btn btn-outline"
+                                    style="flex: 1; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem;">
+                                    Reset
                                 </a>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                 </div>
+            </div>
+            @endif
 
-                <!-- Export Button -->
-                @php
-                    $currentUser = \App\Models\User::find(session('auth_user_id'));
-                    $canExportArchive = $currentUser && $currentUser->hasPermission('export_archive');
-                @endphp
-                @if($canExportArchive)
-                    <div class="archive-filters-dropdown">
-                        <button title="Export" class="btn btn-outline" onclick="openExportModal()"
-                            style="border-radius: 12px; height: 3rem; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: #3b82f6; border: 1px solid #3b82f6; font-weight: 700; font-size: 0.85rem; color: white; transition: 0.2s;">
-                            <i data-lucide="external-link" style="width: 18px; color: white;"></i>
-                        </button>
-                    </div>
-                @endif
+            <div style="flex: 1;"></div>
 
-                <!-- Report Generator Button -->
-                @if($canExportArchive)
-                    <div class="archive-filters-dropdown">
-                        <button title="Generate Report" class="btn btn-outline" onclick="openReportModal()"
-                            style="border-radius: 12px; height: 3rem; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); font-weight: 700; font-size: 0.85rem; color: var(--text-main); transition: 0.2s;">
-                            <i data-lucide="clipboard-list" style="width: 18px; color: var(--primary);"></i>
-                            <span>Report</span>
-                        </button>
-                    </div>
-                @endif
-
-                <!-- Sort Dropdown -->
+            <!-- Export Button -->
+            @php
+                $currentUser = \App\Models\User::find(session('auth_user_id'));
+                $canExportArchive = $currentUser && $currentUser->hasPermission('export_archive');
+            @endphp
+            @if($canExportArchive)
                 <div class="archive-filters-dropdown">
-                    <button class="btn btn-outline sort-toggle-btn" onclick="toggleSortMenu()"
-                        style="border-radius: 12px; height: 3rem; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); font-weight: 700; font-size: 0.85rem; color: var(--text-main);">
-                        <i data-lucide="list-filter" style="width: 18px;"></i>
-                        <span>Sort</span>
-                        <i data-lucide="chevron-down" class="chevron" style="width: 16px; opacity: 0.5;"></i>
+                    <button title="Export" class="btn btn-outline" onclick="openExportModal()"
+                        style="border-radius: 12px; height: 3rem; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: #3b82f6; border: 1px solid #3b82f6; font-weight: 700; font-size: 0.85rem; color: white; transition: 0.2s;">
+                        <i data-lucide="external-link" style="width: 18px; color: white;"></i>
                     </button>
-                    <div id="sortMenu" class="filter-menu-dropdown sort-dropdown modern-sort-menu"
-                        style="width: 220px; padding: 0.5rem;">
-                        <div class="sort-menu-header"
-                            style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); margin-bottom: 0.5rem;">
-                            <span
-                                style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Sort
-                                By</span>
-                        </div>
-                        <div class="sort-options" style="display: flex; flex-direction: column; gap: 2px;">
-                            <!-- Separation Date Sort -->
-                            <button
-                                class="sort-opt-btn {{ (request('sort', 'recent') == 'recent' || request('sort') == 'sep_desc') ? 'active' : '' }}"
-                                onclick="submitWithSort('sep_desc')">
-                                <i data-lucide="calendar-days"></i> <span>Separation Date (Newest)</span>
-                            </button>
-                            <button class="sort-opt-btn {{ request('sort') == 'sep_asc' ? 'active' : '' }}"
-                                onclick="submitWithSort('sep_asc')">
-                                <i data-lucide="history"></i> <span>Separation Date (Oldest)</span>
-                            </button>
+                </div>
+            @endif
 
-                            <div style="height: 1px; background: var(--border); margin: 4px 0.5rem; opacity: 0.5;"></div>
+            <!-- Report Generator Button -->
+            @if($canExportArchive || $canViewReports)
+                <div class="archive-filters-dropdown">
+                    <button title="Generate Report" class="btn btn-outline" onclick="openReportModal()"
+                        style="border-radius: 12px; height: 3rem; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); font-weight: 700; font-size: 0.85rem; color: var(--text-main); transition: 0.2s;">
+                        <i data-lucide="clipboard-list" style="width: 18px; color: var(--primary);"></i>
+                        <span>Generate Report</span>
+                    </button>
+                </div>
+            @endif
 
-                            <!-- Archived Date Sort -->
-                            <button class="sort-opt-btn {{ request('sort') == 'archived_recent' ? 'active' : '' }}"
-                                onclick="submitWithSort('archived_recent')">
-                                <i data-lucide="archive"></i> <span>Date Archived (Newest)</span>
-                            </button>
-                            <button class="sort-opt-btn {{ request('sort') == 'archived_oldest' ? 'active' : '' }}"
-                                onclick="submitWithSort('archived_oldest')">
-                                <i data-lucide="clock"></i> <span>Date Archived (Oldest)</span>
-                            </button>
+            @if($canViewArchive)
+            <!-- Sort Dropdown -->
+            <div class="archive-filters-dropdown">
+                <button class="btn btn-outline sort-toggle-btn" onclick="toggleSortMenu()"
+                    style="border-radius: 12px; height: 3rem; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); font-weight: 700; font-size: 0.85rem; color: var(--text-main);">
+                    <i data-lucide="list-filter" style="width: 18px;"></i>
+                    <span>Sort</span>
+                    <i data-lucide="chevron-down" class="chevron" style="width: 16px; opacity: 0.5;"></i>
+                </button>
+                <div id="sortMenu" class="filter-menu-dropdown sort-dropdown modern-sort-menu"
+                    style="width: 220px; padding: 0.5rem;">
+                    <div class="sort-menu-header"
+                        style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); margin-bottom: 0.5rem;">
+                        <span
+                            style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Sort
+                            By</span>
+                    </div>
+                    <div class="sort-options" style="display: flex; flex-direction: column; gap: 2px;">
+                        <button
+                            class="sort-opt-btn {{ (request('sort', 'recent') == 'recent' || request('sort') == 'sep_desc') ? 'active' : '' }}"
+                            onclick="submitWithSort('sep_desc')">
+                            <i data-lucide="calendar-days"></i> <span>Separation Date (Newest)</span>
+                        </button>
+                        <button class="sort-opt-btn {{ request('sort') == 'sep_asc' ? 'active' : '' }}"
+                            onclick="submitWithSort('sep_asc')">
+                            <i data-lucide="history"></i> <span>Separation Date (Oldest)</span>
+                        </button>
 
-                            <div style="height: 1px; background: var(--border); margin: 4px 0.5rem; opacity: 0.5;"></div>
+                        <div style="height: 1px; background: var(--border); margin: 4px 0.5rem; opacity: 0.5;"></div>
 
-                            <button class="sort-opt-btn {{ request('sort') == 'name' ? 'active' : '' }}"
-                                onclick="submitWithSort('name')">
-                                <i data-lucide="type"></i> <span>Alphabetical (A-Z)</span>
-                            </button>
-                        </div>
+                        <button class="sort-opt-btn {{ request('sort') == 'archived_recent' ? 'active' : '' }}"
+                            onclick="submitWithSort('archived_recent')">
+                            <i data-lucide="archive"></i> <span>Date Archived (Newest)</span>
+                        </button>
+                        <button class="sort-opt-btn {{ request('sort') == 'archived_oldest' ? 'active' : '' }}"
+                            onclick="submitWithSort('archived_oldest')">
+                            <i data-lucide="clock"></i> <span>Date Archived (Oldest)</span>
+                        </button>
+
+                        <div style="height: 1px; background: var(--border); margin: 4px 0.5rem; opacity: 0.5;"></div>
+
+                        <button class="sort-opt-btn {{ request('sort') == 'name' ? 'active' : '' }}"
+                            onclick="submitWithSort('name')">
+                            <i data-lucide="type"></i> <span>Alphabetical (A-Z)</span>
+                        </button>
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         <!-- Tabbed Navigation -->
-        <div class="archive-tabs-container" style="margin-top: 0.5rem; margin-bottom: 2rem;">
+        <div class="archive-tabs-container" style="margin-top: 0.5rem; margin-bottom: 2rem; {{ !$canViewArchive ? 'display: none;' : '' }}">
             <div class="archive-tabs sliding-tabs">
                 <!-- Active Slide Background -->
                 <div id="tab-slider" class="tab-slider"></div>
@@ -259,6 +265,15 @@
                 </button>
             </div>
         </div>
+
+        @if(!$canViewArchive && $canViewReports)
+        <div style="margin-top: 0.5rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem;">
+            <div style="background: var(--primary-gradient); color: white; padding: 0.85rem 1.5rem; border-radius: 14px; display: flex; align-items: center; gap: 0.75rem; font-weight: 700; box-shadow: var(--shadow-md);">
+                <i data-lucide="file-text" style="width: 20px; height: 20px;"></i>
+                <span>Archive Reports</span>
+            </div>
+        </div>
+        @endif
 
         <!-- Tab Panels -->
         <div class="tab-panels-wrapper" style="margin-top: 1rem;">
@@ -724,6 +739,22 @@
             border-color: #3b82f6 !important;
             transform: translateY(-4px);
         }
+
+        /* Fullscreen Modal Styles */
+        .modal.modal-fullscreen .modal-content {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+        }
+
+        .modal.modal-fullscreen {
+            padding: 0 !important;
+        }
     </style>
 
     <!-- Report Viewer Modal -->
@@ -739,6 +770,11 @@
                         document...</span>
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
+                    <button id="fullscreenToggle" class="btn btn-outline" onclick="toggleReportFullScreen()"
+                        style="padding: 0.5rem; width: 2.5rem; height: 2.5rem; border-radius: 8px;" title="Toggle Fullscreen">
+                        <i data-lucide="maximize" id="maxIcon" style="width: 20px;"></i>
+                        <i data-lucide="minimize" id="minIcon" style="width: 20px; display: none;"></i>
+                    </button>
                     <button class="btn btn-outline" onclick="closeReportViewModal()"
                         style="padding: 0.5rem; width: 2.5rem; height: 2.5rem; border-radius: 8px;">
                         <i data-lucide="x" style="width: 20px;"></i>
@@ -996,6 +1032,27 @@
             </div>
         </div>
     </div>
+    <!-- Delete Archive Record Confirmation Modal -->
+    <div id="archiveDeleteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; padding: 0; border-radius: 20px; overflow: hidden;">
+            <div style="padding: 2rem; text-align: center;">
+                <div style="width: 64px; height: 64px; background: #fee2e2; color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                    <i data-lucide="alert-triangle" style="width: 32px; height: 32px;"></i>
+                </div>
+                <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.5rem;">Delete Record?</h2>
+                <p style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; line-height: 1.5;">Are you sure you want to permanently delete the record for <span id="deleteEmployeeName" style="color: var(--text-main); font-weight: 800;"></span>? This action cannot be undone.</p>
+            </div>
+            <div style="padding: 1.25rem; background: #f8fafc; display: flex; gap: 1rem; border-top: 1px solid var(--border);">
+                <button type="button" class="btn btn-outline" onclick="closeArchiveDeleteModal()" style="flex: 1; height: 3rem; border-radius: 12px; font-weight: 700;">Cancel</button>
+                <form id="deleteArchiveForm" method="POST" style="flex: 1; margin: 0;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-primary" style="width: 100%; height: 3rem; border-radius: 12px; font-weight: 700; background: #ef4444; border: none; color: white;">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')

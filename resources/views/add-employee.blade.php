@@ -311,14 +311,17 @@
                                             <option value="LEAVE / DTR">Leave / DTR</option>
                                             <option value="PERSONAL DATA SHEET">Personal Data Sheet</option>
                                             <option value="CLEARANCES">Clearances</option>
-                                            <option value="OTHERS">Others</option>
+                                            <option value="GENERAL">General</option>
                                         </select>
                                     </div>
                                     <div class="form-group" style="grid-column: span 2; position: relative;">
                                         <label class="form-label">Upload Files</label>
-                                        <div style="display: flex; gap: 0.75rem; align-items: center;">
-                                            <input type="file" name="doc_items[0][files][]" class="form-input" multiple
-                                                acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg">
+                                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                                <input type="file" name="doc_items[0][files][]" class="form-input" multiple
+                                                    acceptance=".pdf,.doc,.docx,.xlsx,.png,.jpg,.jpeg" onchange="handleFileSelect(this)">
+                                            </div>
+                                            <div class="doc-file-list" id="fileList_0" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;"></div>
                                         </div>
                                     </div>
                                 </div>
