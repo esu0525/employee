@@ -38,3 +38,6 @@ Route::middleware(['web'])->group(function () {
         ]);
     })->name('api.session.heartbeat');
 });
+
+// ─── External API (API-Key Protected, no session required) ─────────────────
+Route::get('/masterlist/export', [EmployeeController::class, 'masterlistExport'])->name('api.masterlist.export');

@@ -48,6 +48,7 @@ class SyncEmployeesToDepEd extends Command
                 'address' => $employee->address,
                 'status' => $employee->status,
                 'category' => $employee->category,
+                'employment_status' => $employee->employment_status,
                 'agency' => $employee->agency,
             ];
         })->toArray();

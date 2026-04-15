@@ -303,19 +303,19 @@ class AuthController extends Controller
         }
 
         $userId = session('otp_user_id');
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
 
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User account not found.']);
         }
 
         // Invalidate older unused tokens first
-        \App\Models\OtpCode::where('user_id', $userId)->where('used', false)->update(['used' => true]);
+        OtpCode::where('user_id', $userId)->where('used', false)->update(['used' => true]);
 
         // Generate new 6-digit OTP
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        \App\Models\OtpCode::create([
+        OtpCode::create([
             'user_id' => $userId,
             'code' => $code,
             'expires_at' => now()->addMinutes(self::OTP_EXPIRY_MINUTES),

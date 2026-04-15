@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+// v1.1
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 

@@ -19,7 +19,7 @@ class ProfileController extends Controller
      */
     private function getUser()
     {
-        return \App\Models\User::find(session('auth_user_id'));
+        return User::find(session('auth_user_id'));
     }
 
     /**
@@ -140,7 +140,7 @@ class ProfileController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $user = \App\Models\User::findOrFail($id);
+        $user = User::findOrFail($id);
         $data = $this->prepareProfileData($user);
         
         // Pass a flag indicating we are viewing someone else
@@ -275,7 +275,7 @@ class ProfileController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid image data'], 422);
         }
 
-        $filename = time() . '_' . \Illuminate\Support\Str::slug($user->name) . '.' . $type;
+        $filename = time() . '_' . Str::slug($user->name) . '.' . $type;
         $path = 'assets/avatars/' . $filename;
         
         if (!file_exists(public_path('assets/avatars'))) {

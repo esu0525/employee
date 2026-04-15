@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\EmployeeDocument;
 use App\Models\EmployeeRequest;
+use App\Models\ActivityLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\File;
@@ -164,7 +165,7 @@ class EmployeeController extends Controller
             return view('partials.masterlist-table', compact('employees', 'sort'))->render();
         }
 
-        \App\Models\ActivityLog::log('view', 'masterlist', 'Accessed the employee masterlist');
+        ActivityLog::log('view', 'masterlist', 'Accessed the employee masterlist');
 
         return view('masterlist', compact(
             'employees', 
@@ -217,9 +218,104 @@ class EmployeeController extends Controller
 
         $employees = $query->get(['id', 'name', 'position', 'agency', 'category', 'employment_status', 'employment_type', 'salary_grade', 'level_of_position', 'sex', 'date_joined']);
 
-        \App\Models\ActivityLog::log('export', 'masterlist', 'Exported masterlist data (JSON fetch for client-side generation). Search: ' . ($search ?: 'None'));
+        ActivityLog::log('export', 'masterlist', 'Exported masterlist data (JSON fetch for client-side generation). Search: ' . ($search ?: 'None'));
             
         return response()->json($employees);
+    }
+
+    /**
+     * External API endpoint: return all active employees for DepEd-system sync.
+     * Protected by X-API-KEY header (no session required).
+     */
+    public function masterlistExport(Request $request)
+    {
+        $apiKey = $request->header('X-API-KEY');
+        if ($apiKey !== 'deped-sync-key-2024') {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $employees = Employee::where('status', 'active')
+            ->orderBy('last_name', 'asc')
+            ->orderBy('first_name', 'asc')
+            ->get()
+            ->map(function ($employee) {
+                $lastName  = $employee->last_name;
+                $firstName = $employee->first_name;
+                $middleName = $employee->middle_name;
+                $suffix    = $employee->suffix;
+
+                // Parse from 'name' field if individual parts are empty
+                // Name format expected: "Lastname, Firstname M.I." or "Firstname Lastname"
+                if (empty($lastName) && empty($firstName) && !empty($employee->name)) {
+                    $rawName = trim($employee->name);
+                    if (str_contains($rawName, ',')) {
+                        // Format: "Lastname, Firstname M.I. Suffix"
+                        $parts = explode(',', $rawName, 2);
+                        $lastName = trim($parts[0]);
+                        $rest = trim($parts[1] ?? '');
+
+                        $bits = preg_split('/\s+/', $rest);
+                        $suffixes = ['JR.', 'SR.', 'III', 'IV', 'V', 'II', 'JR', 'SR'];
+                        $firstBits = [];
+                        foreach ($bits as $i => $bit) {
+                            $upper = strtoupper(trim($bit, '. '));
+                            if (in_array($upper, $suffixes)) {
+                                $suffix = trim($bit);
+                            } elseif (strlen(trim($bit, '.')) === 1 && $i > 0) {
+                                $middleName = trim($bit);
+                            } else {
+                                $firstBits[] = $bit;
+                            }
+                        }
+                        $firstName = implode(' ', $firstBits);
+                    } else {
+                        // Format: "Firstname Lastname" — take last word as last name
+                        $parts = preg_split('/\s+/', $rawName);
+                        if (count($parts) >= 2) {
+                            $lastName = array_pop($parts);
+                            $firstName = implode(' ', $parts);
+                        } else {
+                            $firstName = $rawName;
+                            $lastName = '';
+                        }
+                    }
+                }
+
+                // Generate standardized email
+                $cleanLast = preg_replace('/[^A-Za-z0-9]/', '', $lastName ?? '');
+                $cleanFirst = preg_replace('/[^A-Za-z0-9]/', '', $firstName ?? '');
+                $email = strtolower($cleanLast . '.' . $cleanFirst) . '@deped.gov.ph';
+                // Avoid malformed emails like ".@deped.gov.ph"
+                if (empty($cleanLast) && empty($cleanFirst)) {
+                    $email = strtolower(preg_replace('/[^A-Za-z0-9]/', '', $employee->name ?? 'unknown')) . '@deped.gov.ph';
+                }
+
+                $gender = ($employee->sex == 'Male' || $employee->sex == 'M') ? 'Male' : 'Female';
+
+                return [
+                    'emp_id'            => $employee->id,
+                    'first_name'        => $firstName,
+                    'last_name'         => $lastName,
+                    'middle_name'       => $middleName,
+                    'suffix'            => $suffix,
+                    'name'              => $employee->name,
+                    'gender'            => $gender,
+                    'position'          => $employee->position,
+                    'date_hired'        => $employee->date_joined ? $employee->date_joined->toDateString() : null,
+                    'email'             => $email,
+                    'contact_number'    => $employee->phone,
+                    'address'           => $employee->address,
+                    'status'            => 'Active',
+                    'category'          => $employee->category ?: 'National',
+                    'employment_status' => $employee->employment_status,
+                    'agency'            => $employee->agency,
+                ];
+            });
+
+        return response()->json([
+            'total' => $employees->count(),
+            'employees' => $employees->values()->toArray(),
+        ]);
     }
 
     public function import(Request $request): RedirectResponse
@@ -446,7 +542,7 @@ class EmployeeController extends Controller
         $isArchived = ($employee->status !== 'active');
 
         $module = $isArchived ? 'archive' : 'masterlist';
-        \App\Models\ActivityLog::log('view', $module, 'Viewed details for employee ' . $employee->name);
+        ActivityLog::log('view', $module, 'Viewed details for employee ' . $employee->name);
 
         return view('employee-details', compact('employee', 'documents', 'doc_count', 'isArchived'));
     }
@@ -542,7 +638,7 @@ class EmployeeController extends Controller
             return view('partials.archive-panels', compact(...$compactData))->render();
         }
 
-        \App\Models\ActivityLog::log('view', 'archive', 'Accessed the archive module');
+        ActivityLog::log('view', 'archive', 'Accessed the archive module');
 
         return view('archive', compact(...$compactData));
     }
@@ -568,7 +664,7 @@ class EmployeeController extends Controller
         $employees = $query->orderBy('effective_date', 'desc')
             ->get(['id', 'name', 'position', 'agency', 'school', 'status', 'effective_date', 'status_specify', 'so_no', 'transfer_to', 'retirement_under', 'salary_grade', 'level_of_position', 'employment_status', 'employment_type']);
 
-        \App\Models\ActivityLog::log('export', 'archive', 'Exported archive data (JSON fetch). Filters: Year=' . ($year ?: 'All') . ', Month=' . ($month ?: 'All') . ', Tab=' . ($tab ?: 'All'));
+        ActivityLog::log('export', 'archive', 'Exported archive data (JSON fetch). Filters: Year=' . ($year ?: 'All') . ', Month=' . ($month ?: 'All') . ', Tab=' . ($tab ?: 'All'));
             
         return response()->json($employees);
     }
@@ -694,7 +790,7 @@ class EmployeeController extends Controller
 
         $employee = Employee::create($data);
 
-        \App\Models\ActivityLog::log('create', 'masterlist', 'Created new employee record: ' . $employee->name);
+        ActivityLog::log('create', 'masterlist', 'Created new employee record: ' . $employee->name);
 
         if ($request->has('doc_items')) {
             foreach ($request->doc_items as $index => $item) {
@@ -746,7 +842,7 @@ class EmployeeController extends Controller
             'retirement_under' => null, // Clear out any legacy data for this deprecated field
         ]);
 
-        \App\Models\ActivityLog::log('edit', 'archive', 'Moved employee ' . $employee->name . ' to ' . strtoupper($request->status) . ' list');
+        ActivityLog::log('edit', 'archive', 'Moved employee ' . $employee->name . ' to ' . strtoupper($request->status) . ' list');
 
         return redirect()->route('employees.masterlist')->with('success_modal', [
             'title' => 'Status Updated!',
@@ -779,7 +875,7 @@ class EmployeeController extends Controller
                 ]);
                 
                 $module = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']) ? 'archive' : 'masterlist';
-                \App\Models\ActivityLog::log('upload', $module, 'Uploaded document: ' . $file->getClientOriginalName() . ' for ' . $employee->name);
+                ActivityLog::log('upload', $module, 'Uploaded document: ' . $file->getClientOriginalName() . ' for ' . $employee->name);
                 
                 $upload_count++;
             }
@@ -817,7 +913,7 @@ class EmployeeController extends Controller
         $doc->delete();
 
         $module = ($employee && in_array($employee->status, ['resign', 'retired', 'transfer', 'others'])) ? 'archive' : 'masterlist';
-        \App\Models\ActivityLog::log('delete', $module, 'Deleted document: ' . $doc_name . ' for ' . $emp_name);
+        ActivityLog::log('delete', $module, 'Deleted document: ' . $doc_name . ' for ' . $emp_name);
 
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'documents'])
             ->with('success_message', 'Document deleted successfully');
@@ -831,7 +927,7 @@ class EmployeeController extends Controller
             'prepared_by' => $request->input('prepared_by')
         ]);
 
-        \App\Models\ActivityLog::log('edit', 'requests', 'Approved document request for ' . $req->employee_name . ' (Requested: ' . $req->request_type . ')');
+        ActivityLog::log('edit', 'requests', 'Approved document request for ' . $req->employee_name . ' (Requested: ' . $req->request_type . ')');
 
         return redirect()->route('employees.requests')
             ->with('success_message', 'Request approved and moved to Approved List')
@@ -843,7 +939,7 @@ class EmployeeController extends Controller
         $request = EmployeeRequest::findOrFail($id);
         $request->update(['status' => 'rejected']);
         
-        \App\Models\ActivityLog::log('edit', 'requests', 'Rejected document request for ' . $request->employee_name . ' (Requested: ' . $request->request_type . ')');
+        ActivityLog::log('edit', 'requests', 'Rejected document request for ' . $request->employee_name . ' (Requested: ' . $request->request_type . ')');
 
         return redirect()->route('employees.requests')->with('success_message', 'Request has been rejected');
     }
@@ -884,7 +980,7 @@ class EmployeeController extends Controller
             'requirements_file' => $requirements_file,
         ]);
 
-        \App\Models\ActivityLog::log('create', 'requests', 'Submitted document request for ' . $employee->name . ' (Requested: ' . $data['request_type'] . ')');
+        ActivityLog::log('create', 'requests', 'Submitted document request for ' . $employee->name . ' (Requested: ' . $data['request_type'] . ')');
 
         return redirect()->route('employees.requests')->with('success_message', 'Document request submitted successfully!');
     }
@@ -966,7 +1062,7 @@ class EmployeeController extends Controller
         }
 
         $module = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']) ? 'archive' : 'masterlist';
-        \App\Models\ActivityLog::log('edit', $module, $desc);
+        ActivityLog::log('edit', $module, $desc);
 
         $tab = $request->input('active_tab', 'personal');
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => $tab])
@@ -1018,7 +1114,7 @@ class EmployeeController extends Controller
             ]);
 
             $module = in_array($employee->status, ['resign', 'retired', 'transfer', 'others']) ? 'archive' : 'masterlist';
-            \App\Models\ActivityLog::log('edit', $module, 'Updated profile picture for employee ' . $employee->name);
+            ActivityLog::log('edit', $module, 'Updated profile picture for employee ' . $employee->name);
         }
 
         return redirect()->route('employees.show', ['id' => $employee->id, 'tab' => 'personal'])
@@ -1049,7 +1145,7 @@ class EmployeeController extends Controller
 
         $employee->delete();
 
-        \App\Models\ActivityLog::log('delete', 'archive', 'Permanently deleted employee record for ' . $name);
+        ActivityLog::log('delete', 'archive', 'Permanently deleted employee record for ' . $name);
 
         return redirect()->back()->with('success', 'Employee record permanently deleted.');
     }
